@@ -1,0 +1,413 @@
+/* ============================================
+   ENHANCED UI - Modern Design System
+   ============================================ */
+
+/* Global Styles */
+* {
+    box-sizing: border-box;
+}
+
+body { 
+    margin: 0; 
+    padding: 0; 
+    font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', 'Roboto', 'Oxygen', 'Ubuntu', 'Cantarell', 'Fira Sans', 'Droid Sans', 'Helvetica Neue', sans-serif;
+    -webkit-font-smoothing: antialiased;
+    -moz-osx-font-smoothing: grayscale;
+    background: #f5f7fa;
+}
+
+/* Map Container */
+#map { 
+    position: absolute; 
+    top: 0; 
+    bottom: 0; 
+    width: 100%; 
+    z-index: 1;
+}
+
+/* Enhanced Sidebar */
+#sidebar { 
+    position: absolute; 
+    top: 15px; 
+    right: 15px; 
+    z-index: 1000; 
+    width: 400px;
+    max-height: 96vh; 
+    overflow-y: auto;
+    overflow-x: hidden;
+    background: linear-gradient(135deg, #ffffff 0%, #f0fdf4 100%);
+    padding: 20px;
+    border-radius: 16px;
+    box-shadow: 0 10px 40px rgba(16, 185, 129, 0.15), 0 2px 8px rgba(0, 0, 0, 0.1);
+    border: 1px solid rgba(16, 185, 129, 0.2);
+    backdrop-filter: blur(10px);
+    scrollbar-width: thin;
+    scrollbar-color: #86efac #f0fdf4;
+}
+
+#sidebar::-webkit-scrollbar {
+    width: 6px;
+}
+
+#sidebar::-webkit-scrollbar-track {
+    background: #f1f5f9;
+    border-radius: 10px;
+}
+
+#sidebar::-webkit-scrollbar-thumb {
+    background: #86efac;
+    border-radius: 10px;
+}
+
+#sidebar::-webkit-scrollbar-thumb:hover {
+    background: #4ade80;
+}
+
+#sidebar h4 {
+    color: #059669;
+    border-bottom: 3px solid;
+    border-image: linear-gradient(90deg, #10b981 0%, #34d399 100%) 1;
+    padding-bottom: 8px;
+    margin-bottom: 20px !important;
+    font-weight: 700;
+    font-size: 1.4rem;
+    letter-spacing: -0.5px;
+}
+
+#sidebar h5 {
+    font-size: 1.05rem;
+    color: #1e293b;
+    margin-top: 20px;
+    margin-bottom: 12px;
+    font-weight: 600;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+}
+
+#sidebar h5 i {
+    color: #10b981;
+    font-size: 1rem;
+}
+
+/* Enhanced Buttons */
+.feature-btn { 
+    font-weight: 600;
+    padding: 10px 16px;
+    border-radius: 10px;
+    transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+    border: none;
+    letter-spacing: 0.3px;
+}
+
+.feature-btn:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+}
+
+.feature-btn:active {
+    transform: translateY(0);
+}
+
+.btn-primary {
+    background: linear-gradient(135deg, #10b981 0%, #059669 100%);
+    border: none;
+}
+
+.btn-primary:hover {
+    background: linear-gradient(135deg, #059669 0%, #047857 100%);
+}
+
+.btn-success {
+    background: linear-gradient(135deg, #10b981 0%, #059669 100%);
+    border: none;
+}
+
+.btn-success:hover {
+    background: linear-gradient(135deg, #059669 0%, #047857 100%);
+}
+
+.btn-danger {
+    background: linear-gradient(135deg, #ef4444 0%, #dc2626 100%);
+    border: none;
+}
+
+.btn-danger:hover {
+    background: linear-gradient(135deg, #dc2626 0%, #b91c1c 100%);
+}
+
+/* Enhanced Alert */
+.alert {
+    border-radius: 12px;
+    border: none;
+    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.08);
+    font-weight: 500;
+}
+
+.alert-success {
+    background: linear-gradient(135deg, #d1fae5 0%, #a7f3d0 100%);
+    color: #065f46;
+}
+
+/* Enhanced Cards */
+.data-card { 
+    transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+    cursor: default;
+    border-radius: 12px;
+    border-width: 2px;
+    overflow: hidden;
+    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.08);
+}
+
+.data-card:hover {
+    transform: translateY(-4px);
+    box-shadow: 0 8px 20px rgba(0, 0, 0, 0.12);
+}
+
+.data-card.border-success {
+    border-color: #10b981 !important;
+    background: linear-gradient(135deg, #ffffff 0%, #f0fdf4 100%);
+}
+
+.data-card.border-danger {
+    border-color: #ef4444 !important;
+    background: linear-gradient(135deg, #ffffff 0%, #fef2f2 100%);
+}
+
+.card-body {
+    position: relative;
+}
+
+.card-title.small {
+    font-size: 0.875rem;
+    font-weight: 600;
+    color: #1e293b;
+    line-height: 1.4;
+}
+
+.card-text.small {
+    font-size: 0.8rem;
+    color: #64748b;
+    line-height: 1.5;
+}
+
+.card-text.mb-0.fw-bold {
+    color: #0f172a;
+    font-size: 1.1rem;
+}
+
+/* Enhanced HR */
+hr {
+    border: none;
+    height: 2px;
+    background: linear-gradient(90deg, transparent 0%, #86efac 50%, transparent 100%);
+    margin: 20px 0;
+}
+
+/* Carousel untuk Data Bencana & Korban - Enhanced */
+.bencana-carousel-container {
+    position: relative;
+    margin-bottom: 15px;
+}
+
+.bencana-carousel-wrapper {
+    position: relative;
+    overflow: hidden;
+    border-radius: 12px;
+    min-height: 85px;
+    background: #ffffff;
+    box-shadow: inset 0 2px 4px rgba(0, 0, 0, 0.06);
+}
+
+.bencana-carousel-track {
+    display: flex;
+    transition: transform 0.4s cubic-bezier(0.4, 0, 0.2, 1);
+    will-change: transform;
+}
+
+.bencana-slide {
+    min-width: 100%;
+    flex-shrink: 0;
+    padding: 2px;
+}
+
+.bencana-pagination {
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    gap: 5px;
+    margin-top: 12px;
+    padding: 8px 0;
+}
+
+.bencana-pagination-dot {
+    width: 5px;
+    height: 5px;
+    border-radius: 50%;
+    background-color: #cbd5e0;
+    cursor: pointer;
+    transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+    border: none;
+    padding: 0;
+    outline: none;
+}
+
+.bencana-pagination-dot:hover {
+    background-color: #94a3b8;
+    transform: scale(1.2);
+}
+
+.bencana-pagination-dot.active {
+    width: 20px;
+    height: 5px;
+    border-radius: 3px;
+    background-color: #475569;
+    box-shadow: 0 2px 4px rgba(71, 85, 105, 0.3);
+}
+
+/* Enhanced Modal Styles */
+.modal-content {
+    border-radius: 16px;
+    border: none;
+    box-shadow: 0 20px 60px rgba(0, 0, 0, 0.3);
+    overflow: hidden;
+}
+
+.modal-header {
+    border-bottom: 2px solid rgba(0, 0, 0, 0.05);
+    padding: 20px 24px;
+}
+
+.modal-header.bg-primary {
+    background: linear-gradient(135deg, #10b981 0%, #059669 100%) !important;
+    border-bottom: none;
+}
+
+.modal-title {
+    font-weight: 700;
+    font-size: 1.25rem;
+    letter-spacing: -0.3px;
+}
+
+.modal-body {
+    padding: 24px;
+}
+
+.modal-footer {
+    border-top: 2px solid rgba(0, 0, 0, 0.05);
+    padding: 16px 24px;
+}
+
+.form-label {
+    font-weight: 600;
+    color: #1e293b;
+    margin-bottom: 8px;
+    font-size: 0.9rem;
+}
+
+.form-control, .form-select {
+    border-radius: 10px;
+    border: 2px solid #e2e8f0;
+    padding: 10px 14px;
+    transition: all 0.3s ease;
+    font-size: 0.95rem;
+}
+
+.form-control:focus, .form-select:focus {
+    border-color: #10b981;
+    box-shadow: 0 0 0 3px rgba(16, 185, 129, 0.1);
+    outline: none;
+}
+
+textarea.form-control {
+    resize: vertical;
+    min-height: 80px;
+}
+
+/* Text Muted Enhancement */
+.text-muted {
+    color: #64748b !important;
+    font-size: 0.85rem;
+}
+
+/* Badge/Icon Enhancements */
+.text-danger {
+    color: #ef4444 !important;
+}
+
+.text-warning {
+    color: #f59e0b !important;
+}
+
+.text-success {
+    color: #10b981 !important;
+}
+
+.text-primary {
+    color: #10b981 !important;
+}
+
+/* Code Styling */
+code {
+    background: #f1f5f9;
+    color: #e11d48;
+    padding: 2px 6px;
+    border-radius: 4px;
+    font-size: 0.85em;
+    font-family: 'Courier New', monospace;
+    font-weight: 600;
+}
+
+/* Enhanced Grid for Stok Gudang */
+.row.row-cols-2 .col {
+    padding: 4px;
+}
+
+/* Smooth Scroll */
+html {
+    scroll-behavior: smooth;
+}
+
+/* Loading Animation */
+@keyframes pulse {
+    0%, 100% {
+        opacity: 1;
+    }
+    50% {
+        opacity: 0.5;
+    }
+}
+
+/* Enhanced Focus States */
+button:focus-visible,
+.form-control:focus-visible,
+.form-select:focus-visible {
+    outline: 2px solid #10b981;
+    outline-offset: 2px;
+}
+
+/* Badge Styles */
+.badge {
+    padding: 4px 8px;
+    border-radius: 6px;
+    font-weight: 600;
+    font-size: 0.75rem;
+}
+
+/* Responsive Design */
+@media (max-width: 768px) {
+    #sidebar {
+        width: calc(100% - 30px);
+        max-width: 400px;
+    }
+    
+    #sidebar h4 {
+        font-size: 1.2rem;
+    }
+    
+    .feature-btn {
+        font-size: 0.9rem;
+        padding: 8px 14px;
+    }
+}
