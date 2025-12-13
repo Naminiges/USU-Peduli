@@ -1,4 +1,4 @@
-from flask import Flask, render_template, request, redirect, url_for, session
+from flask import Flask, render_template, request, redirect, url_for, session, flash
 import gspread
 from oauth2client.service_account import ServiceAccountCredentials
 import json
@@ -81,6 +81,15 @@ def map_view():
 
     stok_gudang = get_sheet_data("stok_gudang")
 
+    data_status = get_sheet_data("status_bencana_kabkota")
+    status_map = {}
+    for row in data_status:
+        nama_kota = row.get('kabkota')
+        status = row.get('status_bencana')    
+        if nama_kota and status:
+            # Kita buat huruf besar semua biar gampang dicocokkan
+            status_map[nama_kota.strip().upper()] = status.strip()
+
     rekap_kabkota = get_sheet_data("rekapitulasi_data_kabkota")
     latest_rekap = {}
     for row in rekap_kabkota:
@@ -102,7 +111,8 @@ def map_view():
                            data_posko=data_posko,
                            data_barang=data_barang,
                            logged_in=session.get('logged_in', False),
-                           nama_relawan=session.get('nama_relawan', ''))
+                           nama_relawan=session.get('nama_relawan', ''),
+                           status_map=json.dumps(status_map))
 
 # ==============================================================================
 # 1. LOGIKA LOGIN
@@ -111,10 +121,9 @@ def map_view():
 def login():
     nama = request.form.get('nama')
     kode_akses = request.form.get('kode_akses')
-    
-    # Pengecekan KODE AKSES yang fix: "usupeduli"
+
     if kode_akses != "usupeduli":
-        print("Login gagal: Kode akses salah.")
+        flash("Login gagal: Kode akses salah.", "danger")
         return redirect(url_for('map_view'))
 
     relawan_list = get_sheet_data("data_relawan")
@@ -126,10 +135,11 @@ def login():
             session['logged_in'] = True
             session['nama_relawan'] = r['nama_relawan']
             session['id_relawan'] = r.get('id_relawan', 'UNKNOWN')
+            flash(f"Login berhasil! Selamat bertugas, {r['nama_relawan']}.", "success")
             break
 
     if not valid_login:
-        print(f"Login gagal: Nama relawan '{nama}' tidak ditemukan.")
+        flash(f"Login gagal: Nama relawan '{nama}' tidak ditemukan di database.", "danger")
     
     return redirect(url_for('map_view'))
 
@@ -138,6 +148,7 @@ def logout():
     session.pop('logged_in', None)
     session.pop('nama_relawan', None)
     session.pop('id_relawan', None)
+    flash("Logout Berhasil.", "success")
     return redirect(url_for('map_view'))
 
 # ==============================================================================

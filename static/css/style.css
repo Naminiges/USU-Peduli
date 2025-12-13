@@ -26,6 +26,59 @@ body {
 }
 
 /* Enhanced Sidebar */
+#sidebarToggle {
+    position: absolute;
+    top: 15px;
+    right: 15px;
+    z-index: 1001; /* Harus lebih tinggi dari sidebar saat tertutup */
+    display: none; /* Sembunyikan di desktop */
+    border-radius: 8px;
+    width: 45px;
+    height: 45px;
+    background: white;
+    color: #10b981;
+    border: 1px solid rgba(16, 185, 129, 0.2);
+}
+
+@media (max-width: 768px) {
+    
+    #sidebarToggle {
+        display: flex; 
+        align-items: center; 
+        justify-content: center;
+    }
+
+    /* Modifikasi Sidebar untuk Mobile */
+    #sidebar {
+        visibility: hidden;
+        transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+        position: fixed; /* Agar full screen dan tidak ikut scroll body */
+        top: 15px;
+        right: -120%; /* Sembunyikan di luar layar sebelah kanan */
+        width: calc(100% - 30px);
+        margin-right: 15px; 
+        height: auto; /* Tinggi penuh */
+        max-height: 85vh;
+        border-radius: 16px; /* Hilangkan rounded corner */
+        z-index: 2000; /* Paling atas */
+        opacity: 0;
+        visibility: hidden;
+        box-shadow: 0 10px 100px rgba(0,0,0,0.5);
+    }
+
+    #sidebar.active {
+        right: 0;
+        opacity: 1;
+        visibility: visible;
+    }
+
+    /* Penyesuaian Header Font di Mobile */
+    #sidebar h4 {
+        font-size: 1.2rem;
+        margin-bottom: 0 !important;
+    }
+}
+
 #sidebar { 
     position: absolute; 
     top: 15px; 
@@ -43,6 +96,7 @@ body {
     backdrop-filter: blur(10px);
     scrollbar-width: thin;
     scrollbar-color: #86efac #f0fdf4;
+    transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
 }
 
 #sidebar::-webkit-scrollbar {
@@ -138,18 +192,33 @@ body {
 }
 
 /* Enhanced Alert */
+.flash-message-container {
+    position: fixed;
+    top: 20px;     
+    left: 50%;        
+    transform: translateX(-50%); 
+    z-index: 9999;      
+    width: 90%;          
+    max-width: 400px;    
+}
+
 .alert {
     border-radius: 12px;
-    border: none;
-    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.08);
-    font-weight: 500;
+    font-size: 0.95rem;
+    border: none;  
+}
+
+.alert-danger {
+    background-color: #fee2e2;
+    color: #991b1b;
+    border-left: 5px solid #ef4444; 
 }
 
 .alert-success {
-    background: linear-gradient(135deg, #d1fae5 0%, #a7f3d0 100%);
+    background-color: #d1fae5;
     color: #065f46;
+    border-left: 5px solid #10b981;
 }
-
 /* Enhanced Cards */
 .data-card { 
     transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
@@ -162,6 +231,25 @@ body {
 
 .data-card:hover {
     transform: translateY(-4px);
+    box-shadow: 0 8px 20px rgba(0, 0, 0, 0.12);
+}
+
+.data-card-kabupaten { 
+    transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+    cursor: default;
+    border-radius: 12px;
+    border-width: 2px;
+    overflow: hidden;
+    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.08);
+}
+
+.data-card-kabupaten .card-body {
+    text-align: center;       /* Membuat teks rata tengah */
+    padding-left: 35px !important;  /* Memberi jarak aman untuk panah kiri */
+    padding-right: 35px !important; /* Memberi jarak aman untuk panah kanan */
+}
+
+.data-card-kabupaten:hover {
     box-shadow: 0 8px 20px rgba(0, 0, 0, 0.12);
 }
 
@@ -226,6 +314,45 @@ hr {
     will-change: transform;
 }
 
+.bencana-nav-btn {
+    position: absolute;
+    top: 30%; /*90*/
+    transform: translateY(-50%);
+    width: 30px;
+    height: 30px;
+    border-radius: 50%;
+    background-color: white;
+    border: 1px solid #cbd5e0;
+    box-shadow: 0 2px 5px rgba(0,0,0,0.1);
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    z-index: 10; /* Agar tombol berada di atas slide */
+    transition: all 0.2s ease;
+    color: #475569;
+}
+
+.bencana-nav-btn:hover {
+    background-color: #f1f5f9;
+    color: #1e293b;
+    transform: translateY(-50%) scale(1.1);
+}
+
+/* Posisi spesifik kiri dan kanan */
+.bencana-nav-btn.prev {
+    left: -10px; /* Sesuaikan jika ingin lebih menjorok keluar/dalam */
+}
+
+.bencana-nav-btn.next {
+    right: -10px; /* Sesuaikan jika ingin lebih menjorok keluar/dalam */
+}
+
+/* Sembunyikan tombol jika slide hanya 1 atau kosong (opsional, dihandle JS nanti) */
+.bencana-nav-btn.hidden {
+    display: none;
+}
+
 .bencana-slide {
     min-width: 100%;
     flex-shrink: 0;
@@ -237,7 +364,7 @@ hr {
     justify-content: center;
     align-items: center;
     gap: 5px;
-    margin-top: 12px;
+    margin-top: 8px;
     padding: 8px 0;
 }
 
@@ -262,7 +389,7 @@ hr {
     width: 20px;
     height: 5px;
     border-radius: 3px;
-    background-color: #475569;
+    background-color: #059669;
     box-shadow: 0 2px 4px rgba(71, 85, 105, 0.3);
 }
 
