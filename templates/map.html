@@ -128,7 +128,7 @@
                         {% if (rekap.get('korban_meninggal') or 0) >= 0
                         or (rekap.get('kk_terdampak') or 0) >= 0 %}
                             <div class="bencana-slide mt-2">
-                                <div class="card data-card border-danger mb-2">
+                                <div class="card data-card-kabupaten border-danger mb-2">
                                     <div class="card-body p-2">
                                         <h6 class="card-title mb-1 fw-bold">
                                             {{ rekap.get('kabkota') }}
@@ -888,9 +888,9 @@
             // --- AUTO PLAY ---
             let autoPlayInterval;
             function startAutoPlay() {
-                stopAutoPlay(); // Mencegah double interval
+                stopAutoPlay();
                 autoPlayInterval = setInterval(() => {
-                    const nextIndex = currentIndex + 1; // Biarkan goToSlide menangani reset ke 0
+                    const nextIndex = currentIndex + 1;
                     goToSlide(nextIndex);
                 }, 4000);
             }
@@ -919,22 +919,16 @@
 
             // 1. Fungsi Buka Sidebar
             toggleBtn.addEventListener('click', function (e) {
-                // PENTING: Mencegah klik tembus ke map/body
                 e.stopPropagation();
                 e.preventDefault();
-
                 sidebar.classList.add('active');
-
-                // Opsional: Sembunyikan tombol burger saat menu terbuka biar bersih
                 toggleBtn.style.visibility = 'hidden';
             });
 
             // 2. Fungsi Tutup Sidebar (Tombol X)
             closeBtn.addEventListener('click', function (e) {
-                e.stopPropagation(); // Mencegah trigger event lain
+                e.stopPropagation();
                 sidebar.classList.remove('active');
-
-                // Munculkan lagi tombol burger setelah animasi selesai
                 setTimeout(() => {
                     toggleBtn.style.visibility = 'visible';
                 }, 300);
@@ -942,10 +936,12 @@
 
             // 3. Logic Tutup Sidebar saat klik di luar (Global Click)
             document.addEventListener('click', function (e) {
-                // Cek apakah sidebar sedang terbuka
                 if (sidebar.classList.contains('active')) {
-                    // Jika yang diklik BUKAN bagian dari sidebar dan BUKAN tombol toggle
-                    if (!sidebar.contains(e.target) && !toggleBtn.contains(e.target)) {
+                    
+                    const clickInsideSidebar = sidebar.contains(e.target);
+                    const clickToggle = toggleBtn.contains(e.target);
+                    const clickInsideModal = e.target.closest('.modal-content');
+                    if (!clickInsideSidebar && !clickToggle && !clickInsideModal) {
                         sidebar.classList.remove('active');
                         setTimeout(() => {
                             toggleBtn.style.visibility = 'visible';
