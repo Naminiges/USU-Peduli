@@ -84,9 +84,7 @@
             </form>
         </div>
         {% else %}
-        <button class="btn btn-primary feature-btn w-100" data-bs-toggle="modal" data-bs-target="#loginModal">
-            <i class="fas fa-sign-in"></i> Login (Relawan)
-        </button>
+            <button class="btn btn-primary feature-btn" data-bs-toggle="modal" data-bs-target="#loginModal"><i class="fas fa-sign-in-alt"></i> TAMBAH DATA</button>
         {% endif %}
 
         <hr>
@@ -123,21 +121,23 @@
             <div class="bencana-carousel-wrapper">
                 <div class="bencana-carousel-track" id="bencanaCarousel">
                     {% for rekap in rekap_kabkota %}
-                    {% if (rekap.get('korban_meninggal') or 0) >= 0
-                    or (rekap.get('kk_terdampak') or 0) >= 0 %}
-                    <div class="bencana-slide">
-                        <div class="card data-card-kabupaten mb-2">
-                            <div class="card-body p-2">
-                                <h6 class="card-title mb-1 fw-bold">
-                                    {{ rekap.get('kabkota') }}
-                                </h6>
-                                <p class="card-text mb-0 small">
-                                    <i class="fas fa-skull-crossbones text-danger"></i>
-                                    Meninggal: {{ rekap.get('korban_meninggal') or 0 }}
-                                    |
-                                    <i class="fas fa-home text-warning"></i>
-                                    KK Terdampak: {{ rekap.get('kk_terdampak') or 0 }}
-                                </p>
+                        {% if (rekap.get('korban_meninggal') or 0) >= 0
+                        or (rekap.get('kk_terdampak') or 0) >= 0 %}
+                            <div class="bencana-slide mt-2">
+                                <div class="card data-card border-danger mb-2">
+                                    <div class="card-body p-2">
+                                        <h6 class="card-title mb-1 fw-bold">
+                                            {{ rekap.get('kabkota') }}
+                                        </h6>
+                                        <p class="card-text mb-0 small">
+                                            <i class="fas fa-skull-crossbones text-danger"></i>
+                                            Meninggal: {{ rekap.get('korban_meninggal') or 0 }}
+                                            |
+                                            <i class="fas fa-home text-warning"></i>
+                                            KK Terdampak: {{ rekap.get('kk_terdampak') or 0 }}
+                                        </p>
+                                    </div>
+                                </div>
                             </div>
                         </div>
                     </div>
@@ -245,7 +245,6 @@
                 </div>
                 <form action="{{ url_for('submit_absensi') }}" method="POST">
                     <div class="modal-body">
-                        <p class="text-muted small mb-3">Lokasi saat ini akan dicatat ke penyimpanan data.</p>
                         <div class="mb-3 p-3 bg-light rounded">
                             <label class="form-label mb-2"><i class="fas fa-map-marker-alt"></i> Lokasi GPS Saat
                                 Ini:</label>
