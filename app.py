@@ -99,8 +99,14 @@ def map_view():
 
     data_relawan = get_sheet_data("data_relawan")
     
-    # Ambil daftar posko untuk form permintaan
-    data_posko = [d.get('kode_lokasi') for d in data_lokasi if d.get('jenis_lokasi') == 'Posko Pengungsian']
+    # Ambil daftar posko untuk form permintaan dengan nama dan kode
+    data_posko_list = []
+    for d in data_lokasi:
+        if d.get('jenis_lokasi') == 'Posko Pengungsian':
+            kode = d.get('kode_lokasi')
+            nama = d.get('nama_lokasi') or d.get('kabupaten_kota') or kode
+            data_posko_list.append({'kode': kode, 'nama': nama})
+    
     data_barang = [d.get('kode_barang') for d in get_sheet_data("master_logistik")]
 
     return render_template("map.html", 
@@ -108,7 +114,7 @@ def map_view():
                            stok_gudang=stok_gudang, 
                            rekap_kabkota=list(latest_rekap.values()),
                            relawan_list=data_relawan,
-                           data_posko=data_posko,
+                           data_posko=data_posko_list,
                            data_barang=data_barang,
                            logged_in=session.get('logged_in', False),
                            nama_relawan=session.get('nama_relawan', ''),

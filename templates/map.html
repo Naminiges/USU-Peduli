@@ -115,9 +115,6 @@
 
         <h5><i class="fas fa-chart-bar"></i> Data Bencana & Korban</h5>
         <div class="bencana-carousel-container">
-            <button class="bencana-nav-btn prev" id="btnPrev">
-                <i class="fas fa-chevron-left"></i>
-            </button>
             <div class="bencana-carousel-wrapper">
                 <div class="bencana-carousel-track" id="bencanaCarousel">
                     {% for rekap in rekap_kabkota %}
@@ -139,15 +136,10 @@
                                     </div>
                                 </div>
                             </div>
-                        </div>
-                    </div>
-                    {% endif %}
+                        {% endif %}
                     {% endfor %}
                 </div>
             </div>
-            <button class="bencana-nav-btn next" id="btnNext">
-                <i class="fas fa-chevron-right"></i>
-            </button>
             <div class="bencana-pagination" id="bencanaPagination"></div>
         </div>
     </div>
@@ -200,10 +192,11 @@
                 <form action="{{ url_for('submit_permintaan') }}" method="POST">
                     <div class="modal-body">
                         <div class="mb-3">
-                            <label for="kode_posko" class="form-label">Posko Tujuan (Kode)</label>
+                            <label for="kode_posko" class="form-label"><i class="fas fa-campground"></i> Posko Tujuan</label>
                             <select class="form-select" id="kode_posko" name="kode_posko" required>
+                                <option value="">Pilih Posko Tujuan</option>
                                 {% for posko in data_posko %}
-                                <option value="{{ posko }}">{{ posko }}</option>
+                                <option value="{{ posko.kode }}">{{ posko.nama }} ({{ posko.kode }})</option>
                                 {% endfor %}
                             </select>
                         </div>
@@ -415,27 +408,58 @@
             attribution: '&copy; <a href="http://osm.org/copyright">OpenStreetMap</a> contributors'
         }).addTo(map);
 
-        // Definisi Ikon Kustom (Disesuaikan dengan permintaan)
+        // Definisi Ikon Kustom dengan Font Awesome
         function getIcon(jenis) {
-            let iconUrl, iconSize;
+            let iconClass, iconColor, bgColor;
 
             if (jenis.includes('Posko')) {
-                iconUrl = 'https://raw.githubusercontent.com/pointhi/leaflet-color-markers/master/img/marker-icon-red.png';
+                // Icon Tenda untuk Posko Pengungsian
+                iconClass = 'fas fa-campground';
+                iconColor = '#ffffff';
+                bgColor = '#ef4444'; // Merah
             } else if (jenis.includes('Gudang')) {
-                iconUrl = 'https://raw.githubusercontent.com/pointhi/leaflet-color-markers/master/img/marker-icon-green.png';
+                // Icon Gudang
+                iconClass = 'fas fa-warehouse';
+                iconColor = '#ffffff';
+                bgColor = '#10b981'; // Hijau
             } else if (jenis.includes('Rusak') || jenis.includes('Putus') || jenis.includes('Longsor')) {
-                iconUrl = 'https://raw.githubusercontent.com/pointhi/leaflet-color-markers/master/img/marker-icon-orange.png';
+                iconClass = 'fas fa-exclamation-triangle';
+                iconColor = '#ffffff';
+                bgColor = '#f59e0b'; // Orange
             } else {
-                iconUrl = 'https://raw.githubusercontent.com/pointhi/leaflet-color-markers/master/img/marker-icon-blue.png';
+                iconClass = 'fas fa-map-marker-alt';
+                iconColor = '#ffffff';
+                bgColor = '#3b82f6'; // Biru
             }
 
-            return L.icon({
-                iconUrl: iconUrl,
-                shadowUrl: 'https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/images/marker-shadow.png',
-                iconSize: [25, 41],
-                iconAnchor: [12, 41],
-                popupAnchor: [1, -34],
-                shadowSize: [41, 41]
+            // Buat custom HTML icon dengan Font Awesome
+            const iconHtml = `
+                <div style="
+                    background-color: ${bgColor};
+                    width: 40px;
+                    height: 40px;
+                    border-radius: 50% 50% 50% 0;
+                    transform: rotate(-45deg);
+                    display: flex;
+                    align-items: center;
+                    justify-content: center;
+                    box-shadow: 0 3px 10px rgba(0,0,0,0.3);
+                    border: 3px solid white;
+                ">
+                    <i class="${iconClass}" style="
+                        color: ${iconColor};
+                        transform: rotate(45deg);
+                        font-size: 18px;
+                    "></i>
+                </div>
+            `;
+
+            return L.divIcon({
+                html: iconHtml,
+                className: 'custom-marker-icon',
+                iconSize: [40, 40],
+                iconAnchor: [20, 40],
+                popupAnchor: [0, -40]
             });
         }
 
@@ -499,24 +523,17 @@
         (function () {
             const carousel = document.getElementById('bencanaCarousel');
             const pagination = document.getElementById('bencanaPagination');
-            const btnPrev = document.getElementById('btnPrev'); // Seleksi tombol prev
-            const btnNext = document.getElementById('btnNext'); // Seleksi tombol next
 
             if (!carousel || !pagination) return;
 
             const slides = carousel.querySelectorAll('.bencana-slide');
             const totalSlides = slides.length;
 
-            // Jika slide 0 atau 1, sembunyikan navigasi arrow karena tidak perlu
-            if (totalSlides <= 1) {
-                if (btnPrev) btnPrev.style.display = 'none';
-                if (btnNext) btnNext.style.display = 'none';
-                if (totalSlides === 0) return;
-            }
+            if (totalSlides === 0) return;
 
             let currentIndex = 0;
 
-            // --- LOGIKA PAGINATION DOTS (KODE LAMA ANDA) ---
+            // --- LOGIKA PAGINATION DOTS ---
             for (let i = 0; i < totalSlides; i++) {
                 const dot = document.createElement('button');
                 dot.className = 'bencana-pagination-dot';
@@ -546,23 +563,6 @@
                 const dots = pagination.querySelectorAll('.bencana-pagination-dot');
                 dots.forEach((dot, i) => {
                     dot.classList.toggle('active', i === index);
-                });
-            }
-
-            // --- LOGIKA TOMBOL NAVIGASI BARU ---
-            if (btnPrev) {
-                btnPrev.addEventListener('click', () => {
-                    goToSlide(currentIndex - 1);
-                    stopAutoPlay(); // Reset timer agar tidak loncat tiba-tiba
-                    startAutoPlay();
-                });
-            }
-
-            if (btnNext) {
-                btnNext.addEventListener('click', () => {
-                    goToSlide(currentIndex + 1);
-                    stopAutoPlay();
-                    startAutoPlay();
                 });
             }
 
