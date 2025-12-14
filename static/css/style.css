@@ -40,6 +40,40 @@ body {
     border: 1px solid rgba(16, 185, 129, 0.2);
 }
 
+/* Enhanced Close Button untuk Mobile dan Tablet (sampai 768px) */
+@media (max-width: 991.98px) {
+    .btn-close-sidebar {
+        width: 36px;
+        height: 36px;
+        border-radius: 50%;
+        background: linear-gradient(135deg, #ef4444 0%, #dc2626 100%);
+        color: white;
+        border: none;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        padding: 0;
+        box-shadow: 0 4px 12px rgba(239, 68, 68, 0.3);
+        transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+        cursor: pointer;
+        font-size: 0.9rem;
+    }
+    
+    .btn-close-sidebar:hover {
+        background: linear-gradient(135deg, #dc2626 0%, #b91c1c 100%);
+        transform: scale(1.1) rotate(90deg);
+        box-shadow: 0 6px 16px rgba(239, 68, 68, 0.4);
+    }
+    
+    .btn-close-sidebar:active {
+        transform: scale(0.95) rotate(90deg);
+    }
+    
+    .btn-close-sidebar i {
+        transition: transform 0.3s ease;
+    }
+}
+
 @media (max-width: 768px) {
     
     #sidebarToggle {
@@ -73,9 +107,11 @@ body {
     }
 
     /* Penyesuaian Header Font di Mobile */
-    #sidebar h4 {
-        font-size: 1.2rem;
+    #sidebar h4.sidebar-title {
+        font-size: 0.95rem !important;
         margin-bottom: 0 !important;
+        padding-bottom: 4px !important;
+        border-bottom-width: 2px !important;
     }
 }
 
@@ -126,6 +162,34 @@ body {
     font-weight: 700;
     font-size: 1.4rem;
     letter-spacing: -0.5px;
+}
+
+/* Enhanced Close Button untuk Desktop (jika diperlukan) */
+.btn-close-sidebar {
+    width: 32px;
+    height: 32px;
+    border-radius: 50%;
+    background: linear-gradient(135deg, #ef4444 0%, #dc2626 100%);
+    color: white;
+    border: none;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    padding: 0;
+    box-shadow: 0 2px 8px rgba(239, 68, 68, 0.25);
+    transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+    cursor: pointer;
+    font-size: 0.85rem;
+}
+
+.btn-close-sidebar:hover {
+    background: linear-gradient(135deg, #dc2626 0%, #b91c1c 100%);
+    transform: scale(1.1) rotate(90deg);
+    box-shadow: 0 4px 12px rgba(239, 68, 68, 0.35);
+}
+
+.btn-close-sidebar:active {
+    transform: scale(0.95) rotate(90deg);
 }
 
 #sidebar h5 {

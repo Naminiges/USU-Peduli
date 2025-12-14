@@ -1,4 +1,4 @@
-from flask import Flask, render_template, request, redirect, url_for, session, flash
+from flask import Flask, render_template, request, redirect, url_for, session, flash, jsonify
 import gspread
 from oauth2client.service_account import ServiceAccountCredentials
 import json
@@ -193,6 +193,37 @@ def log_permintaan_posko(data_permintaan, nama_relawan, id_relawan, nama_posko=N
 def block_logs_access(filename):
     """Blokir akses ke file log melalui URL."""
     return "Access Denied", 403
+
+# ==============================================================================
+# API ENDPOINT: Refresh Data Map
+# ==============================================================================
+@app.route("/api/refresh_map", methods=["GET"])
+def api_refresh_map():
+    """API endpoint untuk mendapatkan data map terbaru."""
+    try:
+        # Ambil data terbaru dari Google Sheets
+        data_lokasi_raw = get_sheet_data("data_lokasi")
+        data_lokasi = [d for d in data_lokasi_raw if d.get('latitude') and d.get('longitude')]
+        
+        # Ambil status bencana terbaru
+        data_status = get_sheet_data("status_bencana_kabkota")
+        status_map = {}
+        for row in data_status:
+            nama_kota = row.get('kabkota')
+            status = row.get('status_bencana')    
+            if nama_kota and status:
+                status_map[nama_kota.strip().upper()] = status.strip()
+        
+        return jsonify({
+            'success': True,
+            'data_lokasi': data_lokasi,
+            'status_map': status_map
+        })
+    except Exception as e:
+        return jsonify({
+            'success': False,
+            'error': str(e)
+        }), 500
 
 # ==============================================================================
 # ROUTE UTAMA

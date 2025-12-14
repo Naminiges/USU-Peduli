@@ -47,14 +47,21 @@
     </div>
     <div id="map"></div>
 
+    <!-- Tombol Refresh Map -->
+    <button id="refreshMapBtn" type="button" class="btn btn-success shadow-sm" 
+        style="position: absolute; top: 15px; left: 48px; z-index: 1000; border-radius: 25px;" 
+        title="Refresh Data Map">
+        <i class="fas fa-sync-alt"></i> Refresh Map
+    </button>
+
     <button id="sidebarToggle" type="button" class="btn btn-light shadow-sm">
         <i class="fas fa-bars"></i>
     </button>
 
     <div id="sidebar">
         <div class="d-flex justify-content-between align-items-center mb-3">
-            <h4 class="mb-0">MONITORING SATGAS USU</h4>
-            <button id="sidebarClose" class="btn btn-sm btn-outline-secondary d-md-none">
+            <h4 class="mb-0 sidebar-title">MONITORING SATGAS USU</h4>
+            <button id="sidebarClose" class="btn btn-close-sidebar d-lg-none" type="button" aria-label="Close">
                 <i class="fas fa-times"></i>
             </button>
         </div>
@@ -239,8 +246,12 @@
                 <form action="{{ url_for('submit_absensi') }}" method="POST" id="absensiForm">
                     <div class="modal-body">
                         <div class="mb-3 p-3 bg-light rounded">
-                            <label class="form-label mb-2"><i class="fas fa-map-marker-alt"></i> Lokasi GPS Saat
-                                Ini:</label>
+                            <div class="d-flex justify-content-between align-items-center mb-2">
+                                <label class="form-label mb-0"><i class="fas fa-map-marker-alt"></i> Lokasi GPS Saat Ini:</label>
+                                <button type="button" class="btn btn-success btn-sm shadow-sm" id="refreshLocationBtn" title="Refresh Lokasi" style="border-radius: 20px;">
+                                    <i class="fas fa-sync-alt"></i> 
+                                </button>
+                            </div>
                             <p class="mb-0"><span id="current-location" class="text-primary fw-bold">Mencari
                                     lokasi...</span></p>
                         </div>
@@ -266,12 +277,15 @@
     <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
     <script>
         // Data Lokasi dari Flask
-        const dataLokasi = JSON.parse('{{ data_lokasi | safe }}');
+        let dataLokasi = JSON.parse('{{ data_lokasi | safe }}');
 
         // Inisialisasi Peta
         var map = L.map('map').setView([2.3693, 99.0763], 9); // Koordinat tengah Sumatera Utara
 
-        const statusData = JSON.parse('{{ status_map | safe }}');
+        let statusData = JSON.parse('{{ status_map | safe }}');
+        
+        // Layer group untuk marker lokasi (agar bisa dihapus saat refresh)
+        let markerLayerGroup = L.layerGroup().addTo(map);
 
         // 2. Fungsi Penentu Warna
         function getColorByStatus(status) {
@@ -463,37 +477,185 @@
             });
         }
 
-        // 4. Render Data Lokasi ke Peta
-        dataLokasi.forEach(lokasi => {
-            const lat = parseFloat(lokasi.latitude);
-            const lon = parseFloat(lokasi.longitude);
-            if (!isNaN(lat) && !isNaN(lon)) {
+        // 4. Fungsi untuk render marker lokasi ke peta
+        function renderMarkers(lokasiData) {
+            // Hapus marker lama
+            markerLayerGroup.clearLayers();
+            
+            // Tambah marker baru
+            lokasiData.forEach(lokasi => {
+                const lat = parseFloat(lokasi.latitude);
+                const lon = parseFloat(lokasi.longitude);
+                if (!isNaN(lat) && !isNaN(lon)) {
+                    let icon = getIcon(lokasi.jenis_lokasi);
+                    
+                    L.marker([lat, lon], { icon: icon })
+                        .addTo(markerLayerGroup)
+                        .bindPopup(`
+                            <strong class="text-primary">${lokasi.jenis_lokasi}</strong><br>
+                            ${lokasi.nama_lokasi || lokasi.kabupaten_kota}<br>
+                            <small>Kondisi: <b>${lokasi.kondisi_umum || '-'}</b> | Akses: <b>${lokasi.akses || '-'}</b></small>
+                        `);
+                }
+            });
+        }
 
-                let icon = getIcon(lokasi.jenis_lokasi);
+        // Render marker awal
+        renderMarkers(dataLokasi);
 
-                L.marker([lat, lon], { icon: icon }).addTo(map)
-                    .bindPopup(`
-                    <strong class="text-primary">${lokasi.jenis_lokasi}</strong><br>
-                    ${lokasi.nama_lokasi || lokasi.kabupaten_kota}<br>
-                    <small>Kondisi: <b>${lokasi.kondisi_umum || '-'}</b> | Akses: <b>${lokasi.akses || '-'}</b></small>
-                `);
+        // ==============================================================================
+        // FUNGSI REFRESH MAP
+        // ==============================================================================
+        const refreshMapBtn = document.getElementById('refreshMapBtn');
+        let isRefreshingMap = false;
+
+        async function refreshMap() {
+            if (isRefreshingMap) return;
+            
+            isRefreshingMap = true;
+            const originalHtml = refreshMapBtn.innerHTML;
+            refreshMapBtn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Refreshing...';
+            refreshMapBtn.disabled = true;
+
+            try {
+                const response = await fetch('/api/refresh_map');
+                const result = await response.json();
+
+                if (result.success) {
+                    // Update data
+                    dataLokasi = result.data_lokasi;
+                    statusData = result.status_map;
+
+                    // Update status wilayah di peta (reload GeoJSON layer)
+                    // Hapus layer GeoJSON lama jika ada
+                    map.eachLayer(function(layer) {
+                        if (layer instanceof L.GeoJSON) {
+                            map.removeLayer(layer);
+                        }
+                    });
+
+                    // Reload GeoJSON dengan status terbaru
+                    fetch("{{ url_for('static', filename='data/kabkota_sumut.json') }}")
+                        .then(res => res.json())
+                        .then(geoData => {
+                            L.geoJSON(geoData, {
+                                style: function (feature) {
+                                    let info = getFeatureData(feature);
+                                    return {
+                                        fillColor: getColorByStatus(info.status),
+                                        weight: 1,
+                                        opacity: 1,
+                                        color: 'white',
+                                        dashArray: '3',
+                                        fillOpacity: 0.7
+                                    };
+                                },
+                                onEachFeature: function (feature, layer) {
+                                    let info = getFeatureData(feature);
+                                    let statusColor = getColorByStatus(info.status);
+                                    let badgeClass = 'success';
+                                    let s = info.status.toLowerCase();
+                                    if (s.includes('tanggap') || s.includes('merah')) badgeClass = 'danger';
+                                    else if (s.includes('siaga') || s.includes('kuning')) badgeClass = 'warning';
+
+                                    layer.bindTooltip(`<b>${info.nama}</b>: ${info.status}`, { sticky: true, direction: 'top' });
+                                    layer.bindPopup(`
+                                        <div class="text-center">
+                                            <h6 class="mb-1 fw-bold">${info.nama}</h6>
+                                            <span class="badge bg-${badgeClass}">${info.status}</span>
+                                        </div>
+                                    `);
+
+                                    layer.on({
+                                        mouseover: function (e) {
+                                            var l = e.target;
+                                            l.setStyle({
+                                                weight: 4,
+                                                color: statusColor,
+                                                dashArray: '',
+                                                fillColor: 'white',
+                                                fillOpacity: 0.2
+                                            });
+                                            if (!L.Browser.ie && !L.Browser.opera && !L.Browser.edge) l.bringToFront();
+                                        },
+                                        mouseout: function (e) {
+                                            var l = e.target;
+                                            l.setStyle({
+                                                weight: 1,
+                                                color: 'white',
+                                                dashArray: '3',
+                                                fillColor: statusColor,
+                                                fillOpacity: 0.7
+                                            });
+                                        },
+                                        click: function (e) { this.openPopup(); }
+                                    });
+                                }
+                            }).addTo(map);
+                        })
+                        .catch(e => console.error("Error reloading GeoJSON:", e));
+
+                    // Update marker lokasi
+                    renderMarkers(dataLokasi);
+
+                    // Tampilkan notifikasi sukses
+                    showNotification('Map berhasil di-refresh!', 'success');
+                } else {
+                    showNotification('Gagal refresh map: ' + (result.error || 'Unknown error'), 'danger');
+                }
+            } catch (error) {
+                console.error('Error refreshing map:', error);
+                showNotification('Error saat refresh map. Silakan coba lagi.', 'danger');
+            } finally {
+                isRefreshingMap = false;
+                refreshMapBtn.innerHTML = originalHtml;
+                refreshMapBtn.disabled = false;
             }
-        });
+        }
 
-        // 3. Logika Absensi Lokasi Relawan (Geolocation API)
+        refreshMapBtn.addEventListener('click', refreshMap);
+
+        // ==============================================================================
+        // FUNGSI NOTIFIKASI
+        // ==============================================================================
+        function showNotification(message, type = 'info') {
+            const alertDiv = document.createElement('div');
+            alertDiv.className = `alert alert-${type} alert-dismissible fade show shadow`;
+            alertDiv.style.cssText = 'position: fixed; top: 70px; left: 15px; z-index: 10000; min-width: 300px; max-width: 400px;';
+            alertDiv.innerHTML = `
+                <i class="fas fa-${type === 'success' ? 'check-circle' : type === 'danger' ? 'exclamation-circle' : 'info-circle'} me-2"></i>
+                ${message}
+                <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+            `;
+            document.body.appendChild(alertDiv);
+            
+            setTimeout(() => {
+                if (alertDiv.parentNode) {
+                    alertDiv.remove();
+                }
+            }, 3000);
+        }
+
+        // ==============================================================================
+        // LOGIKA ABSENSI LOKASI RELAWAN (GEOLOCATION API)
+        // ==============================================================================
         const btnSubmitAbsensi = document.getElementById('btn-submit-absensi');
         const absensiLat = document.getElementById('absensi_lat');
         const absensiLon = document.getElementById('absensi_lon');
         const currentLocationSpan = document.getElementById('current-location');
+        const refreshLocationBtn = document.getElementById('refreshLocationBtn');
 
         // Fungsi untuk mendapatkan lokasi dengan retry
-        function getCurrentLocation(retryCount = 0) {
+        function getCurrentLocation(retryCount = 0, onComplete = null) {
             const maxRetries = 3;
             
             if (!navigator.geolocation) {
                 currentLocationSpan.innerHTML = '<i class="fas fa-exclamation-triangle"></i> Geolocation tidak didukung browser ini.';
+                currentLocationSpan.classList.remove('text-success', 'text-primary');
                 currentLocationSpan.classList.add('text-danger');
                 btnSubmitAbsensi.disabled = true;
+                if (onComplete) onComplete();
+                showNotification('Geolocation tidak didukung browser ini.', 'danger');
                 return;
             }
 
@@ -501,7 +663,7 @@
             const options = {
                 enableHighAccuracy: true,  // Gunakan GPS jika tersedia
                 timeout: 30000,            // Timeout 30 detik (lebih lama)
-                maximumAge: 60000          // Terima lokasi yang berumur maksimal 1 menit
+                maximumAge: 0             // Selalu ambil lokasi baru saat refresh
             };
 
             navigator.geolocation.getCurrentPosition(
@@ -513,8 +675,11 @@
                     // Validasi koordinat
                     if (isNaN(lat) || isNaN(lon) || lat === 0 || lon === 0) {
                         currentLocationSpan.innerHTML = '<i class="fas fa-exclamation-triangle"></i> Koordinat tidak valid.';
+                        currentLocationSpan.classList.remove('text-success', 'text-primary');
                         currentLocationSpan.classList.add('text-danger');
                         btnSubmitAbsensi.disabled = true;
+                        if (onComplete) onComplete();
+                        showNotification('Koordinat tidak valid. Silakan coba lagi.', 'danger');
                         return;
                     }
 
@@ -532,26 +697,35 @@
                     currentLocationSpan.classList.add('text-success');
                     btnSubmitAbsensi.disabled = false;
                     
+                    // Tampilkan notifikasi sukses
+                    showNotification(`Lokasi berhasil diperbarui! Akurasi: ±${Math.round(accuracy)}m`, 'success');
+                    
+                    if (onComplete) onComplete();
                     console.log('Lokasi berhasil:', { lat, lon, accuracy });
                 },
                 (error) => {
                     let errorMessage = '';
                     let shouldRetry = false;
+                    let notificationMsg = '';
 
                     switch(error.code) {
                         case error.PERMISSION_DENIED:
                             errorMessage = '<i class="fas fa-ban"></i> Akses lokasi ditolak. Silakan izinkan akses lokasi di pengaturan browser.';
+                            notificationMsg = 'Akses lokasi ditolak. Silakan izinkan akses lokasi di pengaturan browser.';
                             break;
                         case error.POSITION_UNAVAILABLE:
                             errorMessage = '<i class="fas fa-question-circle"></i> Informasi lokasi tidak tersedia.';
+                            notificationMsg = 'Informasi lokasi tidak tersedia.';
                             shouldRetry = retryCount < maxRetries;
                             break;
                         case error.TIMEOUT:
                             errorMessage = '<i class="fas fa-clock"></i> Waktu tunggu habis. Mencoba lagi...';
+                            notificationMsg = 'Waktu tunggu habis. Mencoba lagi...';
                             shouldRetry = retryCount < maxRetries;
                             break;
                         default:
                             errorMessage = '<i class="fas fa-exclamation-triangle"></i> Error tidak diketahui saat mengambil lokasi.';
+                            notificationMsg = 'Error saat mengambil lokasi.';
                             shouldRetry = retryCount < maxRetries;
                             break;
                     }
@@ -571,17 +745,54 @@
                     if (shouldRetry) {
                         setTimeout(() => {
                             currentLocationSpan.innerHTML = `<i class="fas fa-sync fa-spin"></i> Mencoba lagi... (${retryCount + 1}/${maxRetries})`;
-                            getCurrentLocation(retryCount + 1);
+                            getCurrentLocation(retryCount + 1, onComplete);
                         }, 2000);
-                    } else if (retryCount >= maxRetries) {
-                        currentLocationSpan.innerHTML = `
-                            <i class="fas fa-exclamation-triangle"></i> Gagal mengambil lokasi setelah ${maxRetries} percobaan.<br>
-                            <small>Pastikan GPS aktif dan izin lokasi sudah diberikan.</small>
-                        `;
+                    } else {
+                        if (retryCount >= maxRetries) {
+                            currentLocationSpan.innerHTML = `
+                                <i class="fas fa-exclamation-triangle"></i> Gagal mengambil lokasi setelah ${maxRetries} percobaan.<br>
+                                <small>Pastikan GPS aktif dan izin lokasi sudah diberikan.</small>
+                            `;
+                            notificationMsg = `Gagal mengambil lokasi setelah ${maxRetries} percobaan. Pastikan GPS aktif dan izin lokasi sudah diberikan.`;
+                        }
+                        if (onComplete) onComplete();
+                        if (notificationMsg) {
+                            showNotification(notificationMsg, 'danger');
+                        }
                     }
                 },
                 options
             );
+        }
+
+        // Event listener untuk tombol refresh lokasi
+        if (refreshLocationBtn) {
+            refreshLocationBtn.addEventListener('click', function(e) {
+                e.preventDefault();
+                e.stopPropagation();
+                
+                // Tampilkan loading state
+                const originalHtml = refreshLocationBtn.innerHTML;
+                refreshLocationBtn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Refreshing...';
+                refreshLocationBtn.disabled = true;
+                
+                // Update status lokasi
+                currentLocationSpan.innerHTML = '<i class="fas fa-sync fa-spin"></i> Mencari lokasi...';
+                currentLocationSpan.classList.remove('text-success', 'text-danger');
+                currentLocationSpan.classList.add('text-primary');
+                
+                // Reset koordinat
+                absensiLat.value = '';
+                absensiLon.value = '';
+                btnSubmitAbsensi.disabled = true;
+                
+                // Panggil fungsi getCurrentLocation dengan callback untuk restore button
+                getCurrentLocation(0, function() {
+                    // Restore button setelah selesai
+                    refreshLocationBtn.innerHTML = originalHtml;
+                    refreshLocationBtn.disabled = false;
+                });
+            });
         }
 
         // Panggil Geolocation saat modal absensi dibuka
