@@ -236,7 +236,7 @@
                     <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"
                         aria-label="Close"></button>
                 </div>
-                <form action="{{ url_for('submit_absensi') }}" method="POST">
+                <form action="{{ url_for('submit_absensi') }}" method="POST" id="absensiForm">
                     <div class="modal-body">
                         <div class="mb-3 p-3 bg-light rounded">
                             <label class="form-label mb-2"><i class="fas fa-map-marker-alt"></i> Lokasi GPS Saat
@@ -244,8 +244,8 @@
                             <p class="mb-0"><span id="current-location" class="text-primary fw-bold">Mencari
                                     lokasi...</span></p>
                         </div>
-                        <input type="hidden" id="absensi_lat" name="latitude">
-                        <input type="hidden" id="absensi_lon" name="longitude">
+                        <input type="hidden" id="absensi_lat" name="latitude" required>
+                        <input type="hidden" id="absensi_lon" name="longitude" required>
                         <div class="mb-3">
                             <label for="catatan" class="form-label">Catatan Kegiatan/Kondisi</label>
                             <textarea class="form-control" id="catatan" name="catatan" rows="3" required></textarea>
@@ -486,36 +486,144 @@
         const absensiLon = document.getElementById('absensi_lon');
         const currentLocationSpan = document.getElementById('current-location');
 
-        // Panggil Geolocation saat modal absensi dibuka
-        document.getElementById('absensiModal').addEventListener('show.bs.modal', function () {
-            currentLocationSpan.textContent = 'Mencari lokasi...';
-            btnSubmitAbsensi.disabled = true;
-
-            if (navigator.geolocation) {
-                navigator.geolocation.getCurrentPosition(
-                    (position) => {
-                        const lat = position.coords.latitude;
-                        const lon = position.coords.longitude;
-                        absensiLat.value = lat;
-                        absensiLon.value = lon;
-                        currentLocationSpan.innerHTML = `Lat: ${lat.toFixed(6)}, Lon: ${lon.toFixed(6)}`;
-                        btnSubmitAbsensi.disabled = false;
-                        currentLocationSpan.classList.remove('text-danger');
-                        currentLocationSpan.classList.add('text-success');
-                    },
-                    (error) => {
-                        currentLocationSpan.innerHTML = 'Gagal mengambil lokasi (Pastikan izin lokasi diberikan).';
-                        currentLocationSpan.classList.remove('text-success');
-                        currentLocationSpan.classList.add('text-danger');
-                        btnSubmitAbsensi.disabled = true;
-                        console.error("Geolocation error:", error);
-                    },
-                    { enableHighAccuracy: true, timeout: 10000, maximumAge: 0 }
-                );
-            } else {
-                currentLocationSpan.textContent = 'Geolocation tidak didukung browser ini.';
+        // Fungsi untuk mendapatkan lokasi dengan retry
+        function getCurrentLocation(retryCount = 0) {
+            const maxRetries = 3;
+            
+            if (!navigator.geolocation) {
+                currentLocationSpan.innerHTML = '<i class="fas fa-exclamation-triangle"></i> Geolocation tidak didukung browser ini.';
                 currentLocationSpan.classList.add('text-danger');
                 btnSubmitAbsensi.disabled = true;
+                return;
+            }
+
+            // Opsi geolocation yang lebih fleksibel
+            const options = {
+                enableHighAccuracy: true,  // Gunakan GPS jika tersedia
+                timeout: 30000,            // Timeout 30 detik (lebih lama)
+                maximumAge: 60000          // Terima lokasi yang berumur maksimal 1 menit
+            };
+
+            navigator.geolocation.getCurrentPosition(
+                (position) => {
+                    const lat = position.coords.latitude;
+                    const lon = position.coords.longitude;
+                    const accuracy = position.coords.accuracy; // Akurasi dalam meter
+                    
+                    // Validasi koordinat
+                    if (isNaN(lat) || isNaN(lon) || lat === 0 || lon === 0) {
+                        currentLocationSpan.innerHTML = '<i class="fas fa-exclamation-triangle"></i> Koordinat tidak valid.';
+                        currentLocationSpan.classList.add('text-danger');
+                        btnSubmitAbsensi.disabled = true;
+                        return;
+                    }
+
+                    // Simpan koordinat
+                    absensiLat.value = lat;
+                    absensiLon.value = lon;
+                    
+                    // Tampilkan informasi lokasi
+                    currentLocationSpan.innerHTML = `
+                        <i class="fas fa-check-circle"></i> Lokasi ditemukan!<br>
+                        <small>Lat: ${lat.toFixed(6)}, Lon: ${lon.toFixed(6)}<br>
+                        Akurasi: ±${Math.round(accuracy)}m</small>
+                    `;
+                    currentLocationSpan.classList.remove('text-danger', 'text-primary');
+                    currentLocationSpan.classList.add('text-success');
+                    btnSubmitAbsensi.disabled = false;
+                    
+                    console.log('Lokasi berhasil:', { lat, lon, accuracy });
+                },
+                (error) => {
+                    let errorMessage = '';
+                    let shouldRetry = false;
+
+                    switch(error.code) {
+                        case error.PERMISSION_DENIED:
+                            errorMessage = '<i class="fas fa-ban"></i> Akses lokasi ditolak. Silakan izinkan akses lokasi di pengaturan browser.';
+                            break;
+                        case error.POSITION_UNAVAILABLE:
+                            errorMessage = '<i class="fas fa-question-circle"></i> Informasi lokasi tidak tersedia.';
+                            shouldRetry = retryCount < maxRetries;
+                            break;
+                        case error.TIMEOUT:
+                            errorMessage = '<i class="fas fa-clock"></i> Waktu tunggu habis. Mencoba lagi...';
+                            shouldRetry = retryCount < maxRetries;
+                            break;
+                        default:
+                            errorMessage = '<i class="fas fa-exclamation-triangle"></i> Error tidak diketahui saat mengambil lokasi.';
+                            shouldRetry = retryCount < maxRetries;
+                            break;
+                    }
+
+                    currentLocationSpan.innerHTML = errorMessage;
+                    currentLocationSpan.classList.remove('text-success', 'text-primary');
+                    currentLocationSpan.classList.add('text-danger');
+                    btnSubmitAbsensi.disabled = true;
+                    
+                    console.error('Geolocation error:', {
+                        code: error.code,
+                        message: error.message,
+                        retryCount: retryCount
+                    });
+
+                    // Retry jika memungkinkan
+                    if (shouldRetry) {
+                        setTimeout(() => {
+                            currentLocationSpan.innerHTML = `<i class="fas fa-sync fa-spin"></i> Mencoba lagi... (${retryCount + 1}/${maxRetries})`;
+                            getCurrentLocation(retryCount + 1);
+                        }, 2000);
+                    } else if (retryCount >= maxRetries) {
+                        currentLocationSpan.innerHTML = `
+                            <i class="fas fa-exclamation-triangle"></i> Gagal mengambil lokasi setelah ${maxRetries} percobaan.<br>
+                            <small>Pastikan GPS aktif dan izin lokasi sudah diberikan.</small>
+                        `;
+                    }
+                },
+                options
+            );
+        }
+
+        // Panggil Geolocation saat modal absensi dibuka
+        document.getElementById('absensiModal').addEventListener('show.bs.modal', function () {
+            currentLocationSpan.innerHTML = '<i class="fas fa-sync fa-spin"></i> Mencari lokasi...';
+            currentLocationSpan.classList.remove('text-success', 'text-danger');
+            currentLocationSpan.classList.add('text-primary');
+            btnSubmitAbsensi.disabled = true;
+            
+            // Reset nilai koordinat
+            absensiLat.value = '';
+            absensiLon.value = '';
+            
+            // Mulai proses mendapatkan lokasi
+            getCurrentLocation();
+        });
+
+        // Validasi form sebelum submit
+        document.getElementById('absensiForm').addEventListener('submit', function(e) {
+            const lat = absensiLat.value;
+            const lon = absensiLon.value;
+            
+            if (!lat || !lon || lat === '' || lon === '') {
+                e.preventDefault();
+                currentLocationSpan.innerHTML = '<i class="fas fa-exclamation-triangle"></i> Lokasi belum ditemukan. Silakan tunggu atau refresh halaman.';
+                currentLocationSpan.classList.remove('text-success', 'text-primary');
+                currentLocationSpan.classList.add('text-danger');
+                btnSubmitAbsensi.disabled = true;
+                
+                // Coba lagi mendapatkan lokasi
+                getCurrentLocation();
+                return false;
+            }
+            
+            // Validasi koordinat valid (bukan 0,0)
+            if (parseFloat(lat) === 0 && parseFloat(lon) === 0) {
+                e.preventDefault();
+                currentLocationSpan.innerHTML = '<i class="fas fa-exclamation-triangle"></i> Koordinat tidak valid. Silakan coba lagi.';
+                currentLocationSpan.classList.remove('text-success', 'text-primary');
+                currentLocationSpan.classList.add('text-danger');
+                btnSubmitAbsensi.disabled = true;
+                return false;
             }
         });
 
