@@ -1,9 +1,11 @@
-from flask import Flask, render_template, request, redirect, url_for, session, flash
+from flask import Flask, render_template, request, redirect, url_for, session, flash, jsonify
 import gspread
 from oauth2client.service_account import ServiceAccountCredentials
 import json
 import datetime
 import os # Untuk mendapatkan waktu saat ini dan Secret Key
+import logging
+from pathlib import Path
 
 app = Flask(__name__)
 # HARUS diganti dengan kunci rahasia yang kuat untuk mengamankan sesi
@@ -69,6 +71,159 @@ def append_to_sheet(sheet_name, data):
     except Exception as e:
         print(f"Error appending to sheet {sheet_name}: {e}")
         return False
+
+# ==============================================================================
+# FUNGSI LOGGING AMAN
+# ==============================================================================
+def sanitize_for_log(text):
+    """Sanitasi teks untuk mencegah injection dan karakter berbahaya di log."""
+    if not text:
+        return ""
+    # Hapus karakter kontrol dan newline yang tidak aman
+    text = str(text).replace('\n', ' ').replace('\r', ' ')
+    # Hapus karakter kontrol lainnya
+    text = ''.join(char for char in text if ord(char) >= 32 or char in '\t')
+    # Batasi panjang untuk mencegah log terlalu besar
+    return text[:500]
+
+def get_log_directory():
+    """Mendapatkan direktori log yang aman (di luar web root)."""
+    # Buat folder logs di root project (sibling dengan app.py)
+    log_dir = Path(__file__).parent / 'logs'
+    log_dir.mkdir(exist_ok=True)
+    
+    # Buat file .htaccess untuk Apache (jika menggunakan Apache)
+    htaccess_file = log_dir / '.htaccess'
+    if not htaccess_file.exists():
+        try:
+            with open(htaccess_file, 'w', encoding='utf-8') as f:
+                f.write("# Deny access to log files\n")
+                f.write("Order deny,allow\n")
+                f.write("Deny from all\n")
+        except Exception:
+            pass  # Jika gagal (misalnya bukan Apache), abaikan
+    
+    # Buat file web.config untuk IIS (jika menggunakan IIS)
+    webconfig_file = log_dir / 'web.config'
+    if not webconfig_file.exists():
+        try:
+            with open(webconfig_file, 'w', encoding='utf-8') as f:
+                f.write('<?xml version="1.0" encoding="UTF-8"?>\n')
+                f.write('<configuration>\n')
+                f.write('  <system.webServer>\n')
+                f.write('    <authorization>\n')
+                f.write('      <deny users="*" />\n')
+                f.write('    </authorization>\n')
+                f.write('  </system.webServer>\n')
+                f.write('</configuration>\n')
+        except Exception:
+            pass  # Jika gagal, abaikan
+    
+    # Buat file README untuk dokumentasi
+    readme_file = log_dir / 'README.txt'
+    if not readme_file.exists():
+        try:
+            with open(readme_file, 'w', encoding='utf-8') as f:
+                f.write("FOLDER LOGS - JANGAN HAPUS\n")
+                f.write("=" * 50 + "\n\n")
+                f.write("Folder ini berisi log aktivitas permintaan posko.\n")
+                f.write("File log.txt mencatat semua permintaan logistik yang masuk.\n\n")
+                f.write("KEAMANAN:\n")
+                f.write("- Folder ini TIDAK bisa diakses melalui web browser\n")
+                f.write("- Hanya bisa diakses melalui server/file system\n")
+                f.write("- File log.txt berisi data sensitif, jangan share ke publik\n\n")
+                f.write("PENTING: Jangan commit folder logs/ ke repository Git!\n")
+        except Exception:
+            pass
+    
+    return log_dir
+
+def log_permintaan_posko(data_permintaan, nama_relawan, id_relawan, nama_posko=None):
+    """
+    Log permintaan posko ke file log.txt dengan format yang aman.
+    
+    Args:
+        data_permintaan: Dictionary berisi data permintaan
+        nama_relawan: Nama relawan yang meminta
+        id_relawan: ID relawan
+        nama_posko: Nama posko (opsional, akan dicari jika tidak ada)
+    """
+    try:
+        log_dir = get_log_directory()
+        log_file = log_dir / 'log.txt'
+        
+        # Sanitasi semua input
+        timestamp = datetime.datetime.now().strftime('%Y-%m-%d %H:%M:%S')
+        nama_relawan_safe = sanitize_for_log(nama_relawan)
+        id_relawan_safe = sanitize_for_log(id_relawan)
+        id_permintaan = sanitize_for_log(data_permintaan.get('id_permintaan', 'UNKNOWN'))
+        kode_posko = sanitize_for_log(data_permintaan.get('kode_posko', 'UNKNOWN'))
+        nama_posko_safe = sanitize_for_log(nama_posko) if nama_posko else kode_posko
+        kode_barang = sanitize_for_log(data_permintaan.get('kode_barang', 'UNKNOWN'))
+        jumlah_diminta = sanitize_for_log(data_permintaan.get('jumlah_diminta', '0'))
+        keterangan = sanitize_for_log(data_permintaan.get('keterangan', ''))
+        status = sanitize_for_log(data_permintaan.get('status', 'Draft'))
+        tanggal = sanitize_for_log(data_permintaan.get('tanggal', ''))
+        
+        # Format log yang terstruktur dan mudah dibaca
+        log_entry = (
+            f"[{timestamp}] PERMINTAAN_POSKO | "
+            f"ID: {id_permintaan} | "
+            f"Peminta: {nama_relawan_safe} (ID: {id_relawan_safe}) | "
+            f"Posko: {nama_posko_safe} ({kode_posko}) | "
+            f"Barang: {kode_barang} | "
+            f"Jumlah: {jumlah_diminta} | "
+            f"Status: {status} | "
+            f"Tanggal: {tanggal} | "
+            f"Keterangan: {keterangan if keterangan else '(tidak ada)'}"
+        )
+        
+        # Tulis ke file dengan mode append
+        with open(log_file, 'a', encoding='utf-8') as f:
+            f.write(log_entry + '\n')
+            
+    except Exception as e:
+        # Jangan crash aplikasi jika logging gagal, cukup print error
+        print(f"Error writing to log file: {e}")
+
+# ==============================================================================
+# KEAMANAN: Blokir akses ke folder logs melalui URL
+# ==============================================================================
+@app.route('/logs/<path:filename>')
+def block_logs_access(filename):
+    """Blokir akses ke file log melalui URL."""
+    return "Access Denied", 403
+
+# ==============================================================================
+# API ENDPOINT: Refresh Data Map
+# ==============================================================================
+@app.route("/api/refresh_map", methods=["GET"])
+def api_refresh_map():
+    """API endpoint untuk mendapatkan data map terbaru."""
+    try:
+        # Ambil data terbaru dari Google Sheets
+        data_lokasi_raw = get_sheet_data("data_lokasi")
+        data_lokasi = [d for d in data_lokasi_raw if d.get('latitude') and d.get('longitude')]
+        
+        # Ambil status bencana terbaru
+        data_status = get_sheet_data("status_bencana_kabkota")
+        status_map = {}
+        for row in data_status:
+            nama_kota = row.get('kabkota')
+            status = row.get('status_bencana')    
+            if nama_kota and status:
+                status_map[nama_kota.strip().upper()] = status.strip()
+        
+        return jsonify({
+            'success': True,
+            'data_lokasi': data_lokasi,
+            'status_map': status_map
+        })
+    except Exception as e:
+        return jsonify({
+            'success': False,
+            'error': str(e)
+        }), 500
 
 # ==============================================================================
 # ROUTE UTAMA
@@ -169,6 +324,14 @@ def submit_permintaan():
     kode_barang = request.form.get('kode_barang')
     jumlah_diminta = request.form.get('jumlah_diminta')
     
+    # Ambil nama posko untuk log yang lebih informatif
+    nama_posko = None
+    data_lokasi_raw = get_sheet_data("data_lokasi")
+    for lokasi in data_lokasi_raw:
+        if lokasi.get('kode_lokasi') == kode_posko:
+            nama_posko = lokasi.get('nama_lokasi') or lokasi.get('kabupaten_kota') or kode_posko
+            break
+    
     data = {
         'id_permintaan': get_next_id("permintaan_posko", "R"),
         'tanggal': datetime.datetime.now().strftime('%d-%B-%y'),
@@ -181,7 +344,13 @@ def submit_permintaan():
         'photo_link': ''
     }
 
+    # Simpan ke Google Sheets
     append_to_sheet("permintaan_posko", data)
+    
+    # Log permintaan ke file log.txt
+    nama_relawan = session.get('nama_relawan', 'UNKNOWN')
+    id_relawan = session.get('id_relawan', 'UNKNOWN')
+    log_permintaan_posko(data, nama_relawan, id_relawan, nama_posko)
     
     return redirect(url_for('map_view'))
 
