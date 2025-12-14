@@ -245,8 +245,6 @@ body {
 
 .data-card-kabupaten .card-body {
     text-align: center;       /* Membuat teks rata tengah */
-    padding-left: 35px !important;  /* Memberi jarak aman untuk panah kiri */
-    padding-right: 35px !important; /* Memberi jarak aman untuk panah kanan */
 }
 
 .data-card-kabupaten:hover {
@@ -312,45 +310,6 @@ hr {
     display: flex;
     transition: transform 0.4s cubic-bezier(0.4, 0, 0.2, 1);
     will-change: transform;
-}
-
-.bencana-nav-btn {
-    position: absolute;
-    top: 30%; /*90*/
-    transform: translateY(-50%);
-    width: 30px;
-    height: 30px;
-    border-radius: 50%;
-    background-color: white;
-    border: 1px solid #cbd5e0;
-    box-shadow: 0 2px 5px rgba(0,0,0,0.1);
-    cursor: pointer;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    z-index: 10; /* Agar tombol berada di atas slide */
-    transition: all 0.2s ease;
-    color: #475569;
-}
-
-.bencana-nav-btn:hover {
-    background-color: #f1f5f9;
-    color: #1e293b;
-    transform: translateY(-50%) scale(1.1);
-}
-
-/* Posisi spesifik kiri dan kanan */
-.bencana-nav-btn.prev {
-    left: -10px; /* Sesuaikan jika ingin lebih menjorok keluar/dalam */
-}
-
-.bencana-nav-btn.next {
-    right: -10px; /* Sesuaikan jika ingin lebih menjorok keluar/dalam */
-}
-
-/* Sembunyikan tombol jika slide hanya 1 atau kosong (opsional, dihandle JS nanti) */
-.bencana-nav-btn.hidden {
-    display: none;
 }
 
 .bencana-slide {
@@ -520,6 +479,12 @@ button:focus-visible,
     border-radius: 6px;
     font-weight: 600;
     font-size: 0.75rem;
+}
+
+/* Custom Marker Icon */
+.custom-marker-icon {
+    background: transparent !important;
+    border: none !important;
 }
 
 /* Responsive Design */
