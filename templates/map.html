@@ -1,5 +1,6 @@
 <!DOCTYPE html>
 <html lang="id">
+
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
@@ -9,102 +10,166 @@
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0-beta3/css/all.min.css">
     <link rel="stylesheet" href="{{ url_for('static', filename='css/style.css') }}">
 </head>
-<body>
 
+<body>
+    <div class="flash-message-container">
+        {% with messages = get_flashed_messages(with_categories=true) %}
+        {% if messages %}
+        {% for category, message in messages %}
+        <div class="alert alert-{{ category }} alert-dismissible fade show shadow-lg" role="alert">
+            <i class="fas fa-exclamation-circle me-2"></i>
+            <strong>Perhatian!</strong> {{ message }}
+            <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
+        </div>
+        {% endfor %}
+        {% endif %}
+        {% endwith %}
+    </div>
+
+    <div id="map-legend" class="bg-white p-2 rounded shadow-sm"
+        style="position: absolute; bottom: 30px; left: 15px; z-index: 999; font-size: 12px;">
+        <h6 class="mb-2 fw-bold">Status Wilayah</h6>
+        <div class="d-flex align-items-center mb-1">
+            <span
+                style="width:15px; height:15px; background:#ef4444; display:inline-block; margin-right:5px; border-radius:3px;"></span>
+            Tanggap Darurat
+        </div>
+        <div class="d-flex align-items-center mb-1">
+            <span
+                style="width:15px; height:15px; background:#eab308; display:inline-block; margin-right:5px; border-radius:3px;"></span>
+            Siaga Darurat
+        </div>
+        <div class="d-flex align-items-center">
+            <span
+                style="width:15px; height:15px; background:#22c55e; display:inline-block; margin-right:5px; border-radius:3px;"></span>
+            Normal
+        </div>
+    </div>
     <div id="map"></div>
 
+    <button id="sidebarToggle" type="button" class="btn btn-light shadow-sm">
+        <i class="fas fa-bars"></i>
+    </button>
+
     <div id="sidebar">
-        <h4 class="mb-3">Monitoring SATGAS USU</h4>
-        
+        <div class="d-flex justify-content-between align-items-center mb-3">
+            <h4 class="mb-0">MONITORING SATGAS USU</h4>
+            <button id="sidebarClose" class="btn btn-sm btn-outline-secondary d-md-none">
+                <i class="fas fa-times"></i>
+            </button>
+        </div>
+
         {% if logged_in %}
-            <div class="alert alert-success p-3 small mb-3" role="alert">
-                <i class="fas fa-user-check"></i> <strong>Halo, {{ nama_relawan }}!</strong>
+        <div class="user-profile-card p-3 mb-3 bg-light border rounded-3 d-flex align-items-center gap-3">
+            <div class="bg-white p-2 rounded-circle shadow-sm text-success">
+                <i class="fas fa-user-circle fa-lg"></i>
             </div>
-            <div class="d-grid gap-2">
-                <button class="btn btn-primary feature-btn" data-bs-toggle="modal" data-bs-target="#permintaanModal"><i class="fas fa-box"></i> Permintaan Logistik</button>
-                <button class="btn btn-success feature-btn" data-bs-toggle="modal" data-bs-target="#absensiModal"><i class="fas fa-location-dot"></i> Absensi Lokasi</button>
-                <form action="{{ url_for('logout') }}" method="post" style="display:inline;">
-                    <button type="submit" class="btn btn-danger feature-btn"><i class="fas fa-sign-out-alt"></i> Logout</button>
-                </form>
+            <div>
+                <small class="text-muted d-block" style="font-size: 0.75rem; line-height: 1;">Relawan Aktif</small>
+                <strong class="text-dark">{{ nama_relawan }}</strong>
             </div>
+        </div>
+
+        <div class="d-grid gap-2">
+            <button class="btn btn-primary feature-btn" data-bs-toggle="modal" data-bs-target="#permintaanModal">
+                <i class="fas fa-box"></i> Permintaan Logistik
+            </button>
+            <button class="btn btn-success feature-btn" data-bs-toggle="modal" data-bs-target="#absensiModal">
+                <i class="fas fa-location-dot"></i> Absensi Lokasi
+            </button>
+            <form action="{{ url_for('logout') }}" method="post" style="display:inline;">
+                <button type="submit" class="btn btn-danger feature-btn w-100"> <i class="fas fa-sign-out-alt"></i>
+                    Logout
+                </button>
+            </form>
+        </div>
         {% else %}
-            <button class="btn btn-primary feature-btn" data-bs-toggle="modal" data-bs-target="#loginModal"><i class="fas fa-sign-in-alt"></i> TAMBAH DATA (Login)</button>
+        <button class="btn btn-primary feature-btn w-100" data-bs-toggle="modal" data-bs-target="#loginModal">
+            <i class="fas fa-sign-in"></i> Login (Relawan)
+        </button>
         {% endif %}
 
         <hr>
 
-        <h5><i class="fas fa-warehouse"></i> Stok Gudang Pusat (G-ME001)</h5>
+        <h5><i class="fas fa-warehouse"></i> Stok Gudang Pusat (Posko Logistik USU)</h5>
         <div class="row row-cols-2 g-2 mb-3">
             {% for stok in stok_gudang %}
-                {% if stok.get('kode_gudang') == 'G-ME001' and stok.get('nama_barang') %}
-                    <div class="col">
-                        <div class="card data-card border-{{ 'danger' if stok.get('stok_akhir')|int <= 0 else 'success' }}">
+            {% if stok.get('kode_gudang') == 'G-ME001' and stok.get('nama_barang') %}
+            <div class="col">
+                <div class="card data-card border-{{ 'danger' if stok.get('stok_akhir')|int <= 0 else 'success' }}">
+                    <div class="card-body p-2">
+                        <h6 class="card-title mb-0 small text-truncate">{{ stok.get('nama_barang') }}</h6>
+                        <p class="card-text mb-0 fw-bold">
+                            {% if stok.get('stok_akhir') >= 0 %}
+                            {{ stok.get('stok_akhir') }}
+                            {% else %}
+                            Kurang {{ stok.get('stok_akhir') | abs }}
+                            {% endif %}
+                        </p>
+                    </div>
+                </div>
+            </div>
+            {% endif %}
+            {% endfor %}
+        </div>
+
+        <hr>
+
+        <h5><i class="fas fa-chart-bar"></i> Data Bencana & Korban</h5>
+        <div class="bencana-carousel-container">
+            <button class="bencana-nav-btn prev" id="btnPrev">
+                <i class="fas fa-chevron-left"></i>
+            </button>
+            <div class="bencana-carousel-wrapper">
+                <div class="bencana-carousel-track" id="bencanaCarousel">
+                    {% for rekap in rekap_kabkota %}
+                    {% if (rekap.get('korban_meninggal') or 0) >= 0
+                    or (rekap.get('kk_terdampak') or 0) >= 0 %}
+                    <div class="bencana-slide">
+                        <div class="card data-card-kabupaten mb-2">
                             <div class="card-body p-2">
-                                <h6 class="card-title mb-0 small text-truncate">{{ stok.get('nama_barang') }}</h6>
-                                <p class="card-text mb-0 fw-bold">
-                                    {% if stok.get('stok_akhir') >= 0 %}
-                                        {{ stok.get('stok_akhir') }}
-                                    {% else %}
-                                        Kurang {{ stok.get('stok_akhir') | abs }}
-                                    {% endif %}
+                                <h6 class="card-title mb-1 fw-bold">
+                                    {{ rekap.get('kabkota') }}
+                                </h6>
+                                <p class="card-text mb-0 small">
+                                    <i class="fas fa-skull-crossbones text-danger"></i>
+                                    Meninggal: {{ rekap.get('korban_meninggal') or 0 }}
+                                    |
+                                    <i class="fas fa-home text-warning"></i>
+                                    KK Terdampak: {{ rekap.get('kk_terdampak') or 0 }}
                                 </p>
                             </div>
                         </div>
                     </div>
-                {% endif %}
-            {% endfor %}
-        </div>
-        
-        <hr>
-        
-        <h5><i class="fas fa-chart-bar"></i> Data Bencana & Korban</h5>
-        <div class="bencana-carousel-container">
-            <div class="bencana-carousel-wrapper">
-                <div class="bencana-carousel-track" id="bencanaCarousel">
-                    {% for rekap in rekap_kabkota %}
-                        {% if (rekap.get('korban_meninggal') or 0) >= 0
-                        or (rekap.get('kk_terdampak') or 0) >= 0 %}
-                            <div class="bencana-slide">
-                                <div class="card data-card border-danger mb-2">
-                                    <div class="card-body p-2">
-                                        <h6 class="card-title mb-1 fw-bold">
-                                            {{ rekap.get('kabkota') }}
-                                        </h6>
-                                        <p class="card-text mb-0 small">
-                                            <i class="fas fa-skull-crossbones text-danger"></i>
-                                            Meninggal: {{ rekap.get('korban_meninggal') or 0 }}
-                                            |
-                                            <i class="fas fa-home text-warning"></i>
-                                            KK Terdampak: {{ rekap.get('kk_terdampak') or 0 }}
-                                        </p>
-                                    </div>
-                                </div>
-                            </div>
-                        {% endif %}
+                    {% endif %}
                     {% endfor %}
                 </div>
             </div>
+            <button class="bencana-nav-btn next" id="btnNext">
+                <i class="fas fa-chevron-right"></i>
+            </button>
             <div class="bencana-pagination" id="bencanaPagination"></div>
         </div>
-
-
     </div>
-    
+
     <div class="modal fade" id="loginModal" tabindex="-1" aria-labelledby="loginModalLabel" aria-hidden="true">
         <div class="modal-dialog">
             <div class="modal-content">
                 <div class="modal-header bg-primary text-white">
-                    <h5 class="modal-title" id="loginModalLabel"><i class="fas fa-user-lock"></i> Login Relawan SATGAS USU</h5>
-                    <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="Close"></button>
+                    <h5 class="modal-title" id="loginModalLabel"><i class="fas fa-user-lock"></i> Login Relawan SATGAS
+                        USU</h5>
+                    <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"
+                        aria-label="Close"></button>
                 </div>
                 <form action="{{ url_for('login') }}" method="POST">
                     <div class="modal-body">
                         <div class="mb-3">
                             <label for="nama" class="form-label">Nama Relawan</label>
                             <select class="form-select" id="nama" name="nama" required>
-                                <option value="">Pilih Nama Anda (Cek di database)</option>
+                                <option value="">Pilih Nama Anda</option>
                                 {% for relawan in relawan_list %}
-                                    <option value="{{ relawan.get('nama_relawan') }}">{{ relawan.get('nama_relawan') }}</option>
+                                <option value="{{ relawan.get('nama_relawan') }}">{{ relawan.get('nama_relawan') }}
+                                </option>
                                 {% endfor %}
                             </select>
                         </div>
@@ -121,13 +186,16 @@
             </div>
         </div>
     </div>
-    
-    <div class="modal fade" id="permintaanModal" tabindex="-1" aria-labelledby="permintaanModalLabel" aria-hidden="true">
+
+    <div class="modal fade" id="permintaanModal" tabindex="-1" aria-labelledby="permintaanModalLabel"
+        aria-hidden="true">
         <div class="modal-dialog">
             <div class="modal-content">
                 <div class="modal-header bg-primary text-white">
-                    <h5 class="modal-title" id="permintaanModalLabel"><i class="fas fa-box-open"></i> Input Permintaan Posko</h5>
-                    <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="Close"></button>
+                    <h5 class="modal-title" id="permintaanModalLabel"><i class="fas fa-box-open"></i> Input Permintaan
+                        Posko</h5>
+                    <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"
+                        aria-label="Close"></button>
                 </div>
                 <form action="{{ url_for('submit_permintaan') }}" method="POST">
                     <div class="modal-body">
@@ -135,7 +203,7 @@
                             <label for="kode_posko" class="form-label">Posko Tujuan (Kode)</label>
                             <select class="form-select" id="kode_posko" name="kode_posko" required>
                                 {% for posko in data_posko %}
-                                    <option value="{{ posko }}">{{ posko }}</option>
+                                <option value="{{ posko }}">{{ posko }}</option>
                                 {% endfor %}
                             </select>
                         </div>
@@ -143,13 +211,14 @@
                             <label for="kode_barang" class="form-label">Kode Barang</label>
                             <select class="form-select" id="kode_barang" name="kode_barang" required>
                                 {% for barang in data_barang %}
-                                    <option value="{{ barang }}">{{ barang }}</option>
+                                <option value="{{ barang }}">{{ barang }}</option>
                                 {% endfor %}
                             </select>
                         </div>
                         <div class="mb-3">
                             <label for="jumlah_diminta" class="form-label">Jumlah Diminta</label>
-                            <input type="number" class="form-control" id="jumlah_diminta" name="jumlah_diminta" min="1" required>
+                            <input type="number" class="form-control" id="jumlah_diminta" name="jumlah_diminta" min="1"
+                                required>
                         </div>
                         <div class="mb-3">
                             <label for="keterangan" class="form-label">Keterangan Tambahan</label>
@@ -164,20 +233,24 @@
             </div>
         </div>
     </div>
-    
+
     <div class="modal fade" id="absensiModal" tabindex="-1" aria-labelledby="absensiModalLabel" aria-hidden="true">
         <div class="modal-dialog">
             <div class="modal-content">
                 <div class="modal-header bg-success text-white">
-                    <h5 class="modal-title" id="absensiModalLabel"><i class="fas fa-map-marker-alt"></i> Absensi Lokasi Relawan</h5>
-                    <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="Close"></button>
+                    <h5 class="modal-title" id="absensiModalLabel"><i class="fas fa-map-marker-alt"></i> Absensi Lokasi
+                        Relawan</h5>
+                    <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"
+                        aria-label="Close"></button>
                 </div>
                 <form action="{{ url_for('submit_absensi') }}" method="POST">
                     <div class="modal-body">
-                        <p class="text-muted small mb-3">Lokasi saat ini akan dicatat ke sheet <code>lokasi_relawan</code>.</p>
+                        <p class="text-muted small mb-3">Lokasi saat ini akan dicatat ke penyimpanan data.</p>
                         <div class="mb-3 p-3 bg-light rounded">
-                            <label class="form-label mb-2"><i class="fas fa-map-marker-alt"></i> Lokasi GPS Saat Ini:</label>
-                            <p class="mb-0"><span id="current-location" class="text-primary fw-bold">Mencari lokasi...</span></p>
+                            <label class="form-label mb-2"><i class="fas fa-map-marker-alt"></i> Lokasi GPS Saat
+                                Ini:</label>
+                            <p class="mb-0"><span id="current-location" class="text-primary fw-bold">Mencari
+                                    lokasi...</span></p>
                         </div>
                         <input type="hidden" id="absensi_lat" name="latitude">
                         <input type="hidden" id="absensi_lon" name="longitude">
@@ -188,7 +261,8 @@
                     </div>
                     <div class="modal-footer">
                         <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Batal</button>
-                        <button type="submit" class="btn btn-success" id="btn-submit-absensi" disabled>Submit Absensi</button>
+                        <button type="submit" class="btn btn-success" id="btn-submit-absensi" disabled>Submit
+                            Absensi</button>
                     </div>
                 </form>
             </div>
@@ -201,10 +275,143 @@
     <script>
         // Data Lokasi dari Flask
         const dataLokasi = JSON.parse('{{ data_lokasi | safe }}');
-        
+
         // Inisialisasi Peta
         var map = L.map('map').setView([2.3693, 99.0763], 9); // Koordinat tengah Sumatera Utara
-        
+
+        const statusData = JSON.parse('{{ status_map | safe }}');
+
+        // 2. Fungsi Penentu Warna
+        function getColorByStatus(status) {
+            if (!status) return '#22c55e'; // Default Hijau
+            let s = status.toLowerCase(); // Ubah ke huruf kecil semua
+
+            if (s.includes('tanggap') || s.includes('awas') || s.includes('merah')) {
+                return '#ef4444'; // Merah
+            } else if (s.includes('siaga') || s.includes('waspada') || s.includes('kuning')) {
+                return '#eab308'; // Kuning
+            } else {
+                return '#22c55e'; // Hijau
+            }
+        }
+
+        function cleanName(name) {
+            if (!name) return "";
+
+            return name.toUpperCase()
+                // 1. Buang kata-kata atribut wilayah
+                .replace("KABUPATEN", "")
+                .replace("KOTA", "")
+                .replace("KAB.", "")
+                .replace("KAB ", "")
+
+                // 2. HAPUS SEMUA KECUALI HURUF A-Z 
+                // (Spasi, titik, koma, strip, angka -> HILANG SEMUA)
+                .replace(/[^A-Z]/g, "");
+        }
+
+        // ---------------------------------------------------------
+        // UPDATE FUNGSI PENCARI DATA (LEBIH PINTAR)
+        // ---------------------------------------------------------
+        function getFeatureData(feature) {
+            // 1. Ambil nama dari GeoJSON (Sesuai file .dbf kamu: 'kabkota')
+            let namaAsli = feature.properties.kabkota ||      // <--- INI YANG PALING MUNGKIN BENAR
+                feature.properties.KABKOTA ||      // Jaga-jaga kalau huruf besar
+                feature.properties.NAMOBJ ||
+                feature.properties.WADMKK ||
+                "Wilayah";
+
+            // 2. Bersihkan nama dari Peta (misal: "Kab. Karo" -> "KARO")
+            let namaGeoClean = cleanName(namaAsli);
+
+            let status = "Normal";
+
+            // 3. Loop data dari Excel/Sheet
+            for (let key in statusData) {
+                // Bersihkan nama dari Sheet
+                let keyClean = cleanName(key);
+
+                // Bandingkan INTINYA SAJA
+                if (namaGeoClean === keyClean) {
+                    status = statusData[key];
+                    break;
+                }
+            }
+
+            return { nama: namaAsli, status: status };
+        }
+
+        // 3. Load Peta
+        fetch("{{ url_for('static', filename='data/kabkota_sumut.json') }}")
+            .then(res => res.json())
+            .then(data => {
+                L.geoJSON(data, {
+                    // --- STYLE AWAL ---
+                    style: function (feature) {
+                        // Panggil fungsi pencari data
+                        let info = getFeatureData(feature);
+
+                        return {
+                            fillColor: getColorByStatus(info.status),
+                            weight: 1,
+                            opacity: 1,
+                            color: 'white',
+                            dashArray: '3',
+                            fillOpacity: 0.7
+                        };
+                    },
+
+                    // --- INTERAKSI ---
+                    onEachFeature: function (feature, layer) {
+                        // Panggil fungsi pencari data LAGI (Pasti hasilnya sama dengan style)
+                        let info = getFeatureData(feature);
+                        let statusColor = getColorByStatus(info.status);
+
+                        // Badge Class untuk Popup
+                        let badgeClass = 'success';
+                        let s = info.status.toLowerCase();
+                        if (s.includes('tanggap') || s.includes('merah')) badgeClass = 'danger';
+                        else if (s.includes('siaga') || s.includes('kuning')) badgeClass = 'warning';
+
+                        // Popup & Tooltip
+                        layer.bindTooltip(`<b>${info.nama}</b>: ${info.status}`, { sticky: true, direction: 'top' });
+                        layer.bindPopup(`
+                        <div class="text-center">
+                            <h6 class="mb-1 fw-bold">${info.nama}</h6>
+                            <span class="badge bg-${badgeClass}">${info.status}</span>
+                        </div>
+                    `);
+
+                        // Logic Hover (Frame Effect)
+                        layer.on({
+                            mouseover: function (e) {
+                                var l = e.target;
+                                l.setStyle({
+                                    weight: 4,              // Frame Tebal
+                                    color: statusColor,     // Warna Frame = Warna Status
+                                    dashArray: '',          // Garis Solid
+                                    fillColor: 'white',     // Isi Putih
+                                    fillOpacity: 0.2
+                                });
+                                if (!L.Browser.ie && !L.Browser.opera && !L.Browser.edge) l.bringToFront();
+                            },
+                            mouseout: function (e) {
+                                var l = e.target;
+                                l.setStyle({
+                                    weight: 1,              // Reset Tipis
+                                    color: 'white',         // Reset Putih
+                                    dashArray: '3',         // Reset Putus-putus
+                                    fillColor: statusColor, // ISI BALIK KE WARNA ASAL (Kuning/Merah/Hijau)
+                                    fillOpacity: 0.7
+                                });
+                            },
+                            click: function (e) { this.openPopup(); }
+                        });
+                    }
+                }).addTo(map);
+            })
+            .catch(e => console.error("Error GeoJSON:", e));
+
         L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
             attribution: '&copy; <a href="http://osm.org/copyright">OpenStreetMap</a> contributors'
         }).addTo(map);
@@ -212,7 +419,7 @@
         // Definisi Ikon Kustom (Disesuaikan dengan permintaan)
         function getIcon(jenis) {
             let iconUrl, iconSize;
-            
+
             if (jenis.includes('Posko')) {
                 iconUrl = 'https://raw.githubusercontent.com/pointhi/leaflet-color-markers/master/img/marker-icon-red.png';
             } else if (jenis.includes('Gudang')) {
@@ -238,14 +445,14 @@
             const lat = parseFloat(lokasi.latitude);
             const lon = parseFloat(lokasi.longitude);
             if (!isNaN(lat) && !isNaN(lon)) {
-                
+
                 let icon = getIcon(lokasi.jenis_lokasi);
-                
+
                 L.marker([lat, lon], { icon: icon }).addTo(map)
-                .bindPopup(`
+                    .bindPopup(`
                     <strong class="text-primary">${lokasi.jenis_lokasi}</strong><br>
-                    **${lokasi.nama_lokasi || lokasi.kabupaten_kota}**<br>
-                    <small>Kondisi: ${lokasi.kondisi_umum || '-'} | Akses: ${lokasi.akses || '-'}</small>
+                    ${lokasi.nama_lokasi || lokasi.kabupaten_kota}<br>
+                    <small>Kondisi: <b>${lokasi.kondisi_umum || '-'}</b> | Akses: <b>${lokasi.akses || '-'}</b></small>
                 `);
             }
         });
@@ -255,12 +462,12 @@
         const absensiLat = document.getElementById('absensi_lat');
         const absensiLon = document.getElementById('absensi_lon');
         const currentLocationSpan = document.getElementById('current-location');
-        
+
         // Panggil Geolocation saat modal absensi dibuka
         document.getElementById('absensiModal').addEventListener('show.bs.modal', function () {
             currentLocationSpan.textContent = 'Mencari lokasi...';
             btnSubmitAbsensi.disabled = true;
-            
+
             if (navigator.geolocation) {
                 navigator.geolocation.getCurrentPosition(
                     (position) => {
@@ -268,7 +475,7 @@
                         const lon = position.coords.longitude;
                         absensiLat.value = lat;
                         absensiLon.value = lon;
-                        currentLocationSpan.innerHTML = `**Lat:** ${lat.toFixed(6)}, **Lon:** ${lon.toFixed(6)}`;
+                        currentLocationSpan.innerHTML = `Lat: ${lat.toFixed(6)}, Lon: ${lon.toFixed(6)}`;
                         btnSubmitAbsensi.disabled = false;
                         currentLocationSpan.classList.remove('text-danger');
                         currentLocationSpan.classList.add('text-success');
@@ -290,62 +497,94 @@
         });
 
         // Carousel untuk Data Bencana & Korban
-        (function() {
+        (function () {
             const carousel = document.getElementById('bencanaCarousel');
             const pagination = document.getElementById('bencanaPagination');
-            
+            const btnPrev = document.getElementById('btnPrev'); // Seleksi tombol prev
+            const btnNext = document.getElementById('btnNext'); // Seleksi tombol next
+
             if (!carousel || !pagination) return;
-            
+
             const slides = carousel.querySelectorAll('.bencana-slide');
             const totalSlides = slides.length;
-            
-            if (totalSlides === 0) return;
-            
+
+            // Jika slide 0 atau 1, sembunyikan navigasi arrow karena tidak perlu
+            if (totalSlides <= 1) {
+                if (btnPrev) btnPrev.style.display = 'none';
+                if (btnNext) btnNext.style.display = 'none';
+                if (totalSlides === 0) return;
+            }
+
             let currentIndex = 0;
-            
-            // Buat pagination dots
+
+            // --- LOGIKA PAGINATION DOTS (KODE LAMA ANDA) ---
             for (let i = 0; i < totalSlides; i++) {
                 const dot = document.createElement('button');
                 dot.className = 'bencana-pagination-dot';
                 if (i === 0) dot.classList.add('active');
                 dot.setAttribute('aria-label', `Slide ${i + 1}`);
-                dot.addEventListener('click', () => goToSlide(i));
+                dot.addEventListener('click', () => {
+                    goToSlide(i);
+                    stopAutoPlay(); // Reset timer saat user interaksi manual
+                    startAutoPlay();
+                });
                 pagination.appendChild(dot);
             }
-            
+
+            // --- FUNGSI PINDAH SLIDE UTAMA ---
             function goToSlide(index) {
-                if (index < 0 || index >= totalSlides) return;
-                
+                // Logika looping (infinite loop effect)
+                if (index < 0) {
+                    index = totalSlides - 1; // Ke slide terakhir
+                } else if (index >= totalSlides) {
+                    index = 0; // Ke slide pertama
+                }
+
                 currentIndex = index;
                 carousel.style.transform = `translateX(-${index * 100}%)`;
-                
+
                 // Update active dot
                 const dots = pagination.querySelectorAll('.bencana-pagination-dot');
                 dots.forEach((dot, i) => {
                     dot.classList.toggle('active', i === index);
                 });
             }
-            
-            // Auto-play carousel (opsional)
+
+            // --- LOGIKA TOMBOL NAVIGASI BARU ---
+            if (btnPrev) {
+                btnPrev.addEventListener('click', () => {
+                    goToSlide(currentIndex - 1);
+                    stopAutoPlay(); // Reset timer agar tidak loncat tiba-tiba
+                    startAutoPlay();
+                });
+            }
+
+            if (btnNext) {
+                btnNext.addEventListener('click', () => {
+                    goToSlide(currentIndex + 1);
+                    stopAutoPlay();
+                    startAutoPlay();
+                });
+            }
+
+            // --- AUTO PLAY ---
             let autoPlayInterval;
             function startAutoPlay() {
+                stopAutoPlay(); // Mencegah double interval
                 autoPlayInterval = setInterval(() => {
-                    const nextIndex = (currentIndex + 1) % totalSlides;
+                    const nextIndex = currentIndex + 1; // Biarkan goToSlide menangani reset ke 0
                     goToSlide(nextIndex);
-                }, 4000); // Ganti slide setiap 4 detik
+                }, 4000);
             }
-            
+
             function stopAutoPlay() {
                 if (autoPlayInterval) {
                     clearInterval(autoPlayInterval);
                 }
             }
-            
-            // Mulai auto-play jika ada lebih dari 1 slide
+
             if (totalSlides > 1) {
                 startAutoPlay();
-                
-                // Pause saat hover
                 const container = carousel.closest('.bencana-carousel-container');
                 if (container) {
                     container.addEventListener('mouseenter', stopAutoPlay);
@@ -354,5 +593,61 @@
             }
         })();
     </script>
+    <script>
+        document.addEventListener("DOMContentLoaded", function () {
+            const sidebar = document.getElementById('sidebar');
+            const toggleBtn = document.getElementById('sidebarToggle');
+            const closeBtn = document.getElementById('sidebarClose');
+
+            // 1. Fungsi Buka Sidebar
+            toggleBtn.addEventListener('click', function (e) {
+                // PENTING: Mencegah klik tembus ke map/body
+                e.stopPropagation();
+                e.preventDefault();
+
+                sidebar.classList.add('active');
+
+                // Opsional: Sembunyikan tombol burger saat menu terbuka biar bersih
+                toggleBtn.style.visibility = 'hidden';
+            });
+
+            // 2. Fungsi Tutup Sidebar (Tombol X)
+            closeBtn.addEventListener('click', function (e) {
+                e.stopPropagation(); // Mencegah trigger event lain
+                sidebar.classList.remove('active');
+
+                // Munculkan lagi tombol burger setelah animasi selesai
+                setTimeout(() => {
+                    toggleBtn.style.visibility = 'visible';
+                }, 300);
+            });
+
+            // 3. Logic Tutup Sidebar saat klik di luar (Global Click)
+            document.addEventListener('click', function (e) {
+                // Cek apakah sidebar sedang terbuka
+                if (sidebar.classList.contains('active')) {
+                    // Jika yang diklik BUKAN bagian dari sidebar dan BUKAN tombol toggle
+                    if (!sidebar.contains(e.target) && !toggleBtn.contains(e.target)) {
+                        sidebar.classList.remove('active');
+                        setTimeout(() => {
+                            toggleBtn.style.visibility = 'visible';
+                        }, 300);
+                    }
+                }
+            });
+        });
+    </script>
+    <script>
+        document.addEventListener("DOMContentLoaded", function () {
+            const alerts = document.querySelectorAll('.alert');
+            alerts.forEach(function (alert) {
+                setTimeout(function () {
+                    let bsAlert = new bootstrap.Alert(alert);
+                    bsAlert.close();
+                }, 3000);
+            });
+        });
+    </script>
 </body>
+
 </html>
