@@ -283,26 +283,39 @@ def map_view():
 def login():
     nama = request.form.get('nama')
     kode_akses = request.form.get('kode_akses')
-
-    if kode_akses != "usupeduli":
-        flash("Login gagal: Kode akses salah.", "danger")
+    # Basic validation
+    if not nama or not kode_akses:
+        flash("Login gagal: Nama dan Kode Akses harus diisi.", "danger")
         return redirect(url_for('map_view'))
 
     relawan_list = get_sheet_data("data_relawan")
-    valid_login = False
-    
+
+    # Cari relawan sesuai nama (case-insensitive)
+    matched = None
     for r in relawan_list:
-        if r.get('nama_relawan', '').lower() == nama.lower():
-            valid_login = True
-            session['logged_in'] = True
-            session['nama_relawan'] = r['nama_relawan']
-            session['id_relawan'] = r.get('id_relawan', 'UNKNOWN')
-            flash(f"Login berhasil! Selamat bertugas, {r['nama_relawan']}.", "success")
+        if r.get('nama_relawan', '').strip().lower() == (nama or '').strip().lower():
+            matched = r
             break
 
-    if not valid_login:
+    if not matched:
         flash(f"Login gagal: Nama relawan '{nama}' tidak ditemukan di database.", "danger")
-    
+        return redirect(url_for('map_view'))
+
+    expected_code = (matched.get('kode_akses') or '').strip()
+    if not expected_code:
+        flash("Login gagal: Relawan belum memiliki kode akses terdaftar. Hubungi admin.", "danger")
+        return redirect(url_for('map_view'))
+
+    # Cocokkan kode akses sesuai relawan (case-insensitive)
+    if kode_akses.strip().lower() != expected_code.lower():
+        flash("Login gagal: Kode akses salah.", "danger")
+        return redirect(url_for('map_view'))
+
+    # Login berhasil
+    session['logged_in'] = True
+    session['nama_relawan'] = matched['nama_relawan']
+    session['id_relawan'] = matched.get('id_relawan', 'UNKNOWN')
+    flash(f"Login berhasil! Selamat bertugas, {matched['nama_relawan']}.", "success")
     return redirect(url_for('map_view'))
 
 @app.route("/logout", methods=["POST"])
@@ -425,6 +438,20 @@ def cek_wilayah_geojson(user_lat, user_lon):
     except Exception as e:
         print(f"Error Cek GeoJSON: {e}")
         return "Gagal Deteksi Wilayah"
+
+
+def haversine_distance(lat1, lon1, lat2, lon2):
+    """Return distance in kilometers between two lat/lon points."""
+    try:
+        # Convert to radians
+        lat1, lon1, lat2, lon2 = map(math.radians, (float(lat1), float(lon1), float(lat2), float(lon2)))
+        dlat = lat2 - lat1
+        dlon = lon2 - lon1
+        a = math.sin(dlat/2)**2 + math.cos(lat1) * math.cos(lat2) * math.sin(dlon/2)**2
+        c = 2 * math.atan2(math.sqrt(a), math.sqrt(1-a))
+        return 6371.0 * c
+    except Exception:
+        return float('inf')
     
 @app.route("/submit_absensi", methods=["POST"])
 def submit_absensi():
@@ -441,12 +468,40 @@ def submit_absensi():
     if latitude and longitude:
         lokasi_terdeteksi = cek_wilayah_geojson(latitude, longitude)
     
+    # Cari posko terdekat berdasarkan koordinat absensi
+    lokasi_posko_code = ''
+    try:
+        data_lokasi_raw = get_sheet_data("data_lokasi")
+        # Prioritaskan Posko Pengungsian; jika tidak ada, gunakan semua lokasi dengan koordinat
+        candidates = [l for l in data_lokasi_raw if l.get('jenis_lokasi') == 'Posko Pengungsian' and l.get('latitude') and l.get('longitude')]
+        if not candidates:
+            candidates = [l for l in data_lokasi_raw if l.get('latitude') and l.get('longitude')]
+
+        min_dist = None
+        nearest = None
+        for p in candidates:
+            try:
+                plat = float(p.get('latitude'))
+                plong = float(p.get('longitude'))
+                dist = haversine_distance(latitude, longitude, plat, plong)
+                if min_dist is None or dist < min_dist:
+                    min_dist = dist
+                    nearest = p
+            except Exception:
+                continue
+
+        if nearest:
+            lokasi_posko_code = nearest.get('kode_lokasi') or nearest.get('kode') or ''
+    except Exception as e:
+        print(f"Error mencari posko terdekat: {e}")
+    
     data = {
         'timestamp': datetime.datetime.now().strftime('%Y-%m-%d %H:%M:%S'),
         'id_relawan': session.get('id_relawan', 'UNKNOWN'),
         'latitude': latitude,
         'longitude': longitude,
         'lokasi': lokasi_terdeteksi, 
+        'lokasi_posko': lokasi_posko_code,
         'catatan': catatan,
         'photo_link': ''
     }

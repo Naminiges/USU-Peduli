@@ -84,8 +84,8 @@
             <button class="btn btn-success feature-btn" data-bs-toggle="modal" data-bs-target="#absensiModal">
                 <i class="fas fa-location-dot"></i> Absensi Lokasi
             </button>
-            <form action="{{ url_for('logout') }}" method="post" style="display:inline;">
-                <button type="submit" class="btn btn-danger feature-btn w-100"> <i class="fas fa-sign-out-alt"></i>
+            <form action="{{ url_for('logout') }}" method="post" style="display:inline;" id="logoutForm">
+                <button type="button" class="btn btn-danger feature-btn w-100" data-bs-toggle="modal" data-bs-target="#logoutConfirmModal"> <i class="fas fa-sign-out-alt"></i>
                     Logout
                 </button>
             </form>
@@ -151,6 +151,25 @@
         </div>
     </div>
 
+    <!-- Logout Confirmation Modal -->
+    <div class="modal fade" id="logoutConfirmModal" tabindex="-1" aria-labelledby="logoutConfirmModalLabel" aria-hidden="true">
+        <div class="modal-dialog modal-dialog-centered">
+            <div class="modal-content">
+                <div class="modal-header bg-danger text-white">
+                    <h5 class="modal-title" id="logoutConfirmModalLabel"><i class="fas fa-sign-out-alt"></i> Konfirmasi Logout</h5>
+                    <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="Close"></button>
+                </div>
+                <div class="modal-body">
+                    <p class="mb-0">Anda yakin ingin logout?</p>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Batal</button>
+                    <button type="button" class="btn btn-danger" id="confirmLogoutBtn">Yakin</button>
+                </div>
+            </div>
+        </div>
+    </div>
+
     <div class="modal fade" id="loginModal" tabindex="-1" aria-labelledby="loginModalLabel" aria-hidden="true">
         <div class="modal-dialog">
             <div class="modal-content">
@@ -174,7 +193,7 @@
                         </div>
                         <div class="mb-3">
                             <label for="kode_akses" class="form-label">Kode Akses</label>
-                            <input type="text" class="form-control" id="kode_akses" name="kode_akses" required>
+                            <input type="text" class="form-control" id="kode_akses" name="kode_akses" placeholder="Masukkan Kode Akses" required>
                         </div>
                     </div>
                     <div class="modal-footer">
@@ -259,7 +278,7 @@
                         <input type="hidden" id="absensi_lon" name="longitude" required>
                         <div class="mb-3">
                             <label for="catatan" class="form-label">Catatan Kegiatan/Kondisi</label>
-                            <textarea class="form-control" id="catatan" name="catatan" rows="3" required></textarea>
+                            <textarea class="form-control" id="catatan" name="catatan" rows="3"></textarea>
                         </div>
                     </div>
                     <div class="modal-footer">
@@ -598,8 +617,8 @@
                     // Update marker lokasi
                     renderMarkers(dataLokasi);
 
-                    // Tampilkan notifikasi sukses
-                    showNotification('Map berhasil di-refresh!', 'success');
+                    // Tampilkan notifikasi sukses (centered)
+                    showNotification('Map berhasil di-refresh!', 'success', true);
                 } else {
                     showNotification('Gagal refresh map: ' + (result.error || 'Unknown error'), 'danger');
                 }
@@ -618,10 +637,14 @@
         // ==============================================================================
         // FUNGSI NOTIFIKASI
         // ==============================================================================
-        function showNotification(message, type = 'info') {
+        function showNotification(message, type = 'info', center = false) {
             const alertDiv = document.createElement('div');
             alertDiv.className = `alert alert-${type} alert-dismissible fade show shadow`;
-            alertDiv.style.cssText = 'position: fixed; top: 70px; left: 15px; z-index: 10000; min-width: 300px; max-width: 400px;';
+            if (center) {
+                alertDiv.style.cssText = 'position: fixed; top: 70px; left: 50%; transform: translateX(-50%); z-index: 10000; min-width: 300px; max-width: 700px; text-align: center;';
+            } else {
+                alertDiv.style.cssText = 'position: fixed; top: 70px; left: 15px; z-index: 10000; min-width: 300px; max-width: 400px;';
+            }
             alertDiv.innerHTML = `
                 <i class="fas fa-${type === 'success' ? 'check-circle' : type === 'danger' ? 'exclamation-circle' : 'info-circle'} me-2"></i>
                 ${message}
@@ -697,8 +720,8 @@
                     currentLocationSpan.classList.add('text-success');
                     btnSubmitAbsensi.disabled = false;
                     
-                    // Tampilkan notifikasi sukses
-                    showNotification(`Lokasi berhasil diperbarui! Akurasi: ±${Math.round(accuracy)}m`, 'success');
+                    // Tampilkan notifikasi sukses (centered)
+                    showNotification(`Lokasi berhasil diperbarui! Akurasi: ±${Math.round(accuracy)}m`, 'success', true);
                     
                     if (onComplete) onComplete();
                     console.log('Lokasi berhasil:', { lat, lon, accuracy });
@@ -910,6 +933,20 @@
                 }
             }
         })();
+    </script>
+    <script>
+        document.addEventListener('DOMContentLoaded', function () {
+            const confirmLogoutBtn = document.getElementById('confirmLogoutBtn');
+            const logoutForm = document.getElementById('logoutForm');
+            if (confirmLogoutBtn && logoutForm) {
+                confirmLogoutBtn.addEventListener('click', function () {
+                    const modalEl = document.getElementById('logoutConfirmModal');
+                    const modal = bootstrap.Modal.getInstance(modalEl) || new bootstrap.Modal(modalEl);
+                    modal.hide();
+                    logoutForm.submit();
+                });
+            }
+        });
     </script>
     <script>
         document.addEventListener("DOMContentLoaded", function () {
