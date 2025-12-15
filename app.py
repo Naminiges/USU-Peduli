@@ -5,6 +5,7 @@ import json
 import datetime
 import os # Untuk mendapatkan waktu saat ini dan Secret Key
 import logging
+import math
 from pathlib import Path
 
 app = Flask(__name__)
@@ -351,33 +352,108 @@ def submit_permintaan():
     nama_relawan = session.get('nama_relawan', 'UNKNOWN')
     id_relawan = session.get('id_relawan', 'UNKNOWN')
     log_permintaan_posko(data, nama_relawan, id_relawan, nama_posko)
-    
+    flash(f"Permintaan {nama_posko} berhasil dikirim!", "success")
     return redirect(url_for('map_view'))
 
 # ==============================================================================
 # 3. LOGIKA ABSENSI RELAWAN
 # ==============================================================================
+def point_in_polygon(point, polygon):
+    """
+    Mengecek apakah titik (lon, lat) ada di dalam list koordinat polygon.
+    Algoritma: Ray Casting.
+    """
+    x, y = point # x = longitude, y = latitude
+    inside = False
+    n = len(polygon)
+    
+    p1x, p1y = polygon[0]
+    for i in range(n + 1):
+        p2x, p2y = polygon[i % n]
+        if y > min(p1y, p2y):
+            if y <= max(p1y, p2y):
+                if x <= max(p1x, p2x):
+                    if p1y != p2y:
+                        xinters = (y - p1y) * (p2x - p1x) / (p2y - p1y) + p1x
+                    if p1x == p2x or x <= xinters:
+                        inside = not inside
+        p1x, p1y = p2x, p2y
+        
+    return inside
+
+def cek_wilayah_geojson(user_lat, user_lon):
+    """
+    Looping semua wilayah di GeoJSON Sumut untuk mencari user ada di mana.
+    """
+    try:
+        json_path = os.path.join(app.root_path, 'static', 'data', 'kabkota_sumut.json')
+        
+        with open(json_path, 'r') as f:
+            data = json.load(f)
+            
+        point = (float(user_lon), float(user_lat))
+        
+        for feature in data['features']:
+            geometry = feature['geometry']
+            props = feature['properties']
+            
+            # Ambil nama kota (sesuaikan dengan nama kolom di GeoJSON kamu, misal 'kabkota')
+            nama_wilayah = props.get('kabkota') or props.get('KABKOTA') or props.get('NAMOBJ') or "Wilayah Tak Bernama"
+            
+            found = False
+            
+            # GeoJSON bisa berupa 'Polygon' (1 pulau) atau 'MultiPolygon' (banyak pulau)
+            if geometry['type'] == 'Polygon':
+                # Polygon biasa: koordinat ada di geometry['coordinates'][0]
+                poly_coords = geometry['coordinates'][0] 
+                if point_in_polygon(point, poly_coords):
+                    found = True
+                    
+            elif geometry['type'] == 'MultiPolygon':
+                # MultiPolygon: Loop setiap pulau/bagian
+                for poly in geometry['coordinates']:
+                    poly_coords = poly[0]
+                    if point_in_polygon(point, poly_coords):
+                        found = True
+                        break
+            
+            if found:
+                return nama_wilayah
+
+        return "Luar Wilayah Sumut"
+        
+    except Exception as e:
+        print(f"Error Cek GeoJSON: {e}")
+        return "Gagal Deteksi Wilayah"
+    
 @app.route("/submit_absensi", methods=["POST"])
 def submit_absensi():
     if not session.get('logged_in'):
+        flash(f"Silahkan login terlebih dahulu!", "danger")
         return redirect(url_for('map_view'))
 
     latitude = request.form.get('latitude')
     longitude = request.form.get('longitude')
     catatan = request.form.get('catatan')
+
+    lokasi_terdeteksi = "Mencari..."
+
+    if latitude and longitude:
+        lokasi_terdeteksi = cek_wilayah_geojson(latitude, longitude)
     
     data = {
         'timestamp': datetime.datetime.now().strftime('%Y-%m-%d %H:%M:%S'),
         'id_relawan': session.get('id_relawan', 'UNKNOWN'),
         'latitude': latitude,
         'longitude': longitude,
-        'lokasi': f"Lat: {latitude}, Lon: {longitude}", 
+        'lokasi': lokasi_terdeteksi, 
         'catatan': catatan,
         'photo_link': ''
     }
 
     append_to_sheet("lokasi_relawan", data)
-
+    msg_type = "success" if lokasi_terdeteksi != "Luar Wilayah Sumut" else "warning"
+    flash(f"Absensi berhasil! Posisi Anda terdeteksi di: {lokasi_terdeteksi}", msg_type)
     return redirect(url_for('map_view'))
 
 if __name__ == "__main__":
