@@ -9,9 +9,39 @@
     <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0-beta3/css/all.min.css">
     <link rel="stylesheet" href="{{ url_for('static', filename='css/style.css') }}">
+    <style>
+        /* Global loading overlay shown during form POSTs */
+        #globalLoadingOverlay {
+            display: none;
+            position: fixed;
+            inset: 0;
+            background: rgba(0,0,0,0.45);
+            z-index: 11000; /* above modals */
+            align-items: center;
+            justify-content: center;
+        }
+        #globalLoadingOverlay .card {
+            background: rgba(255,255,255,0.98);
+            padding: 1rem 1.25rem;
+            border-radius: 8px;
+            display: flex;
+            gap: 0.75rem;
+            align-items: center;
+            box-shadow: 0 6px 20px rgba(0,0,0,0.2);
+        }
+    </style>
 </head>
 
 <body>
+    <!-- Global loading overlay shown during POST -->
+    <div id="globalLoadingOverlay" role="status" aria-hidden="true">
+        <div class="card">
+            <div class="spinner-border text-primary" role="status" aria-hidden="true" style="width:2rem;height:2rem;"></div>
+            <div>
+                <div class="small text-muted loading-text">Mohon tunggu.</div>
+            </div>
+        </div>
+    </div>
     <div class="flash-message-container">
         {% with messages = get_flashed_messages(with_categories=true) %}
         {% if messages %}
@@ -935,7 +965,29 @@
         })();
     </script>
     <script>
+        // Global loading overlay helpers
+        function showGlobalLoading(msg) {
+            const ov = document.getElementById('globalLoadingOverlay');
+            if (!ov) return;
+            const textEl = ov.querySelector('.loading-text');
+            if (msg) textEl.textContent = msg;
+            ov.style.display = 'flex';
+        }
+        function hideGlobalLoading() {
+            const ov = document.getElementById('globalLoadingOverlay');
+            if (!ov) return;
+            ov.style.display = 'none';
+        }
+
         document.addEventListener('DOMContentLoaded', function () {
+            // Attach submit handler to all POST forms to show loading and prevent double submits
+            document.querySelectorAll('form[method="POST"]').forEach(function(form){
+                form.addEventListener('submit', function(){
+                    showGlobalLoading('Mengirim data...');
+                    form.querySelectorAll('button, input[type="submit"]').forEach(function(el){ el.disabled = true; });
+                });
+            });
+
             const confirmLogoutBtn = document.getElementById('confirmLogoutBtn');
             const logoutForm = document.getElementById('logoutForm');
             if (confirmLogoutBtn && logoutForm) {
@@ -943,6 +995,7 @@
                     const modalEl = document.getElementById('logoutConfirmModal');
                     const modal = bootstrap.Modal.getInstance(modalEl) || new bootstrap.Modal(modalEl);
                     modal.hide();
+                    showGlobalLoading('Logging out...');
                     logoutForm.submit();
                 });
             }
