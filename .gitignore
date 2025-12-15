@@ -34,4 +34,4 @@ instance/
 Thumbs.db
 
 # Service account (jika tidak ingin commit)
-# service_account.json
+service_account.json
