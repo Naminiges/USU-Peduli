@@ -73,9 +73,6 @@ def append_to_sheet(sheet_name, data):
         print(f"Error appending to sheet {sheet_name}: {e}")
         return False
 
-# ==============================================================================
-# FUNGSI LOGGING AMAN
-# ==============================================================================
 def sanitize_for_log(text):
     """Sanitasi teks untuk mencegah injection dan karakter berbahaya di log."""
     if not text:
