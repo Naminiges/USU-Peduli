@@ -7,10 +7,15 @@ import os # Untuk mendapatkan waktu saat ini dan Secret Key
 import logging
 import math
 from pathlib import Path
+from dotenv import load_dotenv
+
+load_dotenv()
 
 app = Flask(__name__)
 # HARUS diganti dengan kunci rahasia yang kuat untuk mengamankan sesi
-app.secret_key = os.environ.get('SECRET_KEY', 'usupeduli_satgas_super_rahasia_key') 
+app.secret_key = os.environ.get('SECRET_KEY')
+if not app.secret_key:
+    raise RuntimeError("SECRET_KEY belum diset di environment")
 
 # Konfigurasi Google Sheets API (Asumsi file service_account.json sudah benar)
 scope = [
@@ -21,16 +26,27 @@ scope = [
 ]
 
 try:
-    creds = ServiceAccountCredentials.from_json_keyfile_name(
-        "service_account.json", scope
+    service_account_json = os.environ.get('SERVICE_ACCOUNT_JSON')
+    if not service_account_json:
+        raise RuntimeError("SERVICE_ACCOUNT_JSON belum diset")
+
+    creds_dict = json.loads(service_account_json)
+
+    creds = ServiceAccountCredentials.from_json_keyfile_dict(
+        creds_dict, scope
     )
     client = gspread.authorize(creds)
+
 except Exception as e:
     print(f"Error otorisasi Google Sheets: {e}")
     client = None
 
+
 # Spreadsheet ID (berdasarkan file yang Anda unggah)
-SPREADSHEET_ID = "1jfruOftY0v5uBwx2NctrhczqYWLxmmJzhTU6pwlDRTQ" 
+SPREADSHEET_ID = os.environ.get('SPREADSHEET_ID')
+if not SPREADSHEET_ID:
+    raise RuntimeError("SPREADSHEET_ID belum diset di environment")
+
 
 def get_sheet_data(sheet_name):
     """Fungsi pembantu untuk mengambil data dari sheet tertentu."""
