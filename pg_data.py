@@ -1,51 +1,54 @@
 """pg_data.py
 
-Helper untuk baca data dari PostgreSQL (SATGAS) TANPA merusak code lama yang masih pakai Google Sheets.
+Helper untuk baca/tulis data dari PostgreSQL (SATGAS) TANPA merusak code lama yang masih pakai Google Sheets.
 
 Dipakai untuk:
-1) status kab/kota (public.data_status_kabkota)
+1) status kab/kota (public.data_status_kabkota) -> status_map untuk fill polygon
 2) GeoJSON polygon kab/kota (public.geo_kabkota) -> ditulis ke static/data/kabkota_sumut.json
+3) data_lokasi (public.data_lokasi) -> marker posko/lokasi
+4) data_relawan (public.data_relawan) -> login
+5) lokasi_relawan (public.lokasi_relawan) -> submit absensi lokasi
+6) asesmen_kesehatan (public.asesmen_kesehatan)
+7) asesmen_pendidikan (public.asesmen_pendidikan)
 
 ENV wajib:
   - DATABASE_URL   (contoh: postgresql://user:pass@host:5432/satgas_db)
 
 ENV opsional:
-  - PG_STATUS_TABLE   default: public.data_status_kabkota
-  - PG_GEO_TABLE      default: public.geo_kabkota
-  - GEOJSON_TTL_SECONDS default: 86400 (1 hari)
-  - FORCE_GEOJSON_REFRESH default: 0
+  - PG_STATUS_TABLE              default: public.data_status_kabkota
+  - PG_GEO_TABLE                 default: public.geo_kabkota
+  - PG_DATA_LOKASI_TABLE         default: public.data_lokasi
+  - PG_RELAWAN_TABLE             default: public.data_relawan
+  - PG_LOKASI_RELAWAN_TABLE      default: public.lokasi_relawan
+  - PG_ASESMEN_KESEHATAN_TABLE   default: public.asesmen_kesehatan
+  - PG_ASESMEN_PENDIDIKAN_TABLE  default: public.asesmen_pendidikan
+  - GEOJSON_TTL_SECONDS          default: 86400 (1 hari)
+  - FORCE_GEOJSON_REFRESH        default: 0
+
+Catatan:
+- Tetap kompatibel dengan psycopg v3 (psycopg) maupun psycopg2.
+- Untuk awal, tiap call query buka-konek-tutup (simpel & aman).
 """
 
 from __future__ import annotations
 
-from dataclasses import dataclass
 import json
 import os
-import datetime as _dt
+from datetime import datetime, timezone
 from decimal import Decimal
 from pathlib import Path
 from typing import Any, Dict, List, Optional, Tuple
 
-
-def _get_env(name: str, default: Optional[str] = None) -> Optional[str]:
-    v = os.environ.get(name)
-    if v is None or str(v).strip() == "":
-        return default
-    return v
-
-
 # ------------------------------------------------------------------------------
 # Driver selection (psycopg v3 -> psycopg2)
 # ------------------------------------------------------------------------------
-_DRIVER = None
-_HAS_PSYCOPG3 = False
+_DRIVER: Optional[str] = None
 
 try:
     import psycopg  # type: ignore
     from psycopg.rows import dict_row  # type: ignore
 
     _DRIVER = "psycopg"
-    _HAS_PSYCOPG3 = True
 except Exception:
     psycopg = None  # type: ignore
     dict_row = None  # type: ignore
@@ -60,6 +63,13 @@ if _DRIVER is None:
         psycopg2 = None  # type: ignore
 
 
+def _get_env(name: str, default: Optional[str] = None) -> Optional[str]:
+    v = os.environ.get(name)
+    if v is None or str(v).strip() == "":
+        return default
+    return v
+
+
 def _get_dsn() -> str:
     dsn = _get_env("DATABASE_URL")
     if not dsn:
@@ -67,13 +77,19 @@ def _get_dsn() -> str:
     return dsn
 
 
-def pg_fetchall(sql: str, params: Optional[Tuple[Any, ...]] = None) -> List[Dict[str, Any]]:
-    """Jalankan query dan return list of dict.
+def _to_float(v: Any) -> Optional[float]:
+    if v is None:
+        return None
+    try:
+        if isinstance(v, Decimal):
+            return float(v)
+        return float(str(v).strip())
+    except Exception:
+        return None
 
-    Catatan:
-    - Tidak pakai pool (simpel dulu).
-    - Tiap call buka-konek-tutup (aman untuk awal).
-    """
+
+def pg_fetchall(sql: str, params: Optional[Tuple[Any, ...]] = None) -> List[Dict[str, Any]]:
+    """Jalankan query dan return list of dict."""
     dsn = _get_dsn()
 
     if _DRIVER == "psycopg":
@@ -97,8 +113,8 @@ def pg_fetchall(sql: str, params: Optional[Tuple[Any, ...]] = None) -> List[Dict
     )
 
 
-def pg_execute(sql: str, params: Optional[Tuple[Any, ...]] = None) -> int:
-    """Jalankan statement (INSERT/UPDATE/DELETE) dan return rowcount."""
+def pg_execute(sql: str, params: Optional[Tuple[Any, ...]] = None) -> None:
+    """Execute (INSERT/UPDATE/DELETE)."""
     dsn = _get_dsn()
 
     if _DRIVER == "psycopg":
@@ -106,53 +122,20 @@ def pg_execute(sql: str, params: Optional[Tuple[Any, ...]] = None) -> int:
         with psycopg.connect(dsn) as conn:
             with conn.cursor() as cur:
                 cur.execute(sql, params or ())
-                return int(cur.rowcount or 0)
+            conn.commit()
+        return
 
     if _DRIVER == "psycopg2":
         assert psycopg2 is not None  # noqa
         with psycopg2.connect(dsn) as conn:
             with conn.cursor() as cur:
                 cur.execute(sql, params or ())
-                return int(cur.rowcount or 0)
+            conn.commit()
+        return
 
     raise RuntimeError(
         "Driver PostgreSQL tidak ditemukan. Install salah satu: psycopg[binary] atau psycopg2-binary."
     )
-
-
-
-# ------------------------------------------------------------------------------
-# JSON-safety helpers
-# ------------------------------------------------------------------------------
-def _json_safe_value(v: Any) -> Any:
-    """Convert values returned from psycopg to JSON-serializable types.
-
-    - Decimal -> float
-    - datetime/date -> ISO string
-    - Path -> str
-    - dict/list/tuple -> recursively converted
-    """
-    try:
-        if v is None:
-            return None
-        if isinstance(v, Decimal):
-            # Use float for compatibility with json.dumps/jsonify
-            return float(v)
-        if isinstance(v, (_dt.datetime, _dt.date)):
-            return v.isoformat()
-        if isinstance(v, Path):
-            return str(v)
-        if isinstance(v, (list, tuple)):
-            return [_json_safe_value(x) for x in v]
-        if isinstance(v, dict):
-            return {k: _json_safe_value(val) for k, val in v.items()}
-        return v
-    except Exception:
-        # Fallback: stringify unknown types
-        try:
-            return str(v)
-        except Exception:
-            return None
 
 
 # ------------------------------------------------------------------------------
@@ -243,8 +226,9 @@ def ensure_kabkota_geojson_static(app_root_path: str) -> Path:
     out_path.parent.mkdir(parents=True, exist_ok=True)
 
     if out_path.exists() and not force:
-        age = (Path(out_path).stat().st_mtime)
         import time
+
+        age = out_path.stat().st_mtime
         if time.time() - age < ttl:
             return out_path
 
@@ -254,157 +238,284 @@ def ensure_kabkota_geojson_static(app_root_path: str) -> Path:
 
 
 # ------------------------------------------------------------------------------
-# 3) Data relawan (untuk login / tambah data)
+# 3) data_lokasi (marker)
+# ------------------------------------------------------------------------------
+def pg_get_data_lokasi() -> List[Dict[str, Any]]:
+    """Ambil data lokasi (posko/lokasi lain) dari Postgres.
+
+    Return list-of-dict yang kompatibel dengan map.html:
+    - kode_lokasi
+    - jenis_lokasi
+    - kabupaten_kota
+    - nama_lokasi
+    - kondisi_umum
+    - akses
+    - latitude, longitude
+    """
+    table = _get_env("PG_DATA_LOKASI_TABLE", "public.data_lokasi")
+    rows = pg_fetchall(f"SELECT * FROM {table};")
+
+    out: List[Dict[str, Any]] = []
+    for r in rows:
+        lat = _to_float(r.get("latitude") if "latitude" in r else r.get("lat"))
+        lon = _to_float(
+            r.get("longitude")
+            if "longitude" in r
+            else (r.get("lon") if "lon" in r else r.get("lng"))
+        )
+        kode = r.get("kode_lokasi") or r.get("kode") or r.get("id_lokasi") or r.get("kode_posko") or ""
+        jenis = r.get("jenis_lokasi") or r.get("jenis") or r.get("tipe") or ""
+        kabkota = (
+            r.get("kabupaten_kota")
+            or r.get("kabkota")
+            or r.get("nama_kabkota")
+            or r.get("wilayah")
+            or ""
+        )
+        nama = r.get("nama_lokasi") or r.get("nama") or kabkota or kode
+
+        out.append(
+            {
+                "kode_lokasi": str(kode) if kode is not None else "",
+                "jenis_lokasi": str(jenis) if jenis is not None else "",
+                "kabupaten_kota": str(kabkota) if kabkota is not None else "",
+                "nama_lokasi": str(nama) if nama is not None else "",
+                "kondisi_umum": (r.get("kondisi_umum") or r.get("kondisi") or "") if r is not None else "",
+                "akses": (r.get("akses") or r.get("aksesibilitas") or "") if r is not None else "",
+                "latitude": lat,
+                "longitude": lon,
+            }
+        )
+
+    return out
+
+
+# ------------------------------------------------------------------------------
+# 4) data_relawan (login)
 # ------------------------------------------------------------------------------
 def pg_get_relawan_list() -> List[Dict[str, Any]]:
-    """Ambil daftar relawan dari tabel Postgres (default: public.data_relawan).
-
-    Output disamakan dengan struktur Google Sheet 'data_relawan':
-      - id_relawan
-      - nama_relawan
-      - kode_akses
-    """
-    relawan_table = _get_env("PG_RELAWAN_TABLE", "public.data_relawan")
-
+    """Ambil relawan untuk login: id_relawan, nama_relawan, kode_akses."""
+    table = _get_env("PG_RELAWAN_TABLE", "public.data_relawan")
     sql = f"""
         SELECT
             id_relawan,
             nama_relawan,
             kode_akses
-        FROM {relawan_table}
-        ORDER BY upper(trim(nama_relawan)) ASC;
+        FROM {table}
+        WHERE nama_relawan IS NOT NULL;
     """
-
     rows = pg_fetchall(sql)
     out: List[Dict[str, Any]] = []
     for r in rows:
-        out.append({
-            "id_relawan": (r.get("id_relawan") or "").strip(),
-            "nama_relawan": (r.get("nama_relawan") or "").strip(),
-            "kode_akses": (r.get("kode_akses") or "").strip(),
-        })
-
-    return [x for x in out if x.get("nama_relawan")]
-
-
-# ------------------------------------------------------------------------------
-# 3b) Data lokasi (marker di peta + dropdown posko)
-# ------------------------------------------------------------------------------
-def pg_get_data_lokasi_list() -> List[Dict[str, Any]]:
-    """Ambil daftar lokasi dari tabel Postgres (default: public.data_lokasi).
-
-    Tujuan: output *menyerupai* struktur Google Sheet 'data_lokasi' supaya map.html / JS lama
-    tidak perlu diubah.
-
-    Mapping utama:
-      - id_lokasi   -> kode_lokasi
-      - nama_kabkota -> kabupaten_kota
-
-    Kolom lain (jenis_lokasi, status_lokasi, tingkat_akses, kondisi, nama_lokasi, alamat,
-    latitude, longitude, dll) diteruskan jika ada.
-    """
-    lokasi_table = _get_env("PG_DATA_LOKASI_TABLE", "public.data_lokasi")
-
-    # Ambil semua kolom agar fleksibel (kalau nanti tabel tambah kolom)
-    sql = f"""SELECT * FROM {lokasi_table};"""
-    rows = pg_fetchall(sql)
-
-    out: List[Dict[str, Any]] = []
-    for r in rows:
-        # Ambil dari berbagai kemungkinan nama kolom
-        kode = r.get("kode_lokasi") or r.get("id_lokasi") or r.get("kode") or r.get("id")
-        kabkota = r.get("kabupaten_kota") or r.get("nama_kabkota") or r.get("kabkota")
-
-        # Buat payload kompatibel dengan sheet
-        item = dict(r)  # keep original keys too
-        for _k, _v in list(item.items()):
-            item[_k] = _json_safe_value(_v)
-        if kode is not None:
-            item["kode_lokasi"] = str(kode).strip()
-            item["id_lokasi"] = str(kode).strip()
-        if kabkota is not None:
-            item["kabupaten_kota"] = str(kabkota).strip()
-            item["nama_kabkota"] = str(kabkota).strip()
-
-        # Normalisasi string fields (kalau ada)
-        for k in ("jenis_lokasi","status_lokasi","tingkat_akses","kondisi","nama_lokasi","alamat"):
-            if k in item and item[k] is not None:
-                item[k] = str(item[k]).strip()
-
-        # lat/lon biarkan numeric atau string, yang penting truthy saat ada
-        out.append(item)
-
-    # Optional sort agar konsisten (posko dulu, lalu alfabet)
-    try:
-        out.sort(key=lambda x: (str(x.get("jenis_lokasi") or ""), str(x.get("kabupaten_kota") or ""), str(x.get("kode_lokasi") or "")))
-    except Exception:
-        pass
-
+        out.append(
+            {
+                "id_relawan": r.get("id_relawan"),
+                "nama_relawan": r.get("nama_relawan"),
+                "kode_akses": r.get("kode_akses"),
+            }
+        )
     return out
 
-# ------------------------------------------------------------------------------
-# 4) Insert Absensi Lokasi Relawan -> tabel public.lokasi_relawan
-# ------------------------------------------------------------------------------
-def _to_float(val: Any) -> Optional[float]:
-    try:
-        if val is None:
-            return None
-        s = str(val).strip()
-        if s == "":
-            return None
-        return float(s)
-    except Exception:
-        return None
 
-
+# ------------------------------------------------------------------------------
+# 5) lokasi_relawan (absensi) - insert
+# ------------------------------------------------------------------------------
 def pg_insert_lokasi_relawan(
-    *,
     id_relawan: str,
     latitude: Any,
     longitude: Any,
     catatan: Optional[str] = None,
-    waktu: Optional[_dt.datetime] = None,
-    lokasi_text: Optional[str] = None,
-    photo_link: Optional[str] = None,
+    lokasi: Optional[str] = None,
     lokasi_posko: Optional[str] = None,
+    photo_link: Optional[str] = None,
+    waktu: Optional[datetime] = None,
 ) -> bool:
-    """Simpan absensi relawan ke PostgreSQL.
-
-    Minimal yang dipakai sekarang:
-      - latitude -> kolom latitude
-      - longitude -> kolom longitude
-      - catatan -> kolom catatan
-
-    Kolom lain masih boleh NULL.
-    """
     table = _get_env("PG_LOKASI_RELAWAN_TABLE", "public.lokasi_relawan")
 
-    lat = _to_float(latitude)
-    lon = _to_float(longitude)
-    if lat is None or lon is None:
+    lat_f = _to_float(latitude)
+    lon_f = _to_float(longitude)
+
+    if lat_f is None or lon_f is None:
         raise ValueError("latitude/longitude tidak valid")
 
-    if waktu is None:
-        waktu = _dt.datetime.now(_dt.timezone.utc)
+    w = waktu or datetime.now(timezone.utc).replace(tzinfo=None)
 
-    sql = f"""
-        INSERT INTO {table}
-            (id_relawan, waktu, latitude, longitude, catatan, lokasi_text, photo_link, lokasi_posko)
-        VALUES
-            (%s, %s, %s, %s, %s, %s, %s, %s);
-    """
-
-    rowcount = pg_execute(
-        sql,
+    # Urutan percobaan (biar tahan beda nama kolom/atribut)
+    attempts: List[Tuple[str, Tuple[Any, ...]]] = [
         (
-            str(id_relawan or "").strip(),
-            waktu,
-            lat,
-            lon,
-            (catatan or "").strip() if catatan is not None else None,
-            (lokasi_text or "").strip() if lokasi_text is not None else None,
-            (photo_link or "").strip() if photo_link is not None else None,
-            (lokasi_posko or "").strip() if lokasi_posko is not None else None,
+            f"""
+            INSERT INTO {table}
+            (waktu, id_relawan, latitude, longitude, catatan, lokasi, lokasi_posko, photo_link)
+            VALUES (%s,%s,%s,%s,%s,%s,%s,%s)
+            """,
+            (w, id_relawan, lat_f, lon_f, catatan, lokasi, lokasi_posko, photo_link),
         ),
+        (
+            f"""
+            INSERT INTO {table}
+            (waktu, id_relawan, latitude, longitude, catatan)
+            VALUES (%s,%s,%s,%s,%s)
+            """,
+            (w, id_relawan, lat_f, lon_f, catatan),
+        ),
+        (
+            f"""
+            INSERT INTO {table}
+            (timestamp, id_relawan, latitude, longitude, catatan)
+            VALUES (%s,%s,%s,%s,%s)
+            """,
+            (w, id_relawan, lat_f, lon_f, catatan),
+        ),
+    ]
+
+    last_err: Optional[Exception] = None
+    for sql, params in attempts:
+        try:
+            pg_execute(sql, params)
+            return True
+        except Exception as e:
+            last_err = e
+            continue
+
+    if last_err:
+        raise last_err
+    return False
+
+
+# ------------------------------------------------------------------------------
+# 6) asesmen_kesehatan / asesmen_pendidikan - insert
+# ------------------------------------------------------------------------------
+def _insert_asesmen(
+    table_env: str,
+    default_table: str,
+    id_relawan: str,
+    kode_posko: Optional[str],
+    jawaban: Dict[str, Any],
+    skor: float,
+    status: str,
+    latitude: Any,
+    longitude: Any,
+    catatan: Optional[str],
+    waktu: Optional[datetime] = None,
+    prefer_jsonb_cast: bool = True,
+) -> bool:
+    table = _get_env(table_env, default_table)
+
+    lat_f = _to_float(latitude)
+    lon_f = _to_float(longitude)
+    w = waktu or datetime.now(timezone.utc).replace(tzinfo=None)
+
+    payload = json.dumps(jawaban, ensure_ascii=False)
+
+    # Ada DB yang kolom jawaban-nya TEXT, ada yang jsonb. Kita coba 2 cara.
+    attempts: List[Tuple[str, Tuple[Any, ...]]] = []
+
+    if prefer_jsonb_cast:
+        attempts.append(
+            (
+                f"""
+                INSERT INTO {table}
+                (waktu, id_relawan, kode_posko, jawaban, skor, status, latitude, longitude, catatan)
+                VALUES (%s,%s,%s,%s::jsonb,%s,%s,%s,%s,%s)
+                """,
+                (w, id_relawan, kode_posko, payload, float(skor), status, lat_f, lon_f, catatan),
+            )
+        )
+        attempts.append(
+            (
+                f"""
+                INSERT INTO {table}
+                (waktu, id_relawan, kode_posko, jawaban, skor, status, latitude, longitude, catatan)
+                VALUES (%s,%s,%s,%s,%s,%s,%s,%s,%s)
+                """,
+                (w, id_relawan, kode_posko, payload, float(skor), status, lat_f, lon_f, catatan),
+            )
+        )
+    else:
+        attempts.append(
+            (
+                f"""
+                INSERT INTO {table}
+                (waktu, id_relawan, kode_posko, jawaban, skor, status, latitude, longitude, catatan)
+                VALUES (%s,%s,%s,%s,%s,%s,%s,%s,%s)
+                """,
+                (w, id_relawan, kode_posko, payload, float(skor), status, lat_f, lon_f, catatan),
+            )
+        )
+        attempts.append(
+            (
+                f"""
+                INSERT INTO {table}
+                (waktu, id_relawan, kode_posko, jawaban, skor, status, latitude, longitude, catatan)
+                VALUES (%s,%s,%s,%s::jsonb,%s,%s,%s,%s,%s)
+                """,
+                (w, id_relawan, kode_posko, payload, float(skor), status, lat_f, lon_f, catatan),
+            )
+        )
+
+    last_err: Optional[Exception] = None
+    for sql, params in attempts:
+        try:
+            pg_execute(sql, params)
+            return True
+        except Exception as e:
+            last_err = e
+            continue
+
+    if last_err:
+        raise last_err
+    return False
+
+
+def pg_insert_asesmen_kesehatan(
+    id_relawan: str,
+    kode_posko: Optional[str],
+    jawaban: Dict[str, Any],
+    skor: float,
+    status: str,
+    latitude: Any,
+    longitude: Any,
+    catatan: Optional[str] = None,
+    waktu: Optional[datetime] = None,
+) -> bool:
+    return _insert_asesmen(
+        table_env="PG_ASESMEN_KESEHATAN_TABLE",
+        default_table="public.asesmen_kesehatan",
+        id_relawan=id_relawan,
+        kode_posko=kode_posko,
+        jawaban=jawaban,
+        skor=skor,
+        status=status,
+        latitude=latitude,
+        longitude=longitude,
+        catatan=catatan,
+        waktu=waktu,
+        prefer_jsonb_cast=True,
     )
-    return rowcount >= 1
+
+
+def pg_insert_asesmen_pendidikan(
+    id_relawan: str,
+    kode_posko: Optional[str],
+    jawaban: Dict[str, Any],
+    skor: float,
+    status: str,
+    latitude: Any,
+    longitude: Any,
+    catatan: Optional[str] = None,
+    waktu: Optional[datetime] = None,
+) -> bool:
+    return _insert_asesmen(
+        table_env="PG_ASESMEN_PENDIDIKAN_TABLE",
+        default_table="public.asesmen_pendidikan",
+        id_relawan=id_relawan,
+        kode_posko=kode_posko,
+        jawaban=jawaban,
+        skor=skor,
+        status=status,
+        latitude=latitude,
+        longitude=longitude,
+        catatan=catatan,
+        waktu=waktu,
+        prefer_jsonb_cast=False,
+    )

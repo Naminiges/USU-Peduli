@@ -114,6 +114,14 @@
             <button class="btn btn-success feature-btn" data-bs-toggle="modal" data-bs-target="#absensiModal">
                 <i class="fas fa-location-dot"></i> Absensi Lokasi
             </button>
+            {#Tambah Untuk Asesmen Kesehatan#}
+            <button class="btn btn-success feature-btn" data-bs-toggle="modal" data-bs-target="#asesmenKesehatanModal">
+                 <i class="fas fa-heartbeat me-2"></i> Asesmen Kesehatan
+            </button>
+            {#Tambah Untuk Asesmen Pendidikan#}
+            <button class="btn btn-success feature-btn" data-bs-toggle="modal" data-bs-target="#asesmenPendidikanModal">
+                <i class="fas fa-graduation-cap me-2"></i> Asesmen Pendidikan
+            </button>
             <form action="{{ url_for('logout') }}" method="post" style="display:inline;" id="logoutForm">
                 <button type="button" class="btn btn-danger feature-btn w-100" data-bs-toggle="modal" data-bs-target="#logoutConfirmModal"> <i class="fas fa-sign-out-alt"></i>
                     Logout
@@ -320,6 +328,173 @@
             </div>
         </div>
     </div>
+
+    <!-- ===================== MODAL ASESMEN KESEHATAN ===================== -->
+<div class="modal fade" id="asesmenKesehatanModal" tabindex="-1" aria-labelledby="asesmenKesehatanLabel" aria-hidden="true">
+  <div class="modal-dialog modal-lg modal-dialog-centered">
+    <div class="modal-content">
+      <form method="POST" action="{{ url_for('submit_asesmen_kesehatan') }}">
+        <div class="modal-header">
+          <h5 class="modal-title" id="asesmenKesehatanLabel">Asesmen Kesehatan</h5>
+          <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+        </div>
+
+        <div class="modal-body">
+          <!-- Lokasi GPS Saat Ini (Asesmen Kesehatan) -->
+<div class="mb-3 p-3 bg-light rounded">
+  <div class="d-flex justify-content-between align-items-center mb-2">
+    <div class="fw-bold">
+      <i class="fas fa-map-marker-alt"></i> Lokasi GPS Saat Ini:
+    </div>
+    <button type="button"
+            class="btn btn-success btn-sm shadow-sm"
+            title="Refresh Lokasi"
+            style="border-radius: 20px;"
+            onclick="getLocationForAsesmen('kesehatan')">
+      <i class="fas fa-sync-alt"></i>
+    </button>
+  </div>
+
+  <div class="text-success fw-bold">
+    <span id="kesehatan-location-text">belum diambil</span>
+  </div>
+</div>
+
+<input type="hidden" id="kesehatan_lat" name="latitude">
+<input type="hidden" id="kesehatan_lon" name="longitude">
+
+<div class="mb-3">
+            <label class="form-label">Pilih Posko</label>
+            <select class="form-select" name="kode_posko" required>
+              <option value="" selected disabled>-- pilih posko --</option>
+              {% for p in data_posko %}
+                <option value="{{ p.kode }}">{{ p.kode }} - {{ p.nama }}</option>
+              {% endfor %}
+            </select>
+          </div>
+
+          <!-- 5 pertanyaan skala 1-5 -->
+          {% set kesehatan_questions = [
+    "1. Ada pengungsi sakit/cedera yang butuh penanganan segera?",
+    "2. Ketersediaan obat-obatan dan P3K mencukupi?",
+    "3. Ketersediaan tenaga medis (dokter/perawat/bidan) di posko?",
+    "4. Ketersediaan air bersih untuk kebutuhan minum & kebersihan?",
+    "5. Sanitasi/toilet dan pengelolaan limbah di posko memadai?",
+] %}
+{% for i in range(1,6) %}
+          <div class="mb-3">
+            <label class="form-label">{{ kesehatan_questions[i-1] }}</label>
+            <select class="form-select" name="p{{ i }}" required>
+              <option value="1">1</option>
+              <option value="2">2</option>
+              <option value="3" selected>3</option>
+              <option value="4">4</option>
+              <option value="5">5</option>
+            </select>
+          </div>
+          {% endfor %}
+
+          <div class="mb-3">
+            <label class="form-label">Catatan (opsional)</label>
+            <textarea class="form-control" name="catatan" rows="3"></textarea>
+          </div>
+        </div>
+
+        <div class="modal-footer">
+          <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Batal</button>
+          <button type="submit" class="btn btn-success" id="btn-submit-kesehatan" disabled>Submit</button>
+        </div>
+      </form>
+    </div>
+  </div>
+</div>
+
+<!-- ===================== MODAL ASESMEN PENDIDIKAN ===================== -->
+<div class="modal fade" id="asesmenPendidikanModal" tabindex="-1" aria-labelledby="asesmenPendidikanLabel" aria-hidden="true">
+  <div class="modal-dialog modal-lg modal-dialog-centered">
+    <div class="modal-content">
+      <form method="POST" action="{{ url_for('submit_asesmen_pendidikan') }}">
+        <div class="modal-header">
+          <h5 class="modal-title" id="asesmenPendidikanLabel">Asesmen Pendidikan</h5>
+          <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+        </div>
+
+        <div class="modal-body">
+          <!-- Lokasi GPS Saat Ini (Asesmen Pendidikan) -->
+<div class="mb-3 p-3 bg-light rounded">
+  <div class="d-flex justify-content-between align-items-center mb-2">
+    <div class="fw-bold">
+      <i class="fas fa-map-marker-alt"></i> Lokasi GPS Saat Ini:
+    </div>
+    <button type="button"
+            class="any class="btn btn-success btn-sm shadow-sm"
+            title="Refresh Lokasi"
+            style="border-radius: 20px;"
+            onclick="getLocationForAsesmen('pendidikan')">
+      <i class="fas fa-sync-alt"></i>
+    </button>
+  </div>
+
+  <div class="text-success fw-bold">
+    <span id="pendidikan-location-text">belum diambil</span>
+  </div>
+</div>
+
+<input type="hidden" id="pendidikan_lat" name="latitude">
+<input type="hidden" id="pendidikan_lon" name="longitude">
+
+<div class="mb-3">
+            <label class="form-label">Pilih Posko</label>
+            <select class="form-select" name="kode_posko" required>
+              <option value="" selected disabled>-- pilih posko --</option>
+              {% for p in data_posko %}
+                <option value="{{ p.kode }}">{{ p.kode }} - {{ p.nama }}</option>
+              {% endfor %}
+            </select>
+          </div>
+
+
+          <!-- 10 pertanyaan skala 1-5 -->
+          {% set pendidikan_questions = [
+    "1. Ruang belajar sementara tersedia dan layak digunakan?",
+    "2. Anak usia sekolah terdata dan sudah terlayani kegiatan belajar?",
+    "3. Ada tenaga pengajar/relawan pendidikan yang mendampingi?",
+    "4. Alat tulis dan bahan ajar tersedia?",
+    "5. Akses listrik/charging memadai untuk mendukung kegiatan belajar?",
+    "6. Keamanan area belajar (aman dari risiko) terjaga?",
+    "7. Jadwal/kegiatan belajar rutin berjalan?",
+    "8. Dukungan psikososial anak (trauma/stres) tersedia/terhubung?",
+    "9. Fasilitas sanitasi ramah anak memadai?",
+    "10. Kebutuhan prioritas pendidikan sudah diidentifikasi dan ditindaklanjuti?",
+] %}
+{% for i in range(1,11) %}
+          <div class="mb-3">
+            <label class="form-label">{{ pendidikan_questions[i-1] }}</label>
+            <select class="form-select" name="p{{ i }}" required>
+              <option value="1">1</option>
+              <option value="2">2</option>
+              <option value="3" selected>3</option>
+              <option value="4">4</option>
+              <option value="5">5</option>
+            </select>
+          </div>
+          {% endfor %}
+
+          <div class="mb-3">
+            <label class="form-label">Catatan (opsional)</label>
+            <textarea class="form-control" name="catatan" rows="3"></textarea>
+          </div>
+        </div>
+
+        <div class="modal-footer">
+          <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Batal</button>
+          <button type="submit" class="btn btn-success" id="btn-submit-pendidikan" disabled>Submit</button>
+        </div>
+      </form>
+    </div>
+  </div>
+</div>
+
 
 
     <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/js/bootstrap.bundle.min.js"></script>
@@ -1052,6 +1227,107 @@
             });
         });
     </script>
+
+<!-- ===================================================================== -->
+    <!-- ASESMEN JS (baru) - hanya untuk enable submit + isi lat/lon otomatis   -->
+    <!-- ===================================================================== -->
+    <script>
+      (function () {
+        function setText(id, text) {
+          var el = document.getElementById(id);
+          if (el) el.innerText = text;
+        }
+
+        function setValue(id, val) {
+          var el = document.getElementById(id);
+          if (el) el.value = val;
+        }
+
+        function setDisabled(id, disabled) {
+          var el = document.getElementById(id);
+          if (el) el.disabled = disabled;
+        }
+
+        function prettyCoords(lat, lon, acc) {
+          var t = "Lat: " + lat.toFixed(6) + ", Lon: " + lon.toFixed(6);
+          if (typeof acc === "number") t += " (±" + Math.round(acc) + "m)";
+          return t;
+        }
+
+        window.getLocationForAsesmen = function(kind) {
+          // kind: "kesehatan" | "pendidikan"
+          var latId = kind + "_lat";
+          var lonId = kind + "_lon";
+          var textId = kind + "-location-text";
+          var btnId = "btn-submit-" + kind;
+
+          setDisabled(btnId, true);
+          setText(textId, "Mencari lokasi GPS...");
+
+          if (!navigator.geolocation) {
+            setText(textId, "Browser tidak mendukung GPS.");
+            setDisabled(btnId, false);
+            return;
+          }
+
+          navigator.geolocation.getCurrentPosition(
+            function (pos) {
+              var lat = pos.coords.latitude;
+              var lon = pos.coords.longitude;
+              setValue(latId, lat);
+              setValue(lonId, lon);
+              setText(textId, "Lokasi ditemukan! " + prettyCoords(lat, lon, pos.coords.accuracy));
+              setDisabled(btnId, false);
+            },
+            function (err) {
+              setText(textId, "Gagal ambil lokasi GPS (" + (err && err.message ? err.message : "unknown") + "). Anda tetap bisa submit tanpa koordinat.");
+              setDisabled(btnId, false);
+            },
+            { enableHighAccuracy: true, timeout: 10000, maximumAge: 0 }
+          );
+        };
+
+        document.addEventListener("DOMContentLoaded", function () {
+          // Saat modal dibuka -> refresh lokasi + enable tombol submit
+          var mk = document.getElementById("asesmenKesehatanModal");
+          if (mk) {
+            mk.addEventListener("show.bs.modal", function () {
+              setValue("kesehatan_lat", "");
+              setValue("kesehatan_lon", "");
+              setDisabled("btn-submit-kesehatan", true);
+              window.getLocationForAsesmen("kesehatan");
+            });
+          }
+
+          var mp = document.getElementById("asesmenPendidikanModal");
+          if (mp) {
+            mp.addEventListener("show.bs.modal", function () {
+              setValue("pendidikan_lat", "");
+              setValue("pendidikan_lon", "");
+              setDisabled("btn-submit-pendidikan", true);
+              window.getLocationForAsesmen("pendidikan");
+            });
+          }
+
+          // Guard tambahan: kalau user langsung klik Submit sementara masih disabled/koordinat kosong
+          var fk = document.getElementById("asesmenKesehatanForm");
+          if (fk) {
+            fk.addEventListener("submit", function () {
+              // pastikan button tidak stuck disabled kalau GPS lama
+              setDisabled("btn-submit-kesehatan", false);
+            });
+          }
+
+          var fp = document.getElementById("asesmenPendidikanForm");
+          if (fp) {
+            fp.addEventListener("submit", function () {
+              setDisabled("btn-submit-pendidikan", false);
+            });
+          }
+        });
+      })();
+    </script>
+
 </body>
 
 </html>

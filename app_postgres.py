@@ -9,25 +9,30 @@ import math
 from pathlib import Path
 from dotenv import load_dotenv
 
+load_dotenv()
+
 # ------------------------------------------------------------------------------
-# PostgreSQL helper (fallback ketika Google Sheets kosong / down)
+# OPTIONAL: PostgreSQL helper (fallback/primary) - TIDAK mengubah logic lama
 # ------------------------------------------------------------------------------
 try:
     from pg_data import (
         pg_get_status_map,
-        ensure_kabkota_geojson_static,
+        pg_get_data_lokasi,
         pg_get_relawan_list,
         pg_insert_lokasi_relawan,
-        pg_get_data_lokasi_list,
+        pg_insert_asesmen_kesehatan,
+        pg_insert_asesmen_pendidikan,
+        ensure_kabkota_geojson_static,
     )
-except Exception as _pg_import_err:
+except Exception as _pg_err:
     pg_get_status_map = None
-    ensure_kabkota_geojson_static = None
+    pg_get_data_lokasi = None
     pg_get_relawan_list = None
     pg_insert_lokasi_relawan = None
-    pg_get_data_lokasi_list = None
+    pg_insert_asesmen_kesehatan = None
+    pg_insert_asesmen_pendidikan = None
+    ensure_kabkota_geojson_static = None
 
-load_dotenv()
 
 app = Flask(__name__)
 # HARUS diganti dengan kunci rahasia yang kuat untuk mengamankan sesi
@@ -76,100 +81,125 @@ def get_sheet_data(sheet_name):
         print(f"Error reading sheet {sheet_name}: {e}")
         return []
 
-# ------------------------------------------------------------------------------
-# Status bencana kab/kota:
-# - Prioritas: Google Sheets (biar kompatibel dengan code lama)
-# - Fallback: PostgreSQL (tabel public.data_status_kabkota)
-# ------------------------------------------------------------------------------
-def get_status_map_any():
-    # 1) Coba dari Google Sheets (code lama)
-    data_status = get_sheet_data("status_bencana_kabkota")
-    status_map = {}
-    for row in data_status:
-        nama_kota = row.get('kabkota')
-        status = row.get('status_bencana')
-        if nama_kota and status:
-            status_map[nama_kota.strip().upper()] = str(status).strip()
-
-    # Kalau Sheet ada datanya, pakai itu
-    if status_map:
-        return status_map, "sheet"
-
-    # 2) Fallback ke PostgreSQL
-    if pg_get_status_map:
-        try:
-            pg_map = pg_get_status_map()
-            if pg_map:
-                return pg_map, "postgres"
-        except Exception as e:
-            print(f"Warning: gagal ambil status_map dari Postgres: {e}")
-
-    return {}, "none"
-
-
-# ------------------------------------------------------------------------------
-# GeoJSON kab/kota untuk polygon fill (static/data/kabkota_sumut.json)
-# - Tidak mengubah front-end: map.html tetap bisa load file yang sama
-# ------------------------------------------------------------------------------
-
-# ------------------------------------------------------------------------------
-# Data relawan:
-# - Prioritas: PostgreSQL (tabel public.data_relawan) jika tersedia
-# - Fallback: Google Sheets (sheet 'data_relawan')
-# ------------------------------------------------------------------------------
-def get_relawan_list_any():
-    # 1) Coba dari Postgres dulu (karena sudah ada tabel data_relawan)
-    if pg_get_relawan_list:
-        try:
-            rows = pg_get_relawan_list()
-            if rows:
-                return rows
-        except Exception as e:
-            print(f"Warning: gagal ambil data_relawan dari Postgres: {e}")
-
-    # 2) Fallback ke Google Sheets (code lama)
-    return get_sheet_data("data_relawan")
-
-# ------------------------------------------------------------------------------
-# Data lokasi:
-# - Bisa dari PostgreSQL (tabel public.data_lokasi)
-# - Fallback ke Google Sheets (sheet 'data_lokasi')
-#
-# Catatan:
-#   Default: pakai PostgreSQL (sesuai deployment baru). Set env kalau mau pakai Sheets.
-#   Kalau mau paksa pakai Postgres, set env:
-#       PREFER_DATA_LOKASI=postgres
-# ------------------------------------------------------------------------------
-def get_data_lokasi_any():
-    prefer = (os.environ.get("PREFER_DATA_LOKASI") or "postgres").strip().lower()
-
-    def _from_sheet():
-        return get_sheet_data("data_lokasi")
-
-    def _from_pg():
-        if pg_get_data_lokasi_list:
-            return pg_get_data_lokasi_list()
-        return []
-
-    if prefer == "postgres":
-        rows = _from_pg()
-        if rows:
-            return rows
-        return _from_sheet()
-
-    # default: sheet dulu
-    rows = _from_sheet()
-    if rows:
-        return rows
-    return _from_pg()
+def _pg_enabled() -> bool:
+    return bool(os.environ.get("DATABASE_URL"))
 
 
 def ensure_kabkota_geojson_ready():
-    if ensure_kabkota_geojson_static:
+    """Generate static/data/kabkota_sumut.json dari Postgres bila perlu (tanpa ubah front-end)."""
+    if not _pg_enabled() or ensure_kabkota_geojson_static is None:
+        return None
+    try:
+        return ensure_kabkota_geojson_static(app.root_path)
+    except Exception as e:
+        print(f"[PG] ensure_kabkota_geojson_ready gagal: {e}")
+        return None
+
+
+def get_status_map_any() -> dict:
+    """
+    Prefer Google Sheets (lama). Kalau kosong/gagal -> fallback ke Postgres.
+    Output: {KABKOTA_UPPER: status}
+    """
+    # 1) Sheets
+    status_map = {}
+    try:
+        data_status = get_sheet_data("status_bencana_kabkota")
+        for row in data_status:
+            nama_kota = row.get('kabkota')
+            status = row.get('status_bencana')
+            if nama_kota and status:
+                status_map[nama_kota.strip().upper()] = str(status).strip()
+    except Exception as e:
+        print(f"[Sheets] get_status_map_any error: {e}")
+
+    if status_map:
+        return status_map
+
+    # 2) Postgres
+    if _pg_enabled() and pg_get_status_map is not None:
         try:
-            ensure_kabkota_geojson_static(app.root_path)
+            return pg_get_status_map() or {}
         except Exception as e:
-            print(f"Warning: gagal sync kabkota_sumut.json dari Postgres: {e}")
+            print(f"[PG] get_status_map_any error: {e}")
+
+    return {}
+
+
+def get_data_lokasi_any() -> list:
+    """
+    Prefer Google Sheets (lama). Kalau kosong/gagal -> fallback ke Postgres.
+    Output: list dict lokasi (RAW, bisa ada yang belum punya koordinat).
+    """
+    # 1) Sheets (raw)
+    try:
+        data_lokasi_raw = get_sheet_data("data_lokasi")
+        if data_lokasi_raw:
+            return data_lokasi_raw
+    except Exception as e:
+        print(f"[Sheets] get_data_lokasi_any error: {e}")
+
+    # 2) Postgres
+    if _pg_enabled() and pg_get_data_lokasi is not None:
+        try:
+            # Postgres versi awal: kalau ada baris tanpa koordinat, tetap boleh (tidak difilter di sini).
+            return pg_get_data_lokasi() or []
+        except Exception as e:
+            print(f"[PG] get_data_lokasi_any error: {e}")
+
+    return []
+
+
+def get_relawan_list_any() -> list:
+    """Prefer Sheets -> fallback Postgres."""
+    relawan_list = []
+    try:
+        relawan_list = get_relawan_list_any()
+    except Exception as e:
+        print(f"[Sheets] get_relawan_list_any error: {e}")
+
+    if relawan_list:
+        return relawan_list
+
+    if _pg_enabled() and pg_get_relawan_list is not None:
+        try:
+            return pg_get_relawan_list() or []
+        except Exception as e:
+            print(f"[PG] get_relawan_list_any error: {e}")
+
+    return []
+
+
+def write_lokasi_relawan_any(data: dict) -> bool:
+    """
+    Simpan absensi:
+    - Prefer Postgres (lokasi_relawan)
+    - Kalau gagal -> coba append ke Sheets (lokasi_relawan)
+    """
+    # Prefer Postgres
+    if _pg_enabled() and pg_insert_lokasi_relawan is not None:
+        try:
+            return bool(
+                pg_insert_lokasi_relawan(
+                    id_relawan=str(data.get("id_relawan") or "UNKNOWN"),
+                    latitude=data.get("latitude"),
+                    longitude=data.get("longitude"),
+                    catatan=data.get("catatan"),
+                    lokasi=data.get("lokasi"),
+                    lokasi_posko=data.get("lokasi_posko"),
+                    photo_link=data.get("photo_link"),
+                )
+            )
+        except Exception as e:
+            print(f"[PG] write_lokasi_relawan_any error: {e}")
+
+    # Fallback Sheets
+    try:
+        return bool(append_to_sheet("lokasi_relawan", data))
+    except Exception as e:
+        print(f"[Sheets] write_lokasi_relawan_any error: {e}")
+        return False
+
 
 def get_next_id(sheet_name, prefix):
     """Fungsi pembantu untuk mendapatkan ID berikutnya (misal R0001, L0001)."""
@@ -331,8 +361,10 @@ def api_refresh_map():
         # Ambil data terbaru dari Google Sheets
         data_lokasi_raw = get_data_lokasi_any()
         data_lokasi = [d for d in data_lokasi_raw if d.get('latitude') and d.get('longitude')]
-        # Ambil status bencana terbaru (Sheets -> fallback Postgres)
-        status_map, _status_source = get_status_map_any()
+        
+        # Ambil status bencana terbaru
+        status_map = get_status_map_any()
+        
         return jsonify({
             'success': True,
             'data_lokasi': data_lokasi,
@@ -350,14 +382,13 @@ def api_refresh_map():
 
 @app.route("/")
 def map_view():
-    # Pastikan GeoJSON polygon kab/kota tersedia (Sheets tidak disentuh)
-    ensure_kabkota_geojson_ready()
     data_lokasi_raw = get_data_lokasi_any()
     data_lokasi = [d for d in data_lokasi_raw if d.get('latitude') and d.get('longitude')]
 
     stok_gudang = get_sheet_data("stok_gudang")
-    # Ambil status bencana terbaru (Sheets -> fallback Postgres)
-    status_map, _status_source = get_status_map_any()
+
+    status_map = get_status_map_any()
+
     rekap_kabkota = get_sheet_data("rekapitulasi_data_kabkota")
     latest_rekap = {}
     for row in rekap_kabkota:
@@ -511,8 +542,6 @@ def cek_wilayah_geojson(user_lat, user_lon):
     Looping semua wilayah di GeoJSON Sumut untuk mencari user ada di mana.
     """
     try:
-        # Pastikan file GeoJSON ada (kalau belum, ambil dari Postgres)
-        ensure_kabkota_geojson_ready()
         json_path = os.path.join(app.root_path, 'static', 'data', 'kabkota_sumut.json')
         
         with open(json_path, 'r') as f:
@@ -620,28 +649,140 @@ def submit_absensi():
         'photo_link': ''
     }
 
-    # --- SIMPAN ABSENSI ---
-    # Prioritas: PostgreSQL (tabel public.lokasi_relawan)
-    # Fallback: Google Sheets (sheet 'lokasi_relawan')
-    saved_pg = False
-    if pg_insert_lokasi_relawan:
-        try:
-            saved_pg = pg_insert_lokasi_relawan(
-                id_relawan=session.get('id_relawan', 'UNKNOWN'),
-                latitude=latitude,
-                longitude=longitude,
-                catatan=catatan,
-                # lokasi_text/photo_link/lokasi_posko belum dipakai dulu -> NULL
-            )
-        except Exception as e:
-            print(f"Warning: gagal insert absensi ke Postgres: {e}")
-            saved_pg = False
-
-    if not saved_pg:
-        append_to_sheet("lokasi_relawan", data)
+    write_lokasi_relawan_any(data)
     msg_type = "success" if lokasi_terdeteksi != "Luar Wilayah Sumut" else "warning"
     flash(f"Absensi berhasil! Posisi Anda terdeteksi di: {lokasi_terdeteksi}", msg_type)
     return redirect(url_for('map_view'))
+
+
+# ==============================================================================
+# 4. ASESMEN (KESEHATAN & PENDIDIKAN) -> POSTGRES
+# ==============================================================================
+def _ask_int_1_5(val, default: int = 1) -> int:
+    try:
+        v = int(val)
+        if v < 1: v = 1
+        if v > 5: v = 5
+        return v
+    except Exception:
+        return default
+
+
+def _require_login():
+    if not session.get('logged_in'):
+        flash("Silahkan login terlebih dahulu!", "danger")
+        return False
+    return True
+
+
+@app.route("/submit_asesmen_kesehatan", methods=["POST"])
+def submit_asesmen_kesehatan():
+    if not _require_login():
+        return redirect(url_for('map_view'))
+
+    if not _pg_enabled() or pg_insert_asesmen_kesehatan is None:
+        flash("Fitur asesmen belum aktif: DATABASE_URL/pg_data belum siap.", "danger")
+        return redirect(url_for('map_view'))
+
+    # Form data
+    kode_posko = request.form.get("kode_posko") or None
+    lat = request.form.get("latitude")
+    lon = request.form.get("longitude")
+    catatan = request.form.get("catatan") or None
+
+    p1 = _ask_int_1_5(request.form.get("p1"))
+    p2 = _ask_int_1_5(request.form.get("p2"))
+    p3 = _ask_int_1_5(request.form.get("p3"))
+    p4 = _ask_int_1_5(request.form.get("p4"))
+    p5 = _ask_int_1_5(request.form.get("p5"))
+
+    weights = {"p1": 1.0, "p2": 1.0, "p3": 1.0, "p4": 1.5, "p5": 1.5}
+    answers = {"p1": p1, "p2": p2, "p3": p3, "p4": p4, "p5": p5}
+
+    skor = (
+        answers["p1"] * weights["p1"] +
+        answers["p2"] * weights["p2"] +
+        answers["p3"] * weights["p3"] +
+        answers["p4"] * weights["p4"] +
+        answers["p5"] * weights["p5"]
+    )
+
+    max_skor = 5*weights["p1"] + 5*weights["p2"] + 5*weights["p3"] + 5*weights["p4"] + 5*weights["p5"]
+    skor_100 = (skor / max_skor) * 100.0
+
+    if skor_100 >= 80:
+        status = "Kritis"
+    elif skor_100 >= 60:
+        status = "Waspada"
+    else:
+        status = "Aman"
+
+    try:
+        pg_insert_asesmen_kesehatan(
+            id_relawan=session.get('id_relawan', 'UNKNOWN'),
+            kode_posko=kode_posko,
+            jawaban=answers,
+            skor=float(skor_100),
+            status=status,
+            latitude=lat,
+            longitude=lon,
+            catatan=catatan,
+        )
+        flash(f"Asesmen Kesehatan tersimpan (Status: {status}, Skor: {skor_100:.1f}).", "success")
+    except Exception as e:
+        flash(f"Gagal simpan asesmen kesehatan: {e}", "danger")
+
+    return redirect(url_for('map_view'))
+
+
+@app.route("/submit_asesmen_pendidikan", methods=["POST"])
+def submit_asesmen_pendidikan():
+    if not _require_login():
+        return redirect(url_for('map_view'))
+
+    if not _pg_enabled() or pg_insert_asesmen_pendidikan is None:
+        flash("Fitur asesmen belum aktif: DATABASE_URL/pg_data belum siap.", "danger")
+        return redirect(url_for('map_view'))
+
+    kode_posko = request.form.get("kode_posko") or None
+    lat = request.form.get("latitude")
+    lon = request.form.get("longitude")
+    catatan = request.form.get("catatan") or None
+
+    # 10 soal (skala 1-5)
+    answers = {f"p{i}": _ask_int_1_5(request.form.get(f"p{i}")) for i in range(1, 11)}
+
+    weights = {"p1":1.4,"p2":1.0,"p3":1.0,"p4":1.0,"p5":0.8,"p6":1.5,"p7":0.9,"p8":1.3,"p9":0.8,"p10":0.9}
+
+    weighted_sum = sum(answers[k] * weights[k] for k in answers)
+    max_sum = sum(5 * weights[k] for k in answers)
+
+    skor_100 = (weighted_sum / max_sum) * 100.0
+
+    if skor_100 >= 80:
+        status = "Kritis"
+    elif skor_100 >= 60:
+        status = "Waspada"
+    else:
+        status = "Aman"
+
+    try:
+        pg_insert_asesmen_pendidikan(
+            id_relawan=session.get('id_relawan', 'UNKNOWN'),
+            kode_posko=kode_posko,
+            jawaban=answers,
+            skor=float(skor_100),
+            status=status,
+            latitude=lat,
+            longitude=lon,
+            catatan=catatan,
+        )
+        flash(f"Asesmen Pendidikan tersimpan (Status: {status}, Skor: {skor_100:.1f}).", "success")
+    except Exception as e:
+        flash(f"Gagal simpan asesmen pendidikan: {e}", "danger")
+
+    return redirect(url_for('map_view'))
+
 
 if __name__ == "__main__":
     app.run(debug=True)
