@@ -365,11 +365,20 @@ def api_refresh_map():
         
         # Ambil status bencana terbaru
         status_map = get_status_map_any()
-        
+
+        # Lokasi relawan (Postgres) - marker di map
+        relawan_lokasi = []
+        if pg_get_relawan_locations_last24h:
+            try:
+                relawan_lokasi = pg_get_relawan_locations_last24h(24)
+            except Exception as e:
+                print(f"Warning: gagal ambil lokasi_relawan dari Postgres: {e}")
+
         return jsonify({
             'success': True,
             'data_lokasi': data_lokasi,
-            'status_map': status_map
+            'status_map': status_map,
+            'relawan_lokasi': relawan_lokasi,
         })
     except Exception as e:
         return jsonify({
@@ -406,13 +415,20 @@ def map_view():
             kode = d.get('kode_lokasi')
             nama = d.get('nama_lokasi') or d.get('kabupaten_kota') or kode
             data_posko_list.append({'kode': kode, 'nama': nama})
-    
+    # Lokasi relawan (Postgres) - marker di map (ambil last 24 jam)
+    relawan_lokasi = []
+    if pg_get_relawan_locations_last24h:
+        try:
+            relawan_lokasi = pg_get_relawan_locations_last24h(24)
+        except Exception as e:
+            print(f"Warning: gagal ambil lokasi_relawan dari Postgres: {e}")
     data_barang = [d.get('kode_barang') for d in get_sheet_data("master_logistik")]
 
     return render_template("map.html", 
                            data_lokasi=json.dumps(data_lokasi), 
                            stok_gudang=stok_gudang, 
                            rekap_kabkota=list(latest_rekap.values()),
+                           relawan_lokasi=json.dumps(relawan_lokasi),
                            relawan_list=data_relawan,
                            data_posko=data_posko_list,
                            data_barang=data_barang,

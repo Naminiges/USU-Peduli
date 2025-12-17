@@ -502,6 +502,7 @@
     <script>
         // Data Lokasi dari Flask
         let dataLokasi = JSON.parse('{{ data_lokasi | safe }}');
+        let relawanLokasi = JSON.parse('{{ relawan_lokasi | safe }}');
 
         // Inisialisasi Peta
         var map = L.map('map').setView([2.3693, 99.0763], 9); // Koordinat tengah Sumatera Utara
@@ -510,6 +511,7 @@
         
         // Layer group untuk marker lokasi (agar bisa dihapus saat refresh)
         let markerLayerGroup = L.layerGroup().addTo(map);
+        let relawanLayerGroup = L.layerGroup().addTo(map);
 
         // 2. Fungsi Penentu Warna
         function getColorByStatus(status) {
@@ -700,6 +702,40 @@
                 popupAnchor: [0, -40]
             });
         }
+        {#Relawan Marker#}
+        function getRelawanIcon() {
+  const iconHtml = `
+    <div style="
+      background-color:#0ea5e9;width:40px;height:40px;
+      border-radius:50% 50% 50% 0;transform:rotate(-45deg);
+      display:flex;align-items:center;justify-content:center;
+      box-shadow:0 3px 10px rgba(0,0,0,.3);border:3px solid #fff;">
+      <i class="fas fa-user" style="color:#fff;transform:rotate(45deg);font-size:18px;"></i>
+    </div>`;
+  return L.divIcon({
+    html: iconHtml,
+    className: 'custom-marker-icon',
+    iconSize: [40, 40],
+    iconAnchor: [20, 40],
+    popupAnchor: [0, -40]
+  });
+}
+
+function renderRelawanMarkers(relawanData) {
+  relawanLayerGroup.clearLayers();
+  (relawanData || []).forEach(r => {
+    const lat = parseFloat(r.latitude);
+    const lon = parseFloat(r.longitude);
+    if (!isNaN(lat) && !isNaN(lon)) {
+      L.marker([lat, lon], { icon: getRelawanIcon() })
+        .addTo(relawanLayerGroup)
+        .bindPopup(
+          `<strong>${r.id_relawan || '-'} - ${r.nama_relawan || '-'}</strong><br>` +
+          `<small>${r.catatan || '-'}</small>`
+        );
+    }
+  });
+}
 
         // 4. Fungsi untuk render marker lokasi ke peta
         function renderMarkers(lokasiData) {
@@ -726,6 +762,7 @@
 
         // Render marker awal
         renderMarkers(dataLokasi);
+        renderRelawanMarkers(relawanLokasi);
 
         // ==============================================================================
         // FUNGSI REFRESH MAP
@@ -748,6 +785,7 @@
                 if (result.success) {
                     // Update data
                     dataLokasi = result.data_lokasi;
+                    relawanLokasi = result.relawan_lokasi || [];
                     statusData = result.status_map;
 
                     // Update status wilayah di peta (reload GeoJSON layer)
@@ -821,6 +859,7 @@
 
                     // Update marker lokasi
                     renderMarkers(dataLokasi);
+                    renderRelawanMarkers(relawanLokasi);
 
                     // Tampilkan notifikasi sukses (centered)
                     showNotification('Map berhasil di-refresh!', 'success', true);
