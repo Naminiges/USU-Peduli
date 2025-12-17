@@ -519,3 +519,57 @@ def pg_insert_asesmen_pendidikan(
         waktu=waktu,
         prefer_jsonb_cast=False,
     )
+
+# ------------------------------------------------------------------------------
+# 3) Lokasi Relawan (marker di peta) - ambil lokasi terakhir per relawan dalam 24 jam
+# ------------------------------------------------------------------------------
+import datetime as _dt
+from decimal import Decimal as _Decimal
+
+def _json_safe_value(v: Any) -> Any:
+    """Konversi tipe yang sering muncul dari Postgres agar aman untuk JSON."""
+    if v is None:
+        return None
+    if isinstance(v, _Decimal):
+        return float(v)
+    if isinstance(v, (_dt.datetime, _dt.date)):
+        return v.isoformat()
+    return v
+
+def _json_safe_row(row: Dict[str, Any]) -> Dict[str, Any]:
+    return {k: _json_safe_value(v) for k, v in row.items()}
+
+def pg_get_relawan_locations_last24h(hours: int = 24) -> List[Dict[str, Any]]:
+    """Ambil lokasi relawan terakhir (per relawan) dalam N jam terakhir."""
+    relawan_table = _get_env("PG_RELAWAN_TABLE", "public.data_relawan")
+    lokasi_table  = _get_env("PG_LOKASI_RELAWAN_TABLE", "public.lokasi_relawan")
+
+    sql = f"""
+        SELECT DISTINCT ON (lr.id_relawan)
+            lr.id_relawan,
+            dr.nama_relawan,
+            lr.waktu,
+            lr.latitude,
+            lr.longitude,
+            lr.catatan
+        FROM {lokasi_table} lr
+        LEFT JOIN {relawan_table} dr
+          ON dr.id_relawan = lr.id_relawan
+        WHERE lr.waktu >= NOW() - (%s * INTERVAL '1 hour')
+          AND lr.latitude IS NOT NULL
+          AND lr.longitude IS NOT NULL
+        ORDER BY lr.id_relawan, lr.waktu DESC;
+    """
+
+    rows = pg_fetchall(sql, (hours,))
+    out: List[Dict[str, Any]] = []
+    for r in rows:
+        rr = _json_safe_row(r)
+        # Pastikan lat/lon float (hindari Decimal -> error JSON)
+        try:
+            rr["latitude"] = float(rr["latitude"]) if rr.get("latitude") is not None else None
+            rr["longitude"] = float(rr["longitude"]) if rr.get("longitude") is not None else None
+        except Exception:
+            pass
+        out.append(rr)
+    return out

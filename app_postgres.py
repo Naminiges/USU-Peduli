@@ -22,6 +22,7 @@ try:
         pg_insert_lokasi_relawan,
         pg_insert_asesmen_kesehatan,
         pg_insert_asesmen_pendidikan,
+        pg_get_relawan_locations_last24h,
         ensure_kabkota_geojson_static,
     )
 except Exception as _pg_err:
