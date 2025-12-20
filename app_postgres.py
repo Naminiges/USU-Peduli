@@ -23,6 +23,8 @@ try:
         pg_get_asesmen_kesehatan_last24h,
         pg_get_asesmen_pendidikan_last24h,
         ensure_kabkota_geojson_static,
+        pg_get_logistik_permintaan_last24h,
+        pg_insert_logistik_permintaan,
         # opsional (kalau tabel ada)
         pg_get_stok_gudang,
         pg_get_master_logistik_codes,
@@ -47,6 +49,8 @@ except Exception as _pg_err:
     pg_get_rekap_kabkota_latest = None
     pg_insert_permintaan_posko = None
     pg_next_id = None
+    pg_insert_logistik_permintaan = None
+    pg_get_logistik_permintaan_last24h = None
 
 
 app = Flask(__name__)
@@ -111,7 +115,13 @@ def get_relawan_list_any() -> list:
     """Ambil daftar relawan dari Postgres untuk login."""
     if _pg_enabled() and pg_get_relawan_list is not None:
         try:
-            return pg_get_relawan_list() or []
+            lst = pg_get_relawan_list() or []
+            # Urutkan A-Z untuk dropdown login
+            try:
+                lst.sort(key=lambda x: (x.get("nama_relawan") or "").strip().lower())
+            except Exception:
+                pass
+            return lst
         except Exception as e:
             print(f"[PG] get_relawan_list_any error: {e}")
     return []
@@ -225,8 +235,6 @@ def log_permintaan_posko(data_permintaan, nama_relawan, id_relawan, nama_posko=N
         id_permintaan = sanitize_for_log(data_permintaan.get("id_permintaan", "UNKNOWN"))
         kode_posko = sanitize_for_log(data_permintaan.get("kode_posko", "UNKNOWN"))
         nama_posko_safe = sanitize_for_log(nama_posko) if nama_posko else kode_posko
-        kode_barang = sanitize_for_log(data_permintaan.get("kode_barang", "UNKNOWN"))
-        jumlah_diminta = sanitize_for_log(data_permintaan.get("jumlah_diminta", "0"))
         keterangan = sanitize_for_log(data_permintaan.get("keterangan", ""))
         status = sanitize_for_log(data_permintaan.get("status", "Draft"))
         tanggal = sanitize_for_log(data_permintaan.get("tanggal", ""))
@@ -237,8 +245,6 @@ def log_permintaan_posko(data_permintaan, nama_relawan, id_relawan, nama_posko=N
             f"ID: {id_permintaan} | "
             f"Peminta: {nama_relawan_safe} (ID: {id_relawan_safe}) | "
             f"Posko: {nama_posko_safe} ({kode_posko}) | "
-            f"Barang: {kode_barang} | "
-            f"Jumlah: {jumlah_diminta} | "
             f"Status: {status} | "
             f"Tanggal: {tanggal} | "
             f"Keterangan: {keterangan if keterangan else '(tidak ada)'}"
@@ -282,6 +288,15 @@ def api_refresh_map():
             except Exception as e:
                 print(f"Warning: gagal ambil lokasi_relawan dari Postgres: {e}")
 
+        
+        # Permintaan logistik (Postgres) - marker di map (ambil last 24 jam)
+        permintaan_logistik = []
+        if pg_get_logistik_permintaan_last24h:
+            try:
+                permintaan_logistik = pg_get_logistik_permintaan_last24h(24) or []
+            except Exception as e:
+                print(f"Warning: gagal ambil logistik_permintaan dari Postgres: {e}")
+
         return jsonify(
             {
                 "success": True,
@@ -289,7 +304,8 @@ def api_refresh_map():
                 "status_map": status_map,
                 "relawan_lokasi": relawan_lokasi,
                 "asesmen_kesehatan": pg_get_asesmen_kesehatan_last24h(24) if pg_get_asesmen_kesehatan_last24h else [],
-                "asesmen_pendidikan": pg_get_asesmen_pendidikan_last24h(24) if pg_get_asesmen_pendidikan_last24h else []
+                "asesmen_pendidikan": pg_get_asesmen_pendidikan_last24h(24) if pg_get_asesmen_pendidikan_last24h else [],
+                "permintaan_logistik": permintaan_logistik
             }
         )
     except Exception as e:
@@ -349,6 +365,14 @@ def map_view():
         except Exception as e:
             print(f"Warning: gagal ambil lokasi_relawan dari Postgres: {e}")
 
+    # Permintaan logistik (Postgres) - marker di map (ambil last 24 jam)
+    permintaan_logistik = []
+    if pg_get_logistik_permintaan_last24h:
+        try:
+            permintaan_logistik = pg_get_logistik_permintaan_last24h(24)
+        except Exception as e:
+            print(f"Warning: gagal ambil logistik_permintaan dari Postgres: {e}")
+
     data_barang = []
     if _pg_enabled() and pg_get_master_logistik_codes is not None:
         try:
@@ -369,7 +393,8 @@ def map_view():
         nama_relawan=session.get("nama_relawan", ""),
         status_map=json.dumps(status_map),
         asesmen_kesehatan=json.dumps(pg_get_asesmen_kesehatan_last24h(24) if pg_get_asesmen_kesehatan_last24h else []),
-        asesmen_pendidikan=json.dumps(pg_get_asesmen_pendidikan_last24h(24) if pg_get_asesmen_pendidikan_last24h else [])
+        asesmen_pendidikan=json.dumps(pg_get_asesmen_pendidikan_last24h(24) if pg_get_asesmen_pendidikan_last24h else []),
+        permintaan_logistik=json.dumps(permintaan_logistik)
     )
 
 
@@ -427,20 +452,21 @@ def logout():
 
 
 # ==============================================================================
-# 2. LOGIKA PERMINTAAN POSKO
+# 2. LOGIKA PERMINTAAN LOGISTIK (logistik_permintaan)
 # ==============================================================================
 @app.route("/submit_permintaan", methods=["POST"])
 def submit_permintaan():
     if not session.get("logged_in"):
         return redirect(url_for("map_view"))
 
-    if not _pg_enabled() or pg_insert_permintaan_posko is None:
+    if not _pg_enabled() or pg_insert_logistik_permintaan is None:
         flash("Fitur permintaan belum aktif: tabel/pg_data belum siap.", "danger")
         return redirect(url_for("map_view"))
 
     kode_posko = request.form.get("kode_posko")
-    kode_barang = request.form.get("kode_barang")
-    jumlah_diminta = request.form.get("jumlah_diminta")
+    keterangan = request.form.get("keterangan", "")
+    latitude = request.form.get("latitude")
+    longitude = request.form.get("longitude")
 
     # Ambil nama posko untuk log yang lebih informatif
     nama_posko = None
@@ -451,19 +477,25 @@ def submit_permintaan():
             break
 
     data = {
-        "id_permintaan": get_next_id("PG_PERMINTAAN_POSKO_TABLE", "public.permintaan_posko", "id_permintaan", "R"),
+        # id untuk log saja (di DB pakai bigserial)
+        "id_permintaan": f"LP-{datetime.datetime.now().strftime('%Y%m%d%H%M%S')}",
         "tanggal": datetime.datetime.now().strftime("%d-%B-%y"),
         "kode_posko": kode_posko,
-        "kode_barang": kode_barang,
-        "jumlah_diminta": jumlah_diminta,
+        "keterangan": keterangan,
+        "status_permintaan": "Draft",
+        # kompatibel dengan logger lama
         "status": "Draft",
-        "keterangan": request.form.get("keterangan", ""),
+        "kode_barang": "-",
+        "jumlah_diminta": "-",
+        "id_relawan": session.get("id_relawan", session.get("nama_relawan")),
         "relawan": session.get("id_relawan", session.get("nama_relawan")),
         "photo_link": "",
+        "latitude": latitude,
+        "longitude": longitude,
     }
 
     try:
-        pg_insert_permintaan_posko(data)
+        pg_insert_logistik_permintaan(data)
     except Exception as e:
         flash(f"Gagal simpan permintaan: {e}", "danger")
         return redirect(url_for("map_view"))
@@ -668,6 +700,15 @@ def submit_asesmen_kesehatan():
     lat = request.form.get("latitude")
     lon = request.form.get("longitude")
     catatan = request.form.get("catatan") or None
+    radius_in = request.form.get("radius")
+    try:
+        radius = float(radius_in) if radius_in not in (None, "") else 2.0
+    except Exception:
+        radius = 2.0
+    if radius <= 0:
+        radius = 2.0
+    if radius > 50:
+        radius = 50.0
 
     p1 = _ask_int_1_5(request.form.get("p1"))
     p2 = _ask_int_1_5(request.form.get("p2"))
@@ -712,6 +753,7 @@ def submit_asesmen_kesehatan():
             latitude=lat,
             longitude=lon,
             catatan=catatan,
+            radius=radius,
         )
         flash(f"Asesmen Kesehatan tersimpan (Status: {status}, Skor: {skor_100:.1f}).", "success")
     except Exception as e:
@@ -733,6 +775,15 @@ def submit_asesmen_pendidikan():
     lat = request.form.get("latitude")
     lon = request.form.get("longitude")
     catatan = request.form.get("catatan") or None
+    radius_in = request.form.get("radius")
+    try:
+        radius = float(radius_in) if radius_in not in (None, "") else 2.0
+    except Exception:
+        radius = 2.0
+    if radius <= 0:
+        radius = 2.0
+    if radius > 50:
+        radius = 50.0
 
     # 10 soal (skala 1-5)
     answers = {f"p{i}": _ask_int_1_5(request.form.get(f"p{i}")) for i in range(1, 11)}
@@ -772,6 +823,7 @@ def submit_asesmen_pendidikan():
             latitude=lat,
             longitude=lon,
             catatan=catatan,
+            radius=radius,
         )
         flash(f"Asesmen Pendidikan tersimpan (Status: {status}, Skor: {skor_100:.1f}).", "success")
     except Exception as e:

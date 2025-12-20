@@ -122,27 +122,6 @@
             <button class="btn btn-success feature-btn" data-bs-toggle="modal" data-bs-target="#asesmenPendidikanModal">
                 <i class="fas fa-graduation-cap me-2"></i> Asesmen Pendidikan
             </button>
-            <!-- ================== FILTER ASESMEN (CHECKLIST) ================== -->
-<div class="p-2 bg-light rounded-3 mb-3">
-  <div class="fw-bold mb-2">
-    <i class="fas fa-layer-group me-2"></i>Asesmen
-  </div>
-
-  <div class="form-check">
-    <input class="form-check-input" type="checkbox" id="toggleAsesmenKesehatan" checked>
-    <label class="form-check-label" for="toggleAsesmenKesehatan">
-      Asesmen Kesehatan
-    </label>
-  </div>
-
-  <div class="form-check">
-    <input class="form-check-input" type="checkbox" id="toggleAsesmenPendidikan" checked>
-    <label class="form-check-label" for="toggleAsesmenPendidikan">
-      Asesmen Pendidikan
-    </label>
-  </div>
-</div>
-<!-- =============================================================== -->
             <form action="{{ url_for('logout') }}" method="post" style="display:inline;" id="logoutForm">
                 <button type="button" class="btn btn-danger feature-btn w-100" data-bs-toggle="modal" data-bs-target="#logoutConfirmModal"> <i class="fas fa-sign-out-alt"></i>
                     Logout
@@ -152,6 +131,154 @@
         {% else %}
             <button class="btn btn-primary feature-btn" data-bs-toggle="modal" data-bs-target="#loginModal"><i class="fas fa-sign-in-alt"></i> TAMBAH DATA</button>
         {% endif %}
+
+        <!-- ================== FILTER LAYER (CHECKLIST) ================== -->
+        <div class="p-2 bg-light rounded-3 mb-3" id="layerFilterPanel">
+            <div class="fw-bold mb-2">
+                <i class="fas fa-filter me-2"></i>Filtrasi Layer
+            </div>
+
+            <!-- Asesmen -->
+            <div class="mb-2">
+                <div class="d-flex align-items-center justify-content-between">
+                    <div class="fw-bold"><i class="fas fa-layer-group me-2"></i>Asesmen</div>
+                    <button class="btn btn-sm btn-link text-decoration-none p-0" type="button" data-bs-toggle="collapse" data-bs-target="#filterAsesmenBody" aria-expanded="true" aria-controls="filterAsesmenBody">
+                        <i class="fas fa-chevron-down"></i>
+                    </button>
+                </div>
+
+                <div class="form-check mt-1">
+                    <input class="form-check-input" type="checkbox" id="toggleAsesmenAll" checked>
+                    <label class="form-check-label" for="toggleAsesmenAll">Asesmen</label>
+                </div>
+
+                <div class="collapse show ms-3 mt-1" id="filterAsesmenBody">
+                    <div class="form-check">
+                        <input class="form-check-input" type="checkbox" id="toggleAsesmenKesehatan" checked>
+                        <label class="form-check-label" for="toggleAsesmenKesehatan">Asesmen Kesehatan</label>
+                    </div>
+                    <div class="form-check">
+                        <input class="form-check-input" type="checkbox" id="toggleAsesmenPendidikan" checked>
+                        <label class="form-check-label" for="toggleAsesmenPendidikan">Asesmen Pendidikan</label>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Lokasi -->
+            <div class="mb-2">
+                <div class="d-flex align-items-center justify-content-between">
+                    <div class="fw-bold"><i class="fas fa-map-marker-alt me-2"></i>Lokasi</div>
+                    <button class="btn btn-sm btn-link text-decoration-none p-0" type="button" data-bs-toggle="collapse" data-bs-target="#filterLokasiBody" aria-expanded="true" aria-controls="filterLokasiBody">
+                        <i class="fas fa-chevron-down"></i>
+                    </button>
+                </div>
+
+                <div class="form-check mt-1">
+                    <input class="form-check-input" type="checkbox" id="toggleLokasiAll" checked>
+                    <label class="form-check-label" for="toggleLokasiAll">Lokasi</label>
+                </div>
+
+                <div class="collapse show ms-3 mt-1" id="filterLokasiBody">
+                    <div class="form-check">
+                        <input class="form-check-input" type="checkbox" id="toggleLokasiPosko" checked>
+                        <label class="form-check-label" for="toggleLokasiPosko">Posko Pengungsian</label>
+                    </div>
+                    <div class="form-check">
+                        <input class="form-check-input" type="checkbox" id="toggleLokasiGudang" checked>
+                        <label class="form-check-label" for="toggleLokasiGudang">Gudang Logistik</label>
+                    </div>
+{#                    <div class="form-check">#}
+{#                        <input class="form-check-input" type="checkbox" id="toggleLokasiLain" checked>#}
+{#                        <label class="form-check-label" for="toggleLokasiLain">Lokasi</label>#}
+{#                    </div>#}
+                </div>
+            </div>
+
+            <!-- Relawan -->
+            <div class="mb-2">
+                <div class="d-flex align-items-center justify-content-between">
+                    <div class="fw-bold"><i class="fas fa-user me-2"></i>Relawan</div>
+                    <button class="btn btn-sm btn-link text-decoration-none p-0" type="button" data-bs-toggle="collapse" data-bs-target="#filterRelawanBody" aria-expanded="true" aria-controls="filterRelawanBody">
+                        <i class="fas fa-chevron-down"></i>
+                    </button>
+                </div>
+
+                <div class="form-check mt-1">
+                    <input class="form-check-input" type="checkbox" id="toggleRelawanAll" checked>
+                    <label class="form-check-label" for="toggleRelawanAll">Relawan</label>
+                </div>
+
+                <div class="collapse show ms-3 mt-1" id="filterRelawanBody">
+                    <div class="form-check">
+                        <input class="form-check-input" type="checkbox" id="toggleLokasiRelawan" checked>
+                        <label class="form-check-label" for="toggleLokasiRelawan">Lokasi Relawan</label>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Permintaan Logistik -->
+            <div>
+                <div class="d-flex align-items-center justify-content-between">
+                    <div class="fw-bold"><i class="fas fa-box-open me-2"></i>Permintaan Logistik</div>
+                    <button class="btn btn-sm btn-link text-decoration-none p-0" type="button" data-bs-toggle="collapse" data-bs-target="#filterPermintaanBody" aria-expanded="true" aria-controls="filterPermintaanBody">
+                        <i class="fas fa-chevron-down"></i>
+                    </button>
+                </div>
+
+                <div class="form-check mt-1">
+                    <input class="form-check-input" type="checkbox" id="togglePermintaanLogistik" checked>
+                    <label class="form-check-label" for="togglePermintaanLogistik">Permintaan Logistik</label>
+                </div>
+
+                <div class="collapse show ms-3 mt-1" id="filterPermintaanBody">
+                    <div class="fw-bold mb-1" style="font-size:0.85rem;">Titik Permintaan (Status)</div>
+
+                    <div class="form-check">
+                        <input class="form-check-input" type="checkbox" id="togglePermintaanDraft" checked>
+                        <label class="form-check-label" for="togglePermintaanDraft">
+                            <span style="display:inline-block;width:10px;height:10px;border-radius:50%;background:#64748b;margin-right:6px;"></span>
+                            Draft
+                        </label>
+                    </div>
+                    <div class="form-check">
+                        <input class="form-check-input" type="checkbox" id="togglePermintaanDiproses" checked>
+                        <label class="form-check-label" for="togglePermintaanDiproses">
+                            <span style="display:inline-block;width:10px;height:10px;border-radius:50%;background:#f59e0b;margin-right:6px;"></span>
+                            Diproses
+                        </label>
+                    </div>
+                    <div class="form-check">
+                        <input class="form-check-input" type="checkbox" id="togglePermintaanDikirim" checked>
+                        <label class="form-check-label" for="togglePermintaanDikirim">
+                            <span style="display:inline-block;width:10px;height:10px;border-radius:50%;background:#3b82f6;margin-right:6px;"></span>
+                            Dikirim
+                        </label>
+                    </div>
+                    <div class="form-check">
+                        <input class="form-check-input" type="checkbox" id="togglePermintaanDiterima" checked>
+                        <label class="form-check-label" for="togglePermintaanDiterima">
+                            <span style="display:inline-block;width:10px;height:10px;border-radius:50%;background:#22c55e;margin-right:6px;"></span>
+                            Diterima
+                        </label>
+                    </div>
+                    <div class="form-check">
+                        <input class="form-check-input" type="checkbox" id="togglePermintaanDitolak" checked>
+                        <label class="form-check-label" for="togglePermintaanDitolak">
+                            <span style="display:inline-block;width:10px;height:10px;border-radius:50%;background:#ef4444;margin-right:6px;"></span>
+                            Ditolak
+                        </label>
+                    </div>
+                    <div class="form-check">
+                        <input class="form-check-input" type="checkbox" id="togglePermintaanSelesai" checked>
+                        <label class="form-check-label" for="togglePermintaanSelesai">
+                            <span style="display:inline-block;width:10px;height:10px;border-radius:50%;background:#10b981;margin-right:6px;"></span>
+                            Selesai
+                        </label>
+                    </div>
+                </div>
+            </div>
+        </div>
+        <!-- =============================================================== -->
 
         <hr>
 
@@ -242,17 +369,26 @@
                     <div class="modal-body">
                         <div class="mb-3">
                             <label for="nama" class="form-label">Nama Relawan</label>
-                            <select class="form-select" id="nama" name="nama" required>
-                                <option value="">Pilih Nama Anda</option>
+                            <div class="input-group dropdown" id="relawanDropdownWrap">
+                                <input class="form-control" id="nama" name="nama" list="relawanDatalist" placeholder="Ketik nama Anda..." autocomplete="off" required>
+                                <button class="btn btn-outline-secondary dropdown-toggle" type="button" id="relawanDropdownBtn" data-bs-toggle="dropdown" aria-expanded="false" title="Tampilkan daftar"></button>
+                                <ul class="dropdown-menu dropdown-menu-end" id="relawanDropdownMenu" style="max-height:260px; overflow:auto;"></ul>
+                            </div>
+                            <div class="form-text">Ketik untuk mencari, lalu pilih dari daftar.</div>
+                            <datalist id="relawanDatalist">
                                 {% for relawan in relawan_list %}
-                                <option value="{{ relawan.get('nama_relawan') }}">{{ relawan.get('nama_relawan') }}
-                                </option>
+                                    <option value="{{ relawan.get('nama_relawan') }}"></option>
                                 {% endfor %}
-                            </select>
-                        </div>
+                            </datalist>
+</div>
                         <div class="mb-3">
                             <label for="kode_akses" class="form-label">Kode Akses</label>
-                            <input type="text" class="form-control" id="kode_akses" name="kode_akses" placeholder="Masukkan Kode Akses" required>
+                            <div class="input-group">
+                                <input type="password" class="form-control" id="kode_akses" name="kode_akses" placeholder="Masukkan Kode Akses" required>
+                                <button class="btn btn-outline-secondary" type="button" id="toggleKodeAkses" title="Tampilkan/Sembunyikan">
+                                    <i class="fas fa-eye"></i>
+                                </button>
+                            </div>
                         </div>
                     </div>
                     <div class="modal-footer">
@@ -266,7 +402,7 @@
 
     <div class="modal fade" id="permintaanModal" tabindex="-1" aria-labelledby="permintaanModalLabel"
         aria-hidden="true">
-        <div class="modal-dialog">
+        <div class="modal-dialog modal-lg modal-dialog-centered">
             <div class="modal-content">
                 <div class="modal-header bg-primary text-white">
                     <h5 class="modal-title" id="permintaanModalLabel"><i class="fas fa-box-open"></i> Input Permintaan
@@ -276,27 +412,44 @@
                 </div>
                 <form action="{{ url_for('submit_permintaan') }}" method="POST">
                     <div class="modal-body">
-                        <div class="mb-3">
+                        <!-- Lokasi GPS Saat Ini (Permintaan Logistik) -->
+                        <div class="mb-3 p-3 bg-light rounded">
+                            <div class="d-flex justify-content-between align-items-center mb-2">
+                                <div class="fw-bold">
+                                    <i class="fas fa-map-marker-alt"></i> Lokasi GPS Saat Ini:
+                                </div>
+                                <button type="button"
+                                        id="refreshPermintaanLocationBtn"
+                                        class="btn btn-success btn-sm shadow-sm"
+                                        title="Refresh Lokasi"
+                                        style="border-radius: 20px;"
+                                        onclick="getLocationForPermintaan()">
+                                    <i class="fas fa-sync-alt"></i>
+                                </button>
+                            </div>
+
+                            <div class="text-success fw-bold">
+                                <span id="permintaan-location-text">belum diambil</span>
+                            </div>
+                        </div>
+
+                        <input type="hidden" id="permintaan_lat" name="latitude" required>
+                        <input type="hidden" id="permintaan_lon" name="longitude" required>
+                        <div class="mb-2 text-muted small">
+                            <i class="fas fa-map me-1"></i>
+                            Koreksi titik: geser pin atau klik peta sebelum submit.
+                        </div>
+                        <div id="permintaanMiniMap"
+                             style="height:220px;border-radius:12px;overflow:hidden;border:1px solid #e5e7eb;"></div>
+
+                        <div class="mt-3 mb-3">
                             <label for="kode_posko" class="form-label"><i class="fas fa-campground"></i> Posko Tujuan</label>
                             <select class="form-select" id="kode_posko" name="kode_posko" required>
-                                <option value="">Pilih Posko Tujuan</option>
+                                <option value="" selected disabled>Pilih Posko Tujuan</option>
                                 {% for posko in data_posko %}
                                 <option value="{{ posko.kode }}">{{ posko.nama }} ({{ posko.kode }})</option>
                                 {% endfor %}
                             </select>
-                        </div>
-                        <div class="mb-3">
-                            <label for="kode_barang" class="form-label">Kode Barang</label>
-                            <select class="form-select" id="kode_barang" name="kode_barang" required>
-                                {% for barang in data_barang %}
-                                <option value="{{ barang }}">{{ barang }}</option>
-                                {% endfor %}
-                            </select>
-                        </div>
-                        <div class="mb-3">
-                            <label for="jumlah_diminta" class="form-label">Jumlah Diminta</label>
-                            <input type="number" class="form-control" id="jumlah_diminta" name="jumlah_diminta" min="1"
-                                required>
                         </div>
                         <div class="mb-3">
                             <label for="keterangan" class="form-label">Keterangan Tambahan</label>
@@ -305,14 +458,14 @@
                     </div>
                     <div class="modal-footer">
                         <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Batal</button>
-                        <button type="submit" class="btn btn-primary">Kirim Permintaan</button>
+                        <button type="submit" class="btn btn-primary" id="btn-submit-permintaan" disabled>Kirim Permintaan</button>
                     </div>
                 </form>
             </div>
         </div>
     </div>
 
-    <div class="modal fade" id="absensiModal" tabindex="-1" aria-labelledby="absensiModalLabel" aria-hidden="true">
+<div class="modal fade" id="absensiModal" tabindex="-1" aria-labelledby="absensiModalLabel" aria-hidden="true">
         <div class="modal-dialog">
             <div class="modal-content">
                 <div class="modal-header bg-success text-white">
@@ -408,6 +561,15 @@
               {% endfor %}
             </select>
           </div>
+        <div class="mb-3">
+            <label class="form-label">Radius Buffer (km)</label>
+            <div class="input-group">
+                <input type="number" class="form-control" id="kesehatan_radius" name="radius" min="0.1" step="0.1" value="2">
+                <span class="input-group-text">km</span>
+            </div>
+            <div class="form-text">Default 2 km. Nilai ini menentukan buffer pada peta setelah asesmen disubmit.</div>
+        </div>
+
 
 
         <div class="mb-2">
@@ -504,6 +666,15 @@
               {% endfor %}
             </select>
           </div>
+        <div class="mb-3">
+            <label class="form-label">Radius Buffer (km)</label>
+            <div class="input-group">
+                <input type="number" class="form-control" id="pendidikan_radius" name="radius" min="0.1" step="0.1" value="2">
+                <span class="input-group-text">km</span>
+            </div>
+            <div class="form-text">Default 2 km. Nilai ini menentukan buffer pada peta setelah asesmen disubmit.</div>
+        </div>
+
 
 
           <!-- 10 pertanyaan skala 1-5 -->
@@ -553,11 +724,23 @@
     <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
     <script>
         // Data Lokasi dari Flask
-        let dataLokasi = JSON.parse('{{ data_lokasi | safe }}');
-        let relawanLokasi = JSON.parse('{{ relawan_lokasi | safe }}');
-        let asesmenKesehatan = JSON.parse('{{ asesmen_kesehatan | safe }}');
-let asesmenPendidikan = JSON.parse('{{ asesmen_pendidikan | safe }}');
+        function safeJsonParse(raw, fallback) {
+            try {
+                if (raw === null || raw === undefined) return fallback;
+                const s = String(raw);
+                if (!s || s.trim() === "") return fallback;
+                return JSON.parse(s);
+            } catch (e) {
+                console.warn("JSON parse gagal:", e, raw);
+                return fallback;
+            }
+        }
 
+        let dataLokasi = safeJsonParse('{{ data_lokasi | safe }}', []);
+        let relawanLokasi = safeJsonParse('{{ relawan_lokasi | safe }}', []);
+        let asesmenKesehatan = safeJsonParse('{{ asesmen_kesehatan | safe }}', []);
+        let asesmenPendidikan = safeJsonParse('{{ asesmen_pendidikan | safe }}', []);
+        let permintaanLogistik = safeJsonParse('{{ permintaan_logistik | safe }}', []);
 
         // Inisialisasi Peta
         var map = L.map('map').setView([2.3693, 99.0763], 9); // Koordinat tengah Sumatera Utara
@@ -569,13 +752,17 @@ let asesmenPendidikan = JSON.parse('{{ asesmen_pendidikan | safe }}');
 
         map.createPane('asesmenPane');
         map.getPane('asesmenPane').style.zIndex = 450;
+
+        map.createPane('permintaanPane');
+        map.getPane('permintaanPane').style.zIndex = 500;
         // ============================================================
 
-        let statusData = JSON.parse('{{ status_map | safe }}');
+        let statusData = safeJsonParse('{{ status_map | safe }}', {});
         
         // Layer group untuk marker lokasi (agar bisa dihapus saat refresh)
         let markerLayerGroup = L.layerGroup().addTo(map);
         let relawanLayerGroup = L.layerGroup().addTo(map);
+        let permintaanLayerGroup = L.layerGroup().addTo(map);
         // ================== LAYER ASESMEN (BUFFER 2KM) ==================
 let asesmenKesehatanLayer = L.layerGroup().addTo(map);
 let asesmenPendidikanLayer = L.layerGroup().addTo(map);
@@ -693,6 +880,12 @@ function renderAsesmenLayer(layer, rows, jenisLabel, kind){
 
     const col = statusColor(r.status);
 
+
+    // Buffer radius (meters) — default 2km, override dari kolom 'radius' (km) jika ada
+    let radiusMeters = 2000;
+    const rk = parseFloat(r.radius);
+    if (isFinite(rk) && rk > 0) radiusMeters = rk * 1000;
+
     const popup = `
       <div style="min-width:260px;">
         <div class="fw-bold mb-1">${escapeHtml(jenisLabel)}</div>
@@ -708,7 +901,7 @@ function renderAsesmenLayer(layer, rows, jenisLabel, kind){
 
     const circle = L.circle([lat, lon], {
       pane: 'asesmenPane',
-      radius: 2000,
+      radius: radiusMeters,
       color: col,
       weight: 2,
       fill: true,
@@ -739,6 +932,7 @@ function renderAsesmenBuffers(){
 renderAsesmenBuffers();
 
 // Toggle checkbox
+const ckAsesmenAll = document.getElementById("toggleAsesmenAll");
 const ckKes = document.getElementById("toggleAsesmenKesehatan");
 const ckPen = document.getElementById("toggleAsesmenPendidikan");
 
@@ -750,8 +944,16 @@ function setLayerVisible(layer, visible){
   }
 }
 
-if (ckKes) ckKes.addEventListener("change", ()=> setLayerVisible(asesmenKesehatanLayer, ckKes.checked));
-if (ckPen) ckPen.addEventListener("change", ()=> setLayerVisible(asesmenPendidikanLayer, ckPen.checked));
+function applyAsesmenVisibility(){
+  const master = ckAsesmenAll ? ckAsesmenAll.checked : true;
+  const showKes = ckKes ? ckKes.checked : true;
+  const showPen = ckPen ? ckPen.checked : true;
+
+  setLayerVisible(asesmenKesehatanLayer, master && showKes);
+  setLayerVisible(asesmenPendidikanLayer, master && showPen);
+}
+
+// (visibility asesmen akan di-handle oleh blok sinkronisasi filter di bawah)
 // ================================================================
 
 
@@ -984,44 +1186,170 @@ function _normalizePhotoUrl(p) {
 }
 
 
-function renderRelawanMarkers(relawanData) {
-  relawanLayerGroup.clearLayers();
-  (relawanData || []).forEach(r => {
-    const lat = parseFloat(r.latitude);
-    const lon = parseFloat(r.longitude);
-    if (!isNaN(lat) && !isNaN(lon)) {
-      const photoUrl = _normalizePhotoUrl(r.photo_path);
-      const waktuText = _formatWaktuGMT7(r.waktu);
-      const unitText = r.unit ? String(r.unit) : '';
-      const catatanText = r.catatan ? String(r.catatan) : '-';
+function _permintaanStatusKey(status){
+  const s = String(status || '').toLowerCase();
+  if (s.includes('draft')) return 'draft';
+  if (s.includes('diproses')) return 'diproses';
+  if (s.includes('dikirim')) return 'dikirim';
+  if (s.includes('diterima')) return 'diterima';
+  if (s.includes('ditolak')) return 'ditolak';
+  if (s.includes('selesai')) return 'selesai';
+  return 'draft';
+}
 
-      const photoHtml = photoUrl
-        ? `<img src="${photoUrl}" alt="Foto Relawan" style="width:78px;height:78px;object-fit:cover;border-radius:10px;border:1px solid #e5e7eb;">`
-        : `<div style="width:78px;height:78px;border-radius:10px;border:1px solid #e5e7eb;display:flex;align-items:center;justify-content:center;background:#f8fafc;">
-             <i class="fas fa-image" style="opacity:.45;"></i>
-           </div>`;
+function permintaanStatusColor(status){
+  const k = _permintaanStatusKey(status);
+  if (k === 'diproses') return '#f59e0b';
+  if (k === 'dikirim') return '#3b82f6';
+  if (k === 'diterima') return '#22c55e';
+  if (k === 'ditolak') return '#ef4444';
+  if (k === 'selesai') return '#10b981';
+  return '#64748b'; // draft
+}
 
-      L.marker([lat, lon], { icon: getRelawanIcon() })
-        .addTo(relawanLayerGroup)
-        .bindPopup(
-          `<div style="min-width:250px;">
-             <div style="display:flex;gap:10px;align-items:flex-start;">
-               ${photoHtml}
-               <div style="flex:1;">
-                 <div style="font-weight:700;line-height:1.1;">${r.id_relawan || '-'} - ${r.nama_relawan || '-'}</div>
-                 ${unitText ? `<div style="margin-top:4px;"><small class="text-muted">Unit:</small> <small><b>${unitText}</b></small></div>` : ''}
-                 <div style="margin-top:4px;"><small class="text-muted">Waktu:</small> <small><b>${waktuText}</b></small></div>
-                 <div style="margin-top:6px;"><small class="text-muted">Catatan:</small><br><small>${catatanText}</small></div>
-               </div>
-             </div>
-           </div>`
-        );
-    }
+function getPermintaanIcon(status) {
+  const bg = permintaanStatusColor(status);
+  const iconHtml = `
+    <div style="
+      width: 40px;
+      height: 40px;
+      background-color: ${bg};
+      border-radius: 50% 50% 50% 0;
+      transform: rotate(-45deg);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      border: 2px solid white;
+      box-shadow: 0 2px 10px rgba(0,0,0,0.3);
+    ">
+      <i class="fas fa-box-open" style="
+        color: white;
+        font-size: 18px;
+        transform: rotate(45deg);
+      "></i>
+    </div>
+  `;
+
+  return L.divIcon({
+    html: iconHtml,
+    className: 'custom-marker-icon',
+    iconSize: [40, 40],
+    iconAnchor: [20, 40],
+    popupAnchor: [0, -40]
   });
 }
 
+function _poskoNameByKode(kode) {
+  try {
+    const k = String(kode || '').trim();
+    if (!k) return '-';
+    const found = (dataLokasi || []).find(d => String(d.kode_lokasi || d.kode || '').trim() === k);
+    if (!found) return k;
+    return (found.nama_lokasi || found.nama || found.kabupaten_kota || k);
+  } catch (e) {
+    return kode || '-';
+  }
+}
+
+function renderPermintaanMarkers(rows) {
+  permintaanLayerGroup.clearLayers();
+  (rows || []).forEach(r => {
+    const lat = parseFloat(r.latitude);
+    const lon = parseFloat(r.longitude);
+    if (!isFinite(lat) || !isFinite(lon)) return;
+
+    const waktuText = _formatWaktuGMT7(r.tanggal || r.waktu || r.timestamp);
+    const status = r.status_permintaan || r.status || 'Draft';
+    const kodePosko = r.kode_posko || '-';
+    const namaPosko = _poskoNameByKode(kodePosko);
+    const idRelawan = r.id_relawan || '-';
+
+    const ket = (r.keterangan || '-');
+    const ketHtml = escapeHtml(ket).replace(/\n/g, '<br>');
+
+    L.marker([lat, lon], { icon: getPermintaanIcon(status), pane: 'permintaanPane' })
+      .addTo(permintaanLayerGroup)
+      .bindPopup(
+        `<div style="min-width:260px;">
+           <div class="fw-bold mb-1">Permintaan Logistik</div>
+           <div><b>Posko:</b> ${escapeHtml(namaPosko)} <span class="text-muted">(${escapeHtml(kodePosko)})</span></div>
+           <div><b>Status:</b> ${escapeHtml(status)}</div>
+           <div><b>Relawan:</b> ${escapeHtml(idRelawan)}</div>
+           <div><b>Waktu:</b> ${escapeHtml(waktuText)}</div>
+           <hr class="my-2"/>
+           <div class="fw-bold mb-1">Keterangan</div>
+           <div style="white-space:normal;">${ketHtml}</div>
+         </div>`
+      );
+  });
+}
+
+
+function renderRelawanMarkers(relawanData) {
+  relawanLayerGroup.clearLayers();
+
+  (relawanData || []).forEach(r => {
+    const lat = parseFloat(r.latitude);
+    const lon = parseFloat(r.longitude);
+    if (!isFinite(lat) || !isFinite(lon)) return;
+
+    const photoUrl = _normalizePhotoUrl(r.photo_path);
+    const waktuText = _formatWaktuGMT7(r.waktu);
+
+    const unitText = r.unit ? String(r.unit) : '';
+    const catatanTextRaw = (r.catatan && String(r.catatan).trim()) ? String(r.catatan) : '-';
+    const catatanHtml = escapeHtml(catatanTextRaw).replace(/\n/g, "<br>");
+
+    // === FORMAT TAMPILAN PERSIS SEPERTI YANG KAMU MAU ===
+    const photoHtml = photoUrl
+      ? `<img src="${escapeHtml(photoUrl)}" alt="Foto Relawan"
+              style="width:78px;height:78px;object-fit:cover;border-radius:10px;border:1px solid #e5e7eb;">`
+      : `<div style="width:78px;height:78px;border-radius:10px;border:1px solid #e5e7eb;display:flex;align-items:center;justify-content:center;background:#f8fafc;">
+           <i class="fas fa-image" style="opacity:.45;"></i>
+         </div>`;
+
+    L.marker([lat, lon], { icon: getRelawanIcon() })
+      .addTo(relawanLayerGroup)
+      .bindPopup(
+        `<div style="min-width:250px;">
+           <div style="display:flex;gap:10px;align-items:flex-start;">
+             ${photoHtml}
+             <div style="flex:1;">
+               <div style="font-weight:700;line-height:1.1;">
+                 ${escapeHtml(r.id_relawan || '-')} - ${escapeHtml(r.nama_relawan || r.nama || '-')}
+               </div>
+
+               ${unitText
+                 ? `<div style="margin-top:4px;">
+                      <small class="text-muted">Unit:</small>
+                      <small><b>${escapeHtml(unitText)}</b></small>
+                    </div>`
+                 : ''}
+
+               <div style="margin-top:4px;">
+                 <small class="text-muted">Waktu:</small>
+                 <small><b>${escapeHtml(waktuText)}</b></small>
+               </div>
+
+               <div style="margin-top:6px;">
+                 <small class="text-muted">Catatan:</small><br>
+                 <small>${catatanHtml}</small>
+               </div>
+             </div>
+           </div>
+         </div>`,
+        { maxWidth: 380 }
+      );
+  });
+}
+
+
         // 4. Fungsi untuk render marker lokasi ke peta
-        function renderMarkers(lokasiData) {
+        function renderMarkers(lokasiData, filterState) {
+            const fs = filterState || {};
+            const showPosko = fs.showPosko !== false;
+            const showGudang = fs.showGudang !== false;
+            const showLain = fs.showLain !== false;
             // Hapus marker lama
             markerLayerGroup.clearLayers();
 
@@ -1030,6 +1358,13 @@ function renderRelawanMarkers(relawanData) {
                 const lat = parseFloat(lokasi.latitude);
                 const lon = parseFloat(lokasi.longitude);
                 if (!isNaN(lat) && !isNaN(lon)) {
+                    const jenis = String(lokasi.jenis_lokasi || '');
+                    const isPosko = /posko/i.test(jenis);
+                    const isGudang = /gudang/i.test(jenis);
+                    if (isPosko && !showPosko) return;
+                    if (isGudang && !showGudang) return;
+                    if (!isPosko && !isGudang && !showLain) return;
+
                     let icon = getIcon(lokasi.jenis_lokasi);
 
                     const photoUrl = _normalizePhotoUrl(lokasi.photo_path);
@@ -1089,9 +1424,175 @@ function renderRelawanMarkers(relawanData) {
             });
         }
 
+
+
+        // ==============================================================================
+        // FILTER LAYER (CHECKLIST) - Lokasi, Relawan, Permintaan, Asesmen
+        // ==============================================================================
+        const ckLokPosko = document.getElementById('toggleLokasiPosko');
+        const ckLokGudang = document.getElementById('toggleLokasiGudang');
+        const ckLokLain = document.getElementById('toggleLokasiLain');
+
+        const ckRelawanLok = document.getElementById('toggleLokasiRelawan');
+
+        const ckPermintaan = document.getElementById('togglePermintaanLogistik');
+        const ckPermDraft = document.getElementById('togglePermintaanDraft');
+        const ckPermDiproses = document.getElementById('togglePermintaanDiproses');
+        const ckPermDikirim = document.getElementById('togglePermintaanDikirim');
+        const ckPermDiterima = document.getElementById('togglePermintaanDiterima');
+        const ckPermDitolak = document.getElementById('togglePermintaanDitolak');
+        const ckPermSelesai = document.getElementById('togglePermintaanSelesai');
+
+
+        // Master checkbox + collapse body elements (agar filter bisa di-hide/show dan parent mengikuti child)
+        const ckLokAll = document.getElementById('toggleLokasiAll');
+        const ckRelAll = document.getElementById('toggleRelawanAll');
+
+        const elAsesmenBody = document.getElementById('filterAsesmenBody');
+        const elLokasiBody = document.getElementById('filterLokasiBody');
+        const elRelawanBody = document.getElementById('filterRelawanBody');
+        const elPermintaanBody = document.getElementById('filterPermintaanBody');
+
+        let _isSyncingFilter = false;
+
+        function _setCollapseVisible(el, visible){
+            if (!el) return;
+            try {
+                if (window.bootstrap && bootstrap.Collapse) {
+                    const inst = bootstrap.Collapse.getOrCreateInstance(el, { toggle: false });
+                    if (visible) inst.show(); else inst.hide();
+                } else {
+                    el.style.display = visible ? '' : 'none';
+                }
+            } catch(e) {
+                el.style.display = visible ? '' : 'none';
+            }
+        }
+
+        function _setChildrenState(children, checked, disabled){
+            (children || []).forEach(ch => {
+                if (!ch) return;
+                if (typeof checked === 'boolean') ch.checked = checked;
+                if (typeof disabled === 'boolean') ch.disabled = disabled;
+            });
+        }
+
+        function _anyChecked(children){
+            return (children || []).some(ch => ch && ch.checked);
+        }
+
+        function syncGroupFromMaster(masterEl, bodyEl, children, onApply){
+            if (_isSyncingFilter) return;
+            _isSyncingFilter = true;
+
+            const masterOn = masterEl ? !!masterEl.checked : true;
+            if (!masterOn) {
+                _setChildrenState(children, false, true);
+                _setCollapseVisible(bodyEl, false);
+            } else {
+                _setChildrenState(children, undefined, false);
+                if (!_anyChecked(children)) _setChildrenState(children, true, false);
+                _setCollapseVisible(bodyEl, true);
+            }
+
+            _isSyncingFilter = false;
+            if (onApply) onApply();
+        }
+
+        function syncMasterFromChildren(masterEl, bodyEl, children, onApply){
+            if (_isSyncingFilter) return;
+            _isSyncingFilter = true;
+
+            const any = _anyChecked(children);
+            if (masterEl) masterEl.checked = any;
+            _setChildrenState(children, undefined, !any);
+            _setCollapseVisible(bodyEl, any);
+
+            _isSyncingFilter = false;
+            if (onApply) onApply();
+        }
+
+        function getLokasiFilterState(){
+            return {
+                showPosko: ckLokPosko ? ckLokPosko.checked : true,
+                showGudang: ckLokGudang ? ckLokGudang.checked : true,
+                showLain: ckLokLain ? ckLokLain.checked : true,
+            };
+        }
+
+        function applyLokasiFilter(){
+            const fs = getLokasiFilterState();
+            renderMarkers(dataLokasi, fs);
+        }
+
+        function applyRelawanVisibility(){
+            const visible = ckRelawanLok ? ckRelawanLok.checked : true;
+            setLayerVisible(relawanLayerGroup, visible);
+        }
+
+        function _permintaanAllowedMap(){
+            const m = {
+                draft: ckPermDraft ? ckPermDraft.checked : true,
+                diproses: ckPermDiproses ? ckPermDiproses.checked : true,
+                dikirim: ckPermDikirim ? ckPermDikirim.checked : true,
+                diterima: ckPermDiterima ? ckPermDiterima.checked : true,
+                ditolak: ckPermDitolak ? ckPermDitolak.checked : true,
+                selesai: ckPermSelesai ? ckPermSelesai.checked : true,
+            };
+            return m;
+        }
+
+        function applyPermintaanVisibility(){
+            const master = ckPermintaan ? ckPermintaan.checked : true;
+            if (!master) {
+                setLayerVisible(permintaanLayerGroup, false);
+                return;
+            }
+
+            const allowed = _permintaanAllowedMap();
+            const filtered = (permintaanLogistik || []).filter(r => {
+                const k = _permintaanStatusKey(r.status_permintaan || r.status || 'Draft');
+                return allowed[k] !== false;
+            });
+
+            renderPermintaanMarkers(filtered);
+            setLayerVisible(permintaanLayerGroup, true);
+        }
+
+        // Event listeners
+        // Lokasi (master + child)
+        if (ckLokAll) ckLokAll.addEventListener('change', () => syncGroupFromMaster(ckLokAll, elLokasiBody, [ckLokPosko, ckLokGudang, ckLokLain], applyLokasiFilter));
+        [ckLokPosko, ckLokGudang, ckLokLain].forEach(el => {
+            if (el) el.addEventListener('change', () => syncMasterFromChildren(ckLokAll, elLokasiBody, [ckLokPosko, ckLokGudang, ckLokLain], applyLokasiFilter));
+        });
+
+        // Relawan
+        if (ckRelAll) ckRelAll.addEventListener('change', () => syncGroupFromMaster(ckRelAll, elRelawanBody, [ckRelawanLok], applyRelawanVisibility));
+        if (ckRelawanLok) ckRelawanLok.addEventListener('change', () => syncMasterFromChildren(ckRelAll, elRelawanBody, [ckRelawanLok], applyRelawanVisibility));
+
+        // Permintaan (master + status)
+        if (ckPermintaan) ckPermintaan.addEventListener('change', () => syncGroupFromMaster(ckPermintaan, elPermintaanBody, [ckPermDraft, ckPermDiproses, ckPermDikirim, ckPermDiterima, ckPermDitolak, ckPermSelesai], applyPermintaanVisibility));
+        [ckPermDraft, ckPermDiproses, ckPermDikirim, ckPermDiterima, ckPermDitolak, ckPermSelesai].forEach(el => {
+            if (el) el.addEventListener('change', () => syncMasterFromChildren(ckPermintaan, elPermintaanBody, [ckPermDraft, ckPermDiproses, ckPermDikirim, ckPermDiterima, ckPermDitolak, ckPermSelesai], applyPermintaanVisibility));
+        });
+
+        // Asesmen (master + child)
+        if (ckAsesmenAll) ckAsesmenAll.addEventListener('change', () => syncGroupFromMaster(ckAsesmenAll, elAsesmenBody, [ckKes, ckPen], applyAsesmenVisibility));
+        [ckKes, ckPen].forEach(el => {
+            if (el) el.addEventListener('change', () => syncMasterFromChildren(ckAsesmenAll, elAsesmenBody, [ckKes, ckPen], applyAsesmenVisibility));
+        });
+
+        // Initial sync + render
+        syncGroupFromMaster(ckAsesmenAll, elAsesmenBody, [ckKes, ckPen], applyAsesmenVisibility);
+        syncGroupFromMaster(ckLokAll, elLokasiBody, [ckLokPosko, ckLokGudang, ckLokLain], applyLokasiFilter);
+        syncGroupFromMaster(ckRelAll, elRelawanBody, [ckRelawanLok], applyRelawanVisibility);
+        syncGroupFromMaster(ckPermintaan, elPermintaanBody, [ckPermDraft, ckPermDiproses, ckPermDikirim, ckPermDiterima, ckPermDitolak, ckPermSelesai], applyPermintaanVisibility);
+
         // Render marker awal
-        renderMarkers(dataLokasi);
+        applyLokasiFilter();
         renderRelawanMarkers(relawanLokasi);
+        applyRelawanVisibility();
+        applyPermintaanVisibility();
         // ==============================================================================
         // FUNGSI REFRESH MAP
         // ==============================================================================
@@ -1186,14 +1687,19 @@ function renderRelawanMarkers(relawanData) {
                         })
                         .catch(e => console.error("Error reloading GeoJSON:", e));
 
-                    // Update marker lokasi
-                    renderMarkers(dataLokasi);
+                    // Update marker lokasi (mengikuti filter layer)
+                    applyLokasiFilter();
                     renderRelawanMarkers(relawanLokasi);
+                    applyRelawanVisibility();
+
+                    permintaanLogistik = Array.isArray(result.permintaan_logistik) ? result.permintaan_logistik : (result.permintaan_logistik || []);
+                    applyPermintaanVisibility();
 
                 // Asemen buffers (kesehatan & pendidikan)
                     asesmenKesehatan = Array.isArray(result.asesmen_kesehatan) ? result.asesmen_kesehatan : (result.asesmen_kesehatan || []);
                     asesmenPendidikan = Array.isArray(result.asesmen_pendidikan) ? result.asesmen_pendidikan : (result.asesmen_pendidikan || []);
                     renderAsesmenBuffers();
+                    applyAsesmenVisibility();
                     // Tampilkan notifikasi sukses (centered)
                     showNotification('Map berhasil di-refresh!', 'success', true);
                 } else {
@@ -1732,6 +2238,31 @@ function renderRelawanMarkers(relawanData) {
                     }
                 }
             });
+
+            // Sort datalist relawan A-Z (client-side)
+            const dl = document.getElementById('relawanDatalist');
+            if (dl) {
+                const opts = Array.from(dl.querySelectorAll('option'));
+                opts.sort((a, b) => (a.value || '').localeCompare((b.value || ''), 'id', { sensitivity: 'base' }));
+                dl.innerHTML = '';
+                opts.forEach(o => dl.appendChild(o));
+            }
+
+            // Toggle show/hide kode akses (password)
+            const kodeAksesInput = document.getElementById('kode_akses');
+            const toggleKodeAksesBtn = document.getElementById('toggleKodeAksesBtn');
+            if (kodeAksesInput && toggleKodeAksesBtn) {
+                toggleKodeAksesBtn.addEventListener('click', function () {
+                    const isPassword = (kodeAksesInput.getAttribute('type') || 'password') === 'password';
+                    kodeAksesInput.setAttribute('type', isPassword ? 'text' : 'password');
+                    const icon = toggleKodeAksesBtn.querySelector('i');
+                    if (icon) {
+                        icon.classList.toggle('fa-eye', !isPassword);
+                        icon.classList.toggle('fa-eye-slash', isPassword);
+                    }
+                });
+            }
+
         });
     </script>
     <script>
@@ -1775,11 +2306,21 @@ function renderRelawanMarkers(relawanData) {
                 btnId: "btn-submit-pendidikan",
                 statusId: "pendidikan-location-status",
             },
+            permintaan: {
+                modalId: "permintaanModal",
+                mapId: "permintaanMiniMap",
+                latId: "permintaan_lat",
+                lonId: "permintaan_lon",
+                textId: "permintaan-location-text",
+                btnId: "btn-submit-permintaan",
+                statusId: "permintaan-location-status",
+            },
         };
 
         const state = {
             kesehatan: { map: null, marker: null, watchId: null, timeoutId: null },
             pendidikan: { map: null, marker: null, watchId: null, timeoutId: null },
+            permintaan: { map: null, marker: null, watchId: null, timeoutId: null },
         };
 
         function _el(id) {
@@ -1972,6 +2513,15 @@ function renderRelawanMarkers(relawanData) {
             _getBestLocation(kind);
         };
 
+        // Public handler (dipakai tombol permintaan)
+        window.getLocationForPermintaan = function () {
+            const kind = 'permintaan';
+            if (!cfg[kind]) return;
+            _initMap(kind);
+            _getBestLocation(kind);
+        };
+
+
         // Auto-run saat modal dibuka
         Object.keys(cfg).forEach(function (kind) {
             const c = cfg[kind];
@@ -2010,6 +2560,103 @@ function renderRelawanMarkers(relawanData) {
 
 
 
+
+
+<script>
+document.addEventListener("DOMContentLoaded", function () {
+  // ===== Login Relawan: datalist (A-Z) + dropdown click =====
+  const dl = document.getElementById("relawanDatalist");
+  const namaInput = document.getElementById("nama");
+  const menu = document.getElementById("relawanDropdownMenu");
+  const dropdownWrap = document.getElementById("relawanDropdownWrap");
+  const dropdownBtn = document.getElementById("relawanDropdownBtn");
+
+  if (dl) {
+    const opts = Array.from(dl.querySelectorAll("option"))
+      .map(o => (o.value || "").trim())
+      .filter(Boolean)
+      .sort((a, b) => a.localeCompare(b, "id", { sensitivity: "base" }));
+
+    // Rebuild datalist (sorted)
+    dl.innerHTML = "";
+    opts.forEach(v => {
+      const o = document.createElement("option");
+      o.value = v;
+      dl.appendChild(o);
+    });
+
+    // Build dropdown menu for click selection (keeps typing support)
+    if (menu && namaInput) {
+      const renderMenu = (q) => {
+        const query = (q || "").toLowerCase();
+        const filtered = opts.filter(v => v.toLowerCase().includes(query)).slice(0, 200);
+
+        menu.innerHTML = "";
+        if (filtered.length === 0) {
+          const li = document.createElement("li");
+          const span = document.createElement("span");
+          span.className = "dropdown-item-text";
+          span.textContent = "Tidak ada hasil";
+          li.appendChild(span);
+          menu.appendChild(li);
+          return;
+        }
+
+        filtered.forEach(v => {
+          const li = document.createElement("li");
+          const btn = document.createElement("button");
+          btn.type = "button";
+          btn.className = "dropdown-item";
+          btn.textContent = v;
+          btn.addEventListener("click", () => {
+            namaInput.value = v;
+            namaInput.focus();
+          });
+          li.appendChild(btn);
+          menu.appendChild(li);
+        });
+      };
+
+      renderMenu("");
+
+      namaInput.addEventListener("input", () => {
+        renderMenu(namaInput.value);
+      });
+
+      // Refresh menu content when dropdown opened
+      if (dropdownWrap) {
+        dropdownWrap.addEventListener("show.bs.dropdown", () => {
+          renderMenu(namaInput.value);
+        });
+      }
+
+      if (dropdownBtn) {
+        dropdownBtn.addEventListener("click", () => {
+          // Pastikan input fokus agar user bisa langsung mengetik
+          if (namaInput) namaInput.focus();
+        });
+      }
+    }
+  }
+
+  // ===== Toggle show/hide untuk Kode Akses =====
+  const kodeInput = document.getElementById("kode_akses");
+  const toggleBtn = document.getElementById("toggleKodeAkses");
+
+  if (kodeInput && toggleBtn) {
+    toggleBtn.addEventListener("click", () => {
+      const isPassword = (kodeInput.getAttribute("type") === "password");
+      kodeInput.setAttribute("type", isPassword ? "text" : "password");
+
+      const icon = toggleBtn.querySelector("i");
+      if (icon) {
+        icon.classList.toggle("fa-eye", !isPassword);
+        icon.classList.toggle("fa-eye-slash", isPassword);
+      }
+    });
+  }
+});
+</script>
 
 </body>
 
