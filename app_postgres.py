@@ -25,6 +25,7 @@ try:
         ensure_kabkota_geojson_static,
         pg_get_logistik_permintaan_last24h,
         pg_insert_logistik_permintaan,
+        pg_update_logistik_permintaan_status,
         # opsional (kalau tabel ada)
         pg_get_stok_gudang,
         pg_get_master_logistik_codes,
@@ -51,6 +52,7 @@ except Exception as _pg_err:
     pg_next_id = None
     pg_insert_logistik_permintaan = None
     pg_get_logistik_permintaan_last24h = None
+    pg_update_logistik_permintaan_status = None
 
 
 app = Flask(__name__)
@@ -391,6 +393,7 @@ def map_view():
         data_barang=data_barang,
         logged_in=session.get("logged_in", False),
         nama_relawan=session.get("nama_relawan", ""),
+        is_admin=session.get("is_admin", False),
         status_map=json.dumps(status_map),
         asesmen_kesehatan=json.dumps(pg_get_asesmen_kesehatan_last24h(24) if pg_get_asesmen_kesehatan_last24h else []),
         asesmen_pendidikan=json.dumps(pg_get_asesmen_pendidikan_last24h(24) if pg_get_asesmen_pendidikan_last24h else []),
@@ -438,6 +441,7 @@ def login():
     session["logged_in"] = True
     session["nama_relawan"] = matched["nama_relawan"]
     session["id_relawan"] = matched.get("id_relawan", "UNKNOWN")
+    session["is_admin"] = bool(matched.get("is_admin") or False)
     flash(f"Login berhasil! Selamat bertugas, {matched['nama_relawan']}.", "success")
     return redirect(url_for("map_view"))
 
@@ -447,6 +451,7 @@ def logout():
     session.pop("logged_in", None)
     session.pop("nama_relawan", None)
     session.pop("id_relawan", None)
+    session.pop("is_admin", None)
     flash("Logout Berhasil.", "success")
     return redirect(url_for("map_view"))
 
@@ -507,6 +512,49 @@ def submit_permintaan():
 
     flash(f"Permintaan {nama_posko or kode_posko} berhasil dikirim!", "success")
     return redirect(url_for("map_view"))
+
+
+
+# ==============================================================================
+# 2b. ADMIN: UPDATE STATUS PERMINTAAN LOGISTIK (logistik_permintaan)
+# ==============================================================================
+@app.route("/api/update_permintaan_status", methods=["POST"])
+def api_update_permintaan_status():
+    """Update status_permintaan pada logistik_permintaan.
+    Hanya untuk relawan yang login dan is_admin=True.
+    Payload: {id: <int>, status: <str>}
+    """
+    if not session.get("logged_in"):
+        return jsonify({"success": False, "error": "Unauthorized"}), 401
+
+    if not session.get("is_admin"):
+        return jsonify({"success": False, "error": "Forbidden"}), 403
+
+    if not _pg_enabled() or pg_update_logistik_permintaan_status is None:
+        return jsonify({"success": False, "error": "Fitur belum aktif (pg_data belum siap)."}), 500
+
+    payload = request.get_json(silent=True) or {}
+    if not payload:
+        # fallback kalau dikirim sebagai form-urlencoded
+        payload = request.form.to_dict() if request.form else {}
+
+    id_raw = payload.get("id")
+    status_new = (payload.get("status") or "").strip()
+
+    allowed = {"Draft", "Diproses", "Dikirim", "Diterima", "Ditolak"}
+    if status_new not in allowed:
+        return jsonify({"success": False, "error": "Status tidak valid."}), 400
+
+    try:
+        id_int = int(str(id_raw).strip())
+    except Exception:
+        return jsonify({"success": False, "error": "ID tidak valid."}), 400
+
+    try:
+        pg_update_logistik_permintaan_status(id_int, status_new)
+        return jsonify({"success": True})
+    except Exception as e:
+        return jsonify({"success": False, "error": str(e)}), 500
 
 
 # ==============================================================================

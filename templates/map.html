@@ -122,6 +122,16 @@
             <button class="btn btn-success feature-btn" data-bs-toggle="modal" data-bs-target="#asesmenPendidikanModal">
                 <i class="fas fa-graduation-cap me-2"></i> Asesmen Pendidikan
             </button>
+            {% if is_admin %}
+
+            <button class="btn btn-warning feature-btn" data-bs-toggle="modal" data-bs-target="#permintaanAdminModal">
+
+                <i class="fas fa-gear"></i> Pengaturan Permintaan
+
+            </button>
+
+            {% endif %}
+
             <form action="{{ url_for('logout') }}" method="post" style="display:inline;" id="logoutForm">
                 <button type="button" class="btn btn-danger feature-btn w-100" data-bs-toggle="modal" data-bs-target="#logoutConfirmModal"> <i class="fas fa-sign-out-alt"></i>
                     Logout
@@ -452,7 +462,7 @@
                             </select>
                         </div>
                         <div class="mb-3">
-                            <label for="keterangan" class="form-label">Keterangan Tambahan</label>
+                            <label for="keterangan" class="form-label">Masukkan Keterangan Barang & Jumlah</label>
                             <textarea class="form-control" id="keterangan" name="keterangan" rows="2"></textarea>
                         </div>
                     </div>
@@ -464,6 +474,54 @@
             </div>
         </div>
     </div>
+
+
+
+{% if is_admin %}
+<div class="modal fade" id="permintaanAdminModal" tabindex="-1" aria-labelledby="permintaanAdminModalLabel" aria-hidden="true">
+  <div class="modal-dialog modal-xl modal-dialog-centered modal-dialog-scrollable">
+    <div class="modal-content">
+      <div class="modal-header bg-warning text-dark">
+        <h5 class="modal-title" id="permintaanAdminModalLabel"><i class="fas fa-gear"></i> Pengaturan Status Permintaan Logistik</h5>
+        <div class="d-flex gap-2 align-items-center">
+          <button type="button" class="btn btn-sm btn-light" id="btnRefreshPermintaanAdmin" title="Refresh Data">
+            <i class="fas fa-sync-alt"></i>
+          </button>
+          <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+        </div>
+      </div>
+      <div class="modal-body">
+        <div class="alert alert-info small mb-3">
+          <i class="fas fa-info-circle me-1"></i>
+          Hanya relawan admin yang bisa mengubah status. Perubahan akan langsung tersimpan ke database.
+        </div>
+
+        <div class="table-responsive">
+          <table class="table table-sm table-bordered align-middle">
+            <thead class="table-light">
+              <tr>
+                <th style="width:90px;">ID</th>
+                <th style="width:240px;">Posko</th>
+                <th style="width:170px;">Waktu</th>
+                <th>Keterangan</th>
+                <th style="width:150px;">Status</th>
+                <th style="width:190px;">Ubah Status</th>
+              </tr>
+            </thead>
+            <tbody id="permintaanAdminTableBody">
+              <tr><td colspan="6" class="text-muted text-center">Memuat...</td></tr>
+            </tbody>
+          </table>
+        </div>
+      </div>
+
+      <div class="modal-footer">
+        <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Tutup</button>
+      </div>
+    </div>
+  </div>
+</div>
+{% endif %}
 
 <div class="modal fade" id="absensiModal" tabindex="-1" aria-labelledby="absensiModalLabel" aria-hidden="true">
         <div class="modal-dialog">
@@ -742,6 +800,8 @@
         let asesmenPendidikan = safeJsonParse('{{ asesmen_pendidikan | safe }}', []);
         let permintaanLogistik = safeJsonParse('{{ permintaan_logistik | safe }}', []);
 
+        const CURRENT_IS_ADMIN = {{ 'true' if is_admin else 'false' }};
+
         // Inisialisasi Peta
         var map = L.map('map').setView([2.3693, 99.0763], 9); // Koordinat tengah Sumatera Utara
 
@@ -890,6 +950,7 @@ function renderAsesmenLayer(layer, rows, jenisLabel, kind){
       <div style="min-width:260px;">
         <div class="fw-bold mb-1">${escapeHtml(jenisLabel)}</div>
         <div><b>ID Relawan:</b> ${escapeHtml(r.id_relawan)}</div>
+        <div><b>Nama Relawan:</b> ${escapeHtml(r.nama_relawan)}</div>
         <div><b>Skor:</b> ${escapeHtml(r.skor)}</div>
         <div><b>Status:</b> <span style="color:${col};font-weight:700;">${escapeHtml(r.status)}</span></div>
         <div><b>Waktu:</b> ${formatWIB(r.waktu)}</div>
@@ -1263,6 +1324,7 @@ function renderPermintaanMarkers(rows) {
     const kodePosko = r.kode_posko || '-';
     const namaPosko = _poskoNameByKode(kodePosko);
     const idRelawan = r.id_relawan || '-';
+    const namaRelawan = r.nama_relawan;
 
     const ket = (r.keterangan || '-');
     const ketHtml = escapeHtml(ket).replace(/\n/g, '<br>');
@@ -1274,7 +1336,7 @@ function renderPermintaanMarkers(rows) {
            <div class="fw-bold mb-1">Permintaan Logistik</div>
            <div><b>Posko:</b> ${escapeHtml(namaPosko)} <span class="text-muted">(${escapeHtml(kodePosko)})</span></div>
            <div><b>Status:</b> ${escapeHtml(status)}</div>
-           <div><b>Relawan:</b> ${escapeHtml(idRelawan)}</div>
+           <div><b>Relawan:</b> ${escapeHtml(idRelawan)} - ${escapeHtml(namaRelawan)}</div>
            <div><b>Waktu:</b> ${escapeHtml(waktuText)}</div>
            <hr class="my-2"/>
            <div class="fw-bold mb-1">Keterangan</div>
@@ -1283,6 +1345,157 @@ function renderPermintaanMarkers(rows) {
       );
   });
 }
+
+
+// =============================================================================
+// ADMIN: PENGATURAN STATUS PERMINTAAN LOGISTIK (khusus is_admin)
+// =============================================================================
+const PERMINTAAN_STATUS_OPTIONS = ["Draft", "Diproses", "Dikirim", "Diterima", "Ditolak"];
+
+function _renderPermintaanStatusBadge(status) {
+  const bg = permintaanStatusColor(status);
+  const label = status || 'Draft';
+  return `<span class="badge" style="background:${bg};">${escapeHtml(label)}</span>`;
+}
+
+function renderPermintaanAdminTable() {
+  const tbody = document.getElementById('permintaanAdminTableBody');
+  if (!tbody) return;
+
+  const rows = Array.isArray(permintaanLogistik) ? permintaanLogistik : [];
+  tbody.innerHTML = '';
+
+  if (!rows.length) {
+    tbody.innerHTML = '<tr><td colspan="6" class="text-muted text-center">Belum ada permintaan (24 jam terakhir).</td></tr>';
+    return;
+  }
+
+  rows.forEach(r => {
+    const id = r.id;
+    const kodePosko = r.kode_posko || '-';
+    const namaPosko = _poskoNameByKode(kodePosko);
+    const waktuText = _formatWaktuGMT7(r.waktu || r.tanggal || r.timestamp);
+    const status = r.status_permintaan || r.status || 'Draft';
+    const ket = String(r.keterangan || '').trim();
+    const ketShort = ket.length > 120 ? (ket.slice(0, 120) + '…') : (ket || '-');
+
+    const selId = `permintaanStatusSelect_${id}`;
+    const btnId = `permintaanStatusBtn_${id}`;
+
+    const optionsHtml = PERMINTAAN_STATUS_OPTIONS.map(s => {
+      const selected = (_permintaanStatusKey(s) === _permintaanStatusKey(status)) ? ' selected' : '';
+      return `<option value="${escapeHtml(s)}"${selected}>${escapeHtml(s)}</option>`;
+    }).join('');
+
+    tbody.insertAdjacentHTML('beforeend', `
+      <tr>
+        <td><code>${escapeHtml(id)}</code></td>
+        <td>
+          <div class="fw-bold">${escapeHtml(namaPosko)}</div>
+          <div class="text-muted small">${escapeHtml(kodePosko)}</div>
+        </td>
+        <td class="small">${escapeHtml(waktuText)}</td>
+        <td class="small" style="white-space:normal;">${escapeHtml(ketShort)}</td>
+        <td>${_renderPermintaanStatusBadge(status)}</td>
+        <td>
+          <div class="d-flex gap-2">
+            <select class="form-select form-select-sm" id="${escapeHtml(selId)}">
+              ${optionsHtml}
+            </select>
+            <button class="btn btn-sm btn-primary" id="${escapeHtml(btnId)}" type="button"
+                    onclick="adminUpdatePermintaanStatus('${escapeHtml(id)}')">Simpan</button>
+          </div>
+        </td>
+      </tr>
+    `);
+  });
+}
+
+async function adminUpdatePermintaanStatus(id) {
+  if (!CURRENT_IS_ADMIN) {
+    showNotification('Anda bukan admin.', 'danger', true);
+    return;
+  }
+
+  const sel = document.getElementById(`permintaanStatusSelect_${id}`);
+  const btn = document.getElementById(`permintaanStatusBtn_${id}`);
+  if (!sel || !btn) return;
+
+  const newStatus = String(sel.value || '').trim();
+  if (!newStatus) return;
+
+  sel.disabled = true;
+  btn.disabled = true;
+
+  const oldBtnHtml = btn.innerHTML;
+  btn.innerHTML = '<i class="fas fa-spinner fa-spin"></i>';
+
+  try {
+    const resp = await fetch('/api/update_permintaan_status', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ id: id, status: newStatus })
+    });
+
+    const result = await resp.json().catch(() => ({}));
+    if (resp.ok && result && result.success) {
+      // Update local data
+      const item = (permintaanLogistik || []).find(x => String(x.id) === String(id));
+      if (item) item.status_permintaan = newStatus;
+
+      // Refresh marker permintaan (warna/icon)
+      applyPermintaanVisibility();
+
+      // Refresh tabel admin
+      renderPermintaanAdminTable();
+
+      showNotification('Status permintaan berhasil diperbarui.', 'success', true);
+    } else {
+      showNotification('Gagal update status: ' + (result.error || 'Unknown error'), 'danger', true);
+    }
+  } catch (e) {
+    console.error(e);
+    showNotification('Error saat update status.', 'danger', true);
+  } finally {
+    sel.disabled = false;
+    btn.disabled = false;
+    btn.innerHTML = oldBtnHtml;
+  }
+}
+
+// Hook modal admin (render table saat dibuka / refresh)
+document.addEventListener('DOMContentLoaded', function() {
+  const modalEl = document.getElementById('permintaanAdminModal');
+  if (modalEl) {
+    modalEl.addEventListener('shown.bs.modal', function() {
+      renderPermintaanAdminTable();
+    });
+  }
+
+  const btnRefresh = document.getElementById('btnRefreshPermintaanAdmin');
+  if (btnRefresh) {
+    btnRefresh.addEventListener('click', async function() {
+      try {
+        const response = await fetch('/api/refresh_map');
+        const result = await response.json();
+        if (result && result.success) {
+          permintaanLogistik = Array.isArray(result.permintaan_logistik)
+            ? result.permintaan_logistik
+            : (result.permintaan_logistik || []);
+          applyPermintaanVisibility();
+          renderPermintaanAdminTable();
+          showNotification('Data permintaan diperbarui.', 'success', true);
+        } else {
+          showNotification('Gagal refresh permintaan: ' + (result.error || 'Unknown error'), 'danger', true);
+        }
+      } catch (e) {
+        console.error(e);
+        showNotification('Error refresh permintaan.', 'danger', true);
+      }
+    });
+  }
+});
+
 
 
 function renderRelawanMarkers(relawanData) {

@@ -378,7 +378,8 @@ def pg_get_relawan_list() -> List[Dict[str, Any]]:
         SELECT
             id_relawan,
             nama_relawan,
-            kode_akses
+            kode_akses,
+            COALESCE(is_admin, FALSE) AS is_admin
         FROM {table}
         WHERE nama_relawan IS NOT NULL
         ORDER BY nama_relawan ASC;
@@ -391,6 +392,7 @@ def pg_get_relawan_list() -> List[Dict[str, Any]]:
                 "id_relawan": r.get("id_relawan"),
                 "nama_relawan": r.get("nama_relawan"),
                 "kode_akses": r.get("kode_akses"),
+                "is_admin": r.get("is_admin"),
             }
         )
     return out
@@ -700,19 +702,23 @@ def _pg_get_asesmen_last_hours(table_env: str, default_table: str, hours: int = 
       - waktu, id_relawan, skor, status, jawaban, latitude, longitude, catatan
     """
     table = _get_env(table_env, default_table)
+    relawan_table = _get_env("PG_RELAWAN_TABLE", "public.data_relawan")
 
     sql = f"""
         SELECT
-            waktu,
-            id_relawan,
-            skor,
-            status,
-            jawaban,
-            latitude,
-            longitude,
-            catatan,
-            radius
-        FROM {table}
+            lr.waktu,
+            lr.id_relawan,
+            dr.nama_relawan,
+            lr.skor,
+            lr.status,
+            lr.jawaban,
+            lr.latitude,
+            lr.longitude,
+            lr.catatan,
+            lr.radius
+        FROM {table} lr
+        LEFT JOIN {relawan_table} dr
+          ON dr.id_relawan = lr.id_relawan
         WHERE waktu >= NOW() - (%s * INTERVAL '1 hour')
           AND latitude IS NOT NULL
           AND longitude IS NOT NULL
@@ -725,15 +731,18 @@ def _pg_get_asesmen_last_hours(table_env: str, default_table: str, hours: int = 
         # Fallback jika kolom radius belum ada
         sql2 = f"""
             SELECT
-                waktu,
-                id_relawan,
-                skor,
-                status,
-                jawaban,
-                latitude,
-                longitude,
-                catatan
-            FROM {table}
+                lr.waktu,
+                lr.id_relawan,
+                dr.nama_relawan,
+                lr.skor,
+                lr.status,
+                lr.jawaban,
+                lr.latitude,
+                lr.longitude,
+                lr.catatan,
+            FROM {table} lr
+            LEFT JOIN {relawan_table} dr
+              ON dr.id_relawan = lr.id_relawan
             WHERE waktu >= NOW() - (%s * INTERVAL '1 hour')
               AND latitude IS NOT NULL
               AND longitude IS NOT NULL
@@ -1044,6 +1053,7 @@ def pg_insert_logistik_permintaan(data: Dict[str, Any]) -> bool:
 def pg_get_logistik_permintaan_last24h(hours: int = 24) -> List[Dict[str, Any]]:
     """Ambil permintaan logistik dalam N jam terakhir (default 24 jam)."""
     table = _get_env("PG_LOGISTIK_PERMINTAAN_TABLE", "public.logistik_permintaan")
+    relawan_table = _get_env("PG_RELAWAN_TABLE", "public.data_relawan")
 
     h = 24
     try:
@@ -1053,19 +1063,68 @@ def pg_get_logistik_permintaan_last24h(hours: int = 24) -> List[Dict[str, Any]]:
 
     sql = f"""
         SELECT
-            id,
-            waktu,
-            kode_posko,
-            keterangan,
-            status_permintaan,
-            id_relawan,
-            photo_link,
-            latitude,
-            longitude
-        FROM {table}
+            lr.id,
+            lr.waktu,
+            lr.kode_posko,
+            lr.keterangan,
+            lr.status_permintaan,
+            lr.id_relawan,
+            dr.nama_relawan,
+            lr.photo_link,
+            lr.latitude,
+            lr.longitude
+        FROM {table} lr
+        LEFT JOIN {relawan_table} dr
+          ON dr.id_relawan = lr.id_relawan
         WHERE waktu >= (now() - interval '{h} hours')
         ORDER BY waktu DESC;
     """
 
     rows = pg_fetchall(sql)
     return [_json_safe_row(r) for r in rows]
+
+
+def pg_update_logistik_permintaan_status(id_permintaan: int, status_permintaan: str) -> bool:
+    """Update kolom status_permintaan pada tabel logistik_permintaan berdasarkan ID.
+
+    Status yang didukung (sesuai kebutuhan UI):
+      Draft, Diproses, Dikirim, Diterima, Ditolak
+
+    Catatan:
+    - id_permintaan mengacu ke kolom 'id' (bigserial).
+    - Validasi status dilakukan di sini agar backend aman (tidak sembarang teks).
+    """
+    table = _get_env("PG_LOGISTIK_PERMINTAAN_TABLE", "public.logistik_permintaan")
+
+    allowed = {"Draft", "Diproses", "Dikirim", "Diterima", "Ditolak"}
+    st = (status_permintaan or "").strip()
+
+    # Normalisasi sederhana: Title Case untuk aman
+    # (agar input "draft" tetap bisa diterima)
+    if st.lower() == "draft":
+        st = "Draft"
+    elif st.lower() == "diproses":
+        st = "Diproses"
+    elif st.lower() == "dikirim":
+        st = "Dikirim"
+    elif st.lower() == "diterima":
+        st = "Diterima"
+    elif st.lower() == "ditolak":
+        st = "Ditolak"
+
+    if st not in allowed:
+        raise ValueError("Status_permintaan tidak valid")
+
+    try:
+        pid = int(id_permintaan)
+    except Exception as e:
+        raise ValueError("ID permintaan tidak valid") from e
+
+    sql = f"""
+        UPDATE {table}
+        SET status_permintaan = %s
+        WHERE id = %s
+    """
+
+    pg_execute(sql, (st, pid))
+    return True
