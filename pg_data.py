@@ -102,12 +102,14 @@ def _to_float(v: Any) -> Optional[float]:
 
 
 def _json_safe_value(v: Any) -> Any:
-    """Konversi tipe yang sering muncul dari Postgres agar aman untuk JSON."""
     if v is None:
         return None
     if isinstance(v, Decimal):
         return float(v)
-    if isinstance(v, (datetime,)):
+    if isinstance(v, datetime):
+        # Kalau datetime bertz (umumnya dari timestamptz), normalkan ke UTC naive
+        if v.tzinfo is not None and v.utcoffset() is not None:
+            v = v.astimezone(timezone.utc).replace(tzinfo=None)
         return v.isoformat()
     return v
 
@@ -1043,9 +1045,11 @@ def pg_insert_permintaan_posko(data: Dict[str, Any]) -> bool:
         data["id_permintaan"] = id_permintaan
 
     # Normalisasi field yang sering dipakai UI
-    waktu = data.get("tanggal")
-    if not waktu:
-        data["tanggal"] = datetime.now().strftime("%d-%B-%y")
+    # waktu = data.get("tanggal")
+    # if not waktu:
+    #     data["tanggal"] = datetime.now().strftime("%d-%B-%y")
+
+    data["tanggal"] = datetime.now(timezone.utc).replace(tzinfo=None)
 
     # Coba beberapa mapping kolom supaya tahan beda skema
     attempts: List[Tuple[str, Tuple[Any, ...]]] = [
