@@ -19,9 +19,15 @@ try:
         pg_insert_lokasi_relawan,
         pg_insert_asesmen_kesehatan,
         pg_insert_asesmen_pendidikan,
+        pg_insert_asesmen_infrastruktur,
+        pg_insert_asesmen_wash,
+        pg_insert_asesmen_psikososial,
         pg_get_relawan_locations_last24h,
         pg_get_asesmen_kesehatan_last24h,
         pg_get_asesmen_pendidikan_last24h,
+        pg_get_asesmen_infrastruktur_last24h,
+        pg_get_asesmen_wash_last24h,
+        pg_get_asesmen_psikososial_last24h,
         ensure_kabkota_geojson_static,
         pg_get_logistik_permintaan_last24h,
         pg_insert_logistik_permintaan,
@@ -41,9 +47,15 @@ except Exception as _pg_err:
     pg_insert_lokasi_relawan = None
     pg_insert_asesmen_kesehatan = None
     pg_insert_asesmen_pendidikan = None
+    pg_insert_asesmen_infrastruktur = None
+    pg_insert_asesmen_wash = None
+    pg_insert_asesmen_psikososial = None
     pg_get_relawan_locations_last24h = None
     pg_get_asesmen_kesehatan_last24h = None
     pg_get_asesmen_pendidikan_last24h = None
+    pg_get_asesmen_infrastruktur_last24h = None
+    pg_get_asesmen_wash_last24h = None
+    pg_get_asesmen_psikososial_last24h = None
     ensure_kabkota_geojson_static = None
     pg_get_stok_gudang = None
     pg_get_master_logistik_codes = None
@@ -286,7 +298,7 @@ def api_refresh_map():
         relawan_lokasi = []
         if pg_get_relawan_locations_last24h:
             try:
-                relawan_lokasi = pg_get_relawan_locations_last24h(24)
+                relawan_lokasi = pg_get_relawan_locations_last24h(168)
             except Exception as e:
                 print(f"Warning: gagal ambil lokasi_relawan dari Postgres: {e}")
 
@@ -295,7 +307,7 @@ def api_refresh_map():
         permintaan_logistik = []
         if pg_get_logistik_permintaan_last24h:
             try:
-                permintaan_logistik = pg_get_logistik_permintaan_last24h(24) or []
+                permintaan_logistik = pg_get_logistik_permintaan_last24h(168) or []
             except Exception as e:
                 print(f"Warning: gagal ambil logistik_permintaan dari Postgres: {e}")
 
@@ -305,8 +317,12 @@ def api_refresh_map():
                 "data_lokasi": data_lokasi,
                 "status_map": status_map,
                 "relawan_lokasi": relawan_lokasi,
-                "asesmen_kesehatan": pg_get_asesmen_kesehatan_last24h(24) if pg_get_asesmen_kesehatan_last24h else [],
-                "asesmen_pendidikan": pg_get_asesmen_pendidikan_last24h(24) if pg_get_asesmen_pendidikan_last24h else [],
+                "asesmen_kesehatan": pg_get_asesmen_kesehatan_last24h(168) if pg_get_asesmen_kesehatan_last24h else [],
+                "asesmen_pendidikan": pg_get_asesmen_pendidikan_last24h(168) if pg_get_asesmen_pendidikan_last24h else [],
+                "asesmen_psikososial": pg_get_asesmen_psikososial_last24h(168) if pg_get_asesmen_psikososial_last24h else [],
+                "asesmen_infrastruktur": pg_get_asesmen_infrastruktur_last24h(168) if pg_get_asesmen_infrastruktur_last24h else [],
+                "asesmen_wash": pg_get_asesmen_wash_last24h(168) if pg_get_asesmen_wash_last24h else [],
+
                 "permintaan_logistik": permintaan_logistik
             }
         )
@@ -363,7 +379,7 @@ def map_view():
     relawan_lokasi = []
     if pg_get_relawan_locations_last24h:
         try:
-            relawan_lokasi = pg_get_relawan_locations_last24h(24)
+            relawan_lokasi = pg_get_relawan_locations_last24h(168)
         except Exception as e:
             print(f"Warning: gagal ambil lokasi_relawan dari Postgres: {e}")
 
@@ -371,7 +387,7 @@ def map_view():
     permintaan_logistik = []
     if pg_get_logistik_permintaan_last24h:
         try:
-            permintaan_logistik = pg_get_logistik_permintaan_last24h(24)
+            permintaan_logistik = pg_get_logistik_permintaan_last24h(168)
         except Exception as e:
             print(f"Warning: gagal ambil logistik_permintaan dari Postgres: {e}")
 
@@ -395,8 +411,12 @@ def map_view():
         nama_relawan=session.get("nama_relawan", ""),
         is_admin=session.get("is_admin", False),
         status_map=json.dumps(status_map),
-        asesmen_kesehatan=json.dumps(pg_get_asesmen_kesehatan_last24h(24) if pg_get_asesmen_kesehatan_last24h else []),
-        asesmen_pendidikan=json.dumps(pg_get_asesmen_pendidikan_last24h(24) if pg_get_asesmen_pendidikan_last24h else []),
+        asesmen_kesehatan=json.dumps(pg_get_asesmen_kesehatan_last24h(168) if pg_get_asesmen_kesehatan_last24h else []),
+        asesmen_pendidikan=json.dumps(pg_get_asesmen_pendidikan_last24h(168) if pg_get_asesmen_pendidikan_last24h else []),
+        asesmen_psikososial=json.dumps(pg_get_asesmen_psikososial_last24h(168) if pg_get_asesmen_psikososial_last24h else []),
+        asesmen_infrastruktur=json.dumps(pg_get_asesmen_infrastruktur_last24h(168) if pg_get_asesmen_infrastruktur_last24h else []),
+        asesmen_wash=json.dumps(pg_get_asesmen_wash_last24h(168) if pg_get_asesmen_wash_last24h else []),
+
         permintaan_logistik=json.dumps(permintaan_logistik)
     )
 
@@ -876,6 +896,213 @@ def submit_asesmen_pendidikan():
         flash(f"Asesmen Pendidikan tersimpan (Status: {status}, Skor: {skor_100:.1f}).", "success")
     except Exception as e:
         flash(f"Gagal simpan asesmen pendidikan: {e}", "danger")
+
+    return redirect(url_for("map_view"))
+
+@app.route("/submit_asesmen_psikososial", methods=["POST"])
+def submit_asesmen_psikososial():
+    if not _require_login():
+        return redirect(url_for("map_view"))
+
+    if not _pg_enabled() or pg_insert_asesmen_psikososial is None:
+        flash("Fitur asesmen belum aktif: DATABASE_URL/pg_data belum siap.", "danger")
+        return redirect(url_for("map_view"))
+
+    kode_posko = request.form.get("kode_posko") or None
+    lat = request.form.get("latitude")
+    lon = request.form.get("longitude")
+    catatan = request.form.get("catatan") or None
+    radius_in = request.form.get("radius")
+    try:
+        radius = float(radius_in) if radius_in not in (None, "") else 2.0
+    except Exception:
+        radius = 2.0
+    if radius <= 0:
+        radius = 2.0
+    if radius > 50:
+        radius = 50.0
+
+    # 10 soal (skala 1-5)
+    answers = {f"p{i}": _ask_int_1_5(request.form.get(f"p{i}")) for i in range(1, 11)}
+
+    weights = {
+        "p1": 1.4,
+        "p2": 1.0,
+        "p3": 1.0,
+        "p4": 1.0,
+        "p5": 0.8,
+        "p6": 1.5,
+        "p7": 0.9,
+        "p8": 1.3,
+        "p9": 0.8,
+        "p10": 0.9,
+    }
+
+    weighted_sum = sum(answers[k] * weights[k] for k in answers)
+    max_sum = sum(5 * weights[k] for k in answers)
+
+    skor_100 = (weighted_sum / max_sum) * 100.0
+
+    if skor_100 >= 80:
+        status = "Kritis"
+    elif skor_100 >= 60:
+        status = "Waspada"
+    else:
+        status = "Aman"
+
+    try:
+        pg_insert_asesmen_psikososial(
+            id_relawan=session.get("id_relawan", "UNKNOWN"),
+            kode_posko=kode_posko,
+            jawaban=answers,
+            skor=float(skor_100),
+            status=status,
+            latitude=lat,
+            longitude=lon,
+            catatan=catatan,
+            radius=radius,
+        )
+        flash(f"Asesmen Psikososial tersimpan (Status: {status}, Skor: {skor_100:.1f}).", "success")
+    except Exception as e:
+        flash(f"Gagal simpan asesmen psikososial: {e}", "danger")
+
+    return redirect(url_for("map_view"))
+
+@app.route("/submit_asesmen_infrastruktur", methods=["POST"])
+def submit_asesmen_infrastruktur():
+    if not _require_login():
+        return redirect(url_for("map_view"))
+
+    if not _pg_enabled() or pg_insert_asesmen_infrastruktur is None:
+        flash("Fitur asesmen belum aktif: DATABASE_URL/pg_data belum siap.", "danger")
+        return redirect(url_for("map_view"))
+
+    kode_posko = request.form.get("kode_posko") or None
+    lat = request.form.get("latitude")
+    lon = request.form.get("longitude")
+    catatan = request.form.get("catatan") or None
+    radius_in = request.form.get("radius")
+    try:
+        radius = float(radius_in) if radius_in not in (None, "") else 2.0
+    except Exception:
+        radius = 2.0
+    if radius <= 0:
+        radius = 2.0
+    if radius > 50:
+        radius = 50.0
+
+    # 10 soal (skala 1-5)
+    answers = {f"p{i}": _ask_int_1_5(request.form.get(f"p{i}")) for i in range(1, 11)}
+
+    weights = {
+        "p1": 1.4,
+        "p2": 1.0,
+        "p3": 1.0,
+        "p4": 1.0,
+        "p5": 0.8,
+        "p6": 1.5,
+        "p7": 0.9,
+        "p8": 1.3,
+        "p9": 0.8,
+        "p10": 0.9,
+    }
+
+    weighted_sum = sum(answers[k] * weights[k] for k in answers)
+    max_sum = sum(5 * weights[k] for k in answers)
+
+    skor_100 = (weighted_sum / max_sum) * 100.0
+
+    if skor_100 >= 80:
+        status = "Kritis"
+    elif skor_100 >= 60:
+        status = "Waspada"
+    else:
+        status = "Aman"
+
+    try:
+        pg_insert_asesmen_infrastruktur(
+            id_relawan=session.get("id_relawan", "UNKNOWN"),
+            kode_posko=kode_posko,
+            jawaban=answers,
+            skor=float(skor_100),
+            status=status,
+            latitude=lat,
+            longitude=lon,
+            catatan=catatan,
+            radius=radius,
+        )
+        flash(f"Asesmen Infrastruktur tersimpan (Status: {status}, Skor: {skor_100:.1f}).", "success")
+    except Exception as e:
+        flash(f"Gagal simpan asesmen infrastruktur: {e}", "danger")
+
+    return redirect(url_for("map_view"))
+
+@app.route("/submit_asesmen_wash", methods=["POST"])
+def submit_asesmen_wash():
+    if not _require_login():
+        return redirect(url_for("map_view"))
+
+    if not _pg_enabled() or pg_insert_asesmen_wash is None:
+        flash("Fitur asesmen belum aktif: DATABASE_URL/pg_data belum siap.", "danger")
+        return redirect(url_for("map_view"))
+
+    kode_posko = request.form.get("kode_posko") or None
+    lat = request.form.get("latitude")
+    lon = request.form.get("longitude")
+    catatan = request.form.get("catatan") or None
+    radius_in = request.form.get("radius")
+    try:
+        radius = float(radius_in) if radius_in not in (None, "") else 2.0
+    except Exception:
+        radius = 2.0
+    if radius <= 0:
+        radius = 2.0
+    if radius > 50:
+        radius = 50.0
+
+    # 10 soal (skala 1-5)
+    answers = {f"p{i}": _ask_int_1_5(request.form.get(f"p{i}")) for i in range(1, 11)}
+
+    weights = {
+        "p1": 1.4,
+        "p2": 1.0,
+        "p3": 1.0,
+        "p4": 1.0,
+        "p5": 0.8,
+        "p6": 1.5,
+        "p7": 0.9,
+        "p8": 1.3,
+        "p9": 0.8,
+        "p10": 0.9,
+    }
+
+    weighted_sum = sum(answers[k] * weights[k] for k in answers)
+    max_sum = sum(5 * weights[k] for k in answers)
+
+    skor_100 = (weighted_sum / max_sum) * 100.0
+
+    if skor_100 >= 80:
+        status = "Kritis"
+    elif skor_100 >= 60:
+        status = "Waspada"
+    else:
+        status = "Aman"
+
+    try:
+        pg_insert_asesmen_wash(
+            id_relawan=session.get("id_relawan", "UNKNOWN"),
+            kode_posko=kode_posko,
+            jawaban=answers,
+            skor=float(skor_100),
+            status=status,
+            latitude=lat,
+            longitude=lon,
+            catatan=catatan,
+            radius=radius,
+        )
+        flash(f"Asesmen Wash tersimpan (Status: {status}, Skor: {skor_100:.1f}).", "success")
+    except Exception as e:
+        flash(f"Gagal simpan asesmen wash: {e}", "danger")
 
     return redirect(url_for("map_view"))
 

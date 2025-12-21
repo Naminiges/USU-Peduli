@@ -624,7 +624,6 @@ def pg_insert_asesmen_kesehatan(
         prefer_jsonb_cast=True,
     )
 
-
 def pg_insert_asesmen_pendidikan(
     id_relawan: str,
     kode_posko: Optional[str],
@@ -653,11 +652,94 @@ def pg_insert_asesmen_pendidikan(
         prefer_jsonb_cast=False,
     )
 
+def pg_insert_asesmen_infrastruktur(
+    id_relawan: str,
+    kode_posko: Optional[str],
+    jawaban: Dict[str, Any],
+    skor: float,
+    status: str,
+    latitude: Any,
+    longitude: Any,
+    catatan: Optional[str] = None,
+    radius: Optional[float] = None,
+    waktu: Optional[datetime] = None,
+) -> bool:
+    return _insert_asesmen(
+        table_env="PG_ASESMEN_INFRASTRUKTUR_TABLE",
+        default_table="public.asesmen_infrastruktur",
+        id_relawan=id_relawan,
+        kode_posko=kode_posko,
+        jawaban=jawaban,
+        skor=skor,
+        status=status,
+        latitude=latitude,
+        longitude=longitude,
+        catatan=catatan,
+        radius=radius,
+        waktu=waktu,
+        prefer_jsonb_cast=False,
+    )
+
+def pg_insert_asesmen_psikososial(
+    id_relawan: str,
+    kode_posko: Optional[str],
+    jawaban: Dict[str, Any],
+    skor: float,
+    status: str,
+    latitude: Any,
+    longitude: Any,
+    catatan: Optional[str] = None,
+    radius: Optional[float] = None,
+    waktu: Optional[datetime] = None,
+) -> bool:
+    return _insert_asesmen(
+        table_env="PG_ASESMEN_PSIKOSOSIAL_TABLE",
+        default_table="public.asesmen_psikososial",
+        id_relawan=id_relawan,
+        kode_posko=kode_posko,
+        jawaban=jawaban,
+        skor=skor,
+        status=status,
+        latitude=latitude,
+        longitude=longitude,
+        catatan=catatan,
+        radius=radius,
+        waktu=waktu,
+        prefer_jsonb_cast=False,
+    )
+
+def pg_insert_asesmen_wash(
+    id_relawan: str,
+    kode_posko: Optional[str],
+    jawaban: Dict[str, Any],
+    skor: float,
+    status: str,
+    latitude: Any,
+    longitude: Any,
+    catatan: Optional[str] = None,
+    radius: Optional[float] = None,
+    waktu: Optional[datetime] = None,
+) -> bool:
+    return _insert_asesmen(
+        table_env="PG_ASESMEN_WASH_TABLE",
+        default_table="public.asesmen_wash",
+        id_relawan=id_relawan,
+        kode_posko=kode_posko,
+        jawaban=jawaban,
+        skor=skor,
+        status=status,
+        latitude=latitude,
+        longitude=longitude,
+        catatan=catatan,
+        radius=radius,
+        waktu=waktu,
+        prefer_jsonb_cast=False,
+    )
 
 # ------------------------------------------------------------------------------
 # 7) Lokasi Relawan (marker di peta) - ambil lokasi terakhir per relawan dalam N jam
 # ------------------------------------------------------------------------------
-def pg_get_relawan_locations_last24h(hours: int = 72) -> List[Dict[str, Any]]:
+def pg_get_relawan_locations_last24h(hours: int = 168) -> List[Dict[str, Any]]:
     """Ambil lokasi relawan terakhir (per relawan) dalam N jam terakhir."""
     relawan_table = _get_env("PG_RELAWAN_TABLE", "public.data_relawan")
     lokasi_table = _get_env("PG_LOKASI_RELAWAN_TABLE", "public.lokasi_relawan")
@@ -695,7 +777,7 @@ def pg_get_relawan_locations_last24h(hours: int = 72) -> List[Dict[str, Any]]:
         out.append(rr)
     return out
 
-def _pg_get_asesmen_last_hours(table_env: str, default_table: str, hours: int = 24) -> List[Dict[str, Any]]:
+def _pg_get_asesmen_last_hours(table_env: str, default_table: str, hours: int =168) -> List[Dict[str, Any]]:
     """Ambil asesmen dalam N jam terakhir untuk kebutuhan peta (buffer).
 
     Return field minimal:
@@ -769,21 +851,40 @@ def _pg_get_asesmen_last_hours(table_env: str, default_table: str, hours: int = 
     return out
 
 
-def pg_get_asesmen_kesehatan_last24h(hours: int = 72) -> List[Dict[str, Any]]:
+def pg_get_asesmen_kesehatan_last24h(hours: int = 168) -> List[Dict[str, Any]]:
     return _pg_get_asesmen_last_hours(
         table_env="PG_ASESMEN_KESEHATAN_TABLE",
         default_table="public.asesmen_kesehatan",
         hours=hours,
     )
 
-
-def pg_get_asesmen_pendidikan_last24h(hours: int = 72) -> List[Dict[str, Any]]:
+def pg_get_asesmen_pendidikan_last24h(hours: int = 168) -> List[Dict[str, Any]]:
     return _pg_get_asesmen_last_hours(
         table_env="PG_ASESMEN_PENDIDIKAN_TABLE",
         default_table="public.asesmen_pendidikan",
         hours=hours,
     )
 
+def pg_get_asesmen_psikososial_last24h(hours: int = 168) -> List[Dict[str, Any]]:
+    return _pg_get_asesmen_last_hours(
+        table_env="PG_ASESMEN_PSIKOSOSIAL_TABLE",
+        default_table="public.asesmen_psikososial",
+        hours=hours,
+    )
+
+def pg_get_asesmen_infrastruktur_last24h(hours: int = 168) -> List[Dict[str, Any]]:
+    return _pg_get_asesmen_last_hours(
+        table_env="PG_ASESMEN_INFRASTRUKTUR_TABLE",
+        default_table="public.asesmen_infrastruktur",
+        hours=hours,
+    )
+
+def pg_get_asesmen_wash_last24h(hours: int = 168) -> List[Dict[str, Any]]:
+    return _pg_get_asesmen_last_hours(
+        table_env="PG_ASESMEN_WASH_TABLE",
+        default_table="public.asesmen_wash",
+        hours=hours,
+    )
 
 # ------------------------------------------------------------------------------
 # 8) stok_gudang (opsional) - read
@@ -1050,16 +1151,16 @@ def pg_insert_logistik_permintaan(data: Dict[str, Any]) -> bool:
     return True
 
 
-def pg_get_logistik_permintaan_last24h(hours: int = 24) -> List[Dict[str, Any]]:
+def pg_get_logistik_permintaan_last24h(hours: int = 168) -> List[Dict[str, Any]]:
     """Ambil permintaan logistik dalam N jam terakhir (default 24 jam)."""
     table = _get_env("PG_LOGISTIK_PERMINTAAN_TABLE", "public.logistik_permintaan")
     relawan_table = _get_env("PG_RELAWAN_TABLE", "public.data_relawan")
 
-    h = 24
+    h = 168
     try:
         h = max(1, int(hours))
     except Exception:
-        h = 24
+        h = 168
 
     sql = f"""
         SELECT

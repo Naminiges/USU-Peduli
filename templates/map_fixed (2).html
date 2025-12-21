@@ -1120,7 +1120,6 @@
         function safeJsonParse(raw, fallback) {
             try {
                 if (raw === null || raw === undefined) return fallback;
-                if (typeof raw === 'object') return raw;
                 const s = String(raw);
                 if (!s || s.trim() === "") return fallback;
                 return JSON.parse(s);
@@ -1130,14 +1129,14 @@
             }
         }
 
-        let dataLokasi = safeJsonParse({{ data_lokasi | tojson | safe }}, []);
-        let relawanLokasi = safeJsonParse({{ relawan_lokasi | tojson | safe }}, []);
-        let asesmenKesehatan = safeJsonParse({{ asesmen_kesehatan | tojson | safe }}, []);
-        let asesmenPendidikan = safeJsonParse({{ asesmen_pendidikan | tojson | safe }}, []);
-        let asesmenPsikososial = safeJsonParse({{ asesmen_psikososial | tojson | safe }}, []);
-        let asesmenInfrastruktur = safeJsonParse({{ asesmen_infrastruktur | tojson | safe }}, []);
-        let asesmenWash = safeJsonParse({{ asesmen_wash | tojson | safe }}, []);
-        let permintaanLogistik = safeJsonParse({{ permintaan_logistik | tojson | safe }}, []);
+        let dataLokasi = safeJsonParse('{{ data_lokasi | safe }}', []);
+        let relawanLokasi = safeJsonParse('{{ relawan_lokasi | safe }}', []);
+        let asesmenKesehatan = safeJsonParse('{{ asesmen_kesehatan | safe }}', []);
+        let asesmenPendidikan = safeJsonParse('{{ asesmen_pendidikan | safe }}', []);
+        let asesmenPsikososial = safeJsonParse('{{ asesmen_psikososial | safe }}', []);
+        let asesmenInfrastruktur = safeJsonParse('{{ asesmen_infrastruktur | safe }}', []);
+        let asesmenWash = safeJsonParse('{{ asesmen_wash | safe }}', []);
+        let permintaanLogistik = safeJsonParse('{{ permintaan_logistik | safe }}', []);
 
         const CURRENT_IS_ADMIN = {{ 'true' if is_admin else 'false' }};
 
@@ -1156,7 +1155,7 @@
         map.getPane('permintaanPane').style.zIndex = 500;
         // ============================================================
 
-        let statusData = safeJsonParse({{ status_map | tojson | safe }}, {});
+        let statusData = safeJsonParse('{{ status_map | safe }}', {});
         
         // Layer group untuk marker lokasi (agar bisa dihapus saat refresh)
         let markerLayerGroup = L.layerGroup().addTo(map);
