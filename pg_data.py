@@ -102,12 +102,14 @@ def _to_float(v: Any) -> Optional[float]:
 
 
 def _json_safe_value(v: Any) -> Any:
-    """Konversi tipe yang sering muncul dari Postgres agar aman untuk JSON."""
     if v is None:
         return None
     if isinstance(v, Decimal):
         return float(v)
-    if isinstance(v, (datetime,)):
+    if isinstance(v, datetime):
+        # Kalau datetime bertz (umumnya dari timestamptz), normalkan ke UTC naive
+        if v.tzinfo is not None and v.utcoffset() is not None:
+            v = v.astimezone(timezone.utc).replace(tzinfo=None)
         return v.isoformat()
     return v
 
@@ -378,9 +380,11 @@ def pg_get_relawan_list() -> List[Dict[str, Any]]:
         SELECT
             id_relawan,
             nama_relawan,
-            kode_akses
+            kode_akses,
+            COALESCE(is_admin, FALSE) AS is_admin
         FROM {table}
-        WHERE nama_relawan IS NOT NULL;
+        WHERE nama_relawan IS NOT NULL
+        ORDER BY nama_relawan ASC;
     """
     rows = pg_fetchall(sql)
     out: List[Dict[str, Any]] = []
@@ -390,6 +394,7 @@ def pg_get_relawan_list() -> List[Dict[str, Any]]:
                 "id_relawan": r.get("id_relawan"),
                 "nama_relawan": r.get("nama_relawan"),
                 "kode_akses": r.get("kode_akses"),
+                "is_admin": r.get("is_admin"),
             }
         )
     return out
@@ -474,6 +479,7 @@ def _insert_asesmen(
     latitude: Any,
     longitude: Any,
     catatan: Optional[str],
+    radius: Optional[float] = None,
     waktu: Optional[datetime] = None,
     prefer_jsonb_cast: bool = True,
 ) -> bool:
@@ -483,10 +489,57 @@ def _insert_asesmen(
     lon_f = _to_float(longitude)
     w = waktu or datetime.now(timezone.utc).replace(tzinfo=None)
 
+    rad_f = _to_float(radius)
+
     payload = json.dumps(jawaban, ensure_ascii=False)
 
     # Ada DB yang kolom jawaban-nya TEXT, ada yang jsonb. Kita coba 2 cara.
     attempts: List[Tuple[str, Tuple[Any, ...]]] = []
+
+    # Jika kolom 'radius' ada (baru), coba insert dengan radius dulu.
+    if rad_f is not None:
+        if prefer_jsonb_cast:
+            attempts.append(
+                (
+                    f"""
+                    INSERT INTO {table}
+                    (waktu, id_relawan, kode_posko, jawaban, skor, status, latitude, longitude, catatan, radius)
+                    VALUES (%s,%s,%s,%s::jsonb,%s,%s,%s,%s,%s,%s)
+                    """,
+                    (w, id_relawan, kode_posko, payload, float(skor), status, lat_f, lon_f, catatan, rad_f),
+                )
+            )
+            attempts.append(
+                (
+                    f"""
+                    INSERT INTO {table}
+                    (waktu, id_relawan, kode_posko, jawaban, skor, status, latitude, longitude, catatan, radius)
+                    VALUES (%s,%s,%s,%s,%s,%s,%s,%s,%s,%s)
+                    """,
+                    (w, id_relawan, kode_posko, payload, float(skor), status, lat_f, lon_f, catatan, rad_f),
+                )
+            )
+        else:
+            attempts.append(
+                (
+                    f"""
+                    INSERT INTO {table}
+                    (waktu, id_relawan, kode_posko, jawaban, skor, status, latitude, longitude, catatan, radius)
+                    VALUES (%s,%s,%s,%s,%s,%s,%s,%s,%s,%s)
+                    """,
+                    (w, id_relawan, kode_posko, payload, float(skor), status, lat_f, lon_f, catatan, rad_f),
+                )
+            )
+            attempts.append(
+                (
+                    f"""
+                    INSERT INTO {table}
+                    (waktu, id_relawan, kode_posko, jawaban, skor, status, latitude, longitude, catatan, radius)
+                    VALUES (%s,%s,%s,%s::jsonb,%s,%s,%s,%s,%s,%s)
+                    """,
+                    (w, id_relawan, kode_posko, payload, float(skor), status, lat_f, lon_f, catatan, rad_f),
+                )
+            )
 
     if prefer_jsonb_cast:
         attempts.append(
@@ -554,6 +607,7 @@ def pg_insert_asesmen_kesehatan(
     latitude: Any,
     longitude: Any,
     catatan: Optional[str] = None,
+    radius: Optional[float] = None,
     waktu: Optional[datetime] = None,
 ) -> bool:
     return _insert_asesmen(
@@ -567,10 +621,10 @@ def pg_insert_asesmen_kesehatan(
         latitude=latitude,
         longitude=longitude,
         catatan=catatan,
+        radius=radius,
         waktu=waktu,
         prefer_jsonb_cast=True,
     )
-
 
 def pg_insert_asesmen_pendidikan(
     id_relawan: str,
@@ -581,6 +635,7 @@ def pg_insert_asesmen_pendidikan(
     latitude: Any,
     longitude: Any,
     catatan: Optional[str] = None,
+    radius: Optional[float] = None,
     waktu: Optional[datetime] = None,
 ) -> bool:
     return _insert_asesmen(
@@ -594,15 +649,99 @@ def pg_insert_asesmen_pendidikan(
         latitude=latitude,
         longitude=longitude,
         catatan=catatan,
+        radius=radius,
         waktu=waktu,
         prefer_jsonb_cast=False,
     )
 
+def pg_insert_asesmen_infrastruktur(
+    id_relawan: str,
+    kode_posko: Optional[str],
+    jawaban: Dict[str, Any],
+    skor: float,
+    status: str,
+    latitude: Any,
+    longitude: Any,
+    catatan: Optional[str] = None,
+    radius: Optional[float] = None,
+    waktu: Optional[datetime] = None,
+) -> bool:
+    return _insert_asesmen(
+        table_env="PG_ASESMEN_INFRASTRUKTUR_TABLE",
+        default_table="public.asesmen_infrastruktur",
+        id_relawan=id_relawan,
+        kode_posko=kode_posko,
+        jawaban=jawaban,
+        skor=skor,
+        status=status,
+        latitude=latitude,
+        longitude=longitude,
+        catatan=catatan,
+        radius=radius,
+        waktu=waktu,
+        prefer_jsonb_cast=False,
+    )
+
+def pg_insert_asesmen_psikososial(
+    id_relawan: str,
+    kode_posko: Optional[str],
+    jawaban: Dict[str, Any],
+    skor: float,
+    status: str,
+    latitude: Any,
+    longitude: Any,
+    catatan: Optional[str] = None,
+    radius: Optional[float] = None,
+    waktu: Optional[datetime] = None,
+) -> bool:
+    return _insert_asesmen(
+        table_env="PG_ASESMEN_PSIKOSOSIAL_TABLE",
+        default_table="public.asesmen_psikososial",
+        id_relawan=id_relawan,
+        kode_posko=kode_posko,
+        jawaban=jawaban,
+        skor=skor,
+        status=status,
+        latitude=latitude,
+        longitude=longitude,
+        catatan=catatan,
+        radius=radius,
+        waktu=waktu,
+        prefer_jsonb_cast=False,
+    )
+
+def pg_insert_asesmen_wash(
+    id_relawan: str,
+    kode_posko: Optional[str],
+    jawaban: Dict[str, Any],
+    skor: float,
+    status: str,
+    latitude: Any,
+    longitude: Any,
+    catatan: Optional[str] = None,
+    radius: Optional[float] = None,
+    waktu: Optional[datetime] = None,
+) -> bool:
+    return _insert_asesmen(
+        table_env="PG_ASESMEN_WASH_TABLE",
+        default_table="public.asesmen_wash",
+        id_relawan=id_relawan,
+        kode_posko=kode_posko,
+        jawaban=jawaban,
+        skor=skor,
+        status=status,
+        latitude=latitude,
+        longitude=longitude,
+        catatan=catatan,
+        radius=radius,
+        waktu=waktu,
+        prefer_jsonb_cast=False,
+    )
 
 # ------------------------------------------------------------------------------
 # 7) Lokasi Relawan (marker di peta) - ambil lokasi terakhir per relawan dalam N jam
 # ------------------------------------------------------------------------------
-def pg_get_relawan_locations_last24h(hours: int = 24) -> List[Dict[str, Any]]:
+def pg_get_relawan_locations_last24h(hours: int = 168) -> List[Dict[str, Any]]:
     """Ambil lokasi relawan terakhir (per relawan) dalam N jam terakhir."""
     relawan_table = _get_env("PG_RELAWAN_TABLE", "public.data_relawan")
     lokasi_table = _get_env("PG_LOKASI_RELAWAN_TABLE", "public.lokasi_relawan")
@@ -633,35 +772,67 @@ def pg_get_relawan_locations_last24h(hours: int = 24) -> List[Dict[str, Any]]:
         # Pastikan lat/lon float (hindari Decimal -> error JSON)
         rr["latitude"] = _to_float(rr.get("latitude"))
         rr["longitude"] = _to_float(rr.get("longitude"))
+
+
+        # radius (opsional)
+        rr["radius"] = _to_float(rr.get("radius"))
         out.append(rr)
     return out
 
-def _pg_get_asesmen_last_hours(table_env: str, default_table: str, hours: int = 24) -> List[Dict[str, Any]]:
+def _pg_get_asesmen_last_hours(table_env: str, default_table: str, hours: int =168) -> List[Dict[str, Any]]:
     """Ambil asesmen dalam N jam terakhir untuk kebutuhan peta (buffer).
 
     Return field minimal:
       - waktu, id_relawan, skor, status, jawaban, latitude, longitude, catatan
     """
     table = _get_env(table_env, default_table)
+    relawan_table = _get_env("PG_RELAWAN_TABLE", "public.data_relawan")
 
     sql = f"""
         SELECT
-            waktu,
-            id_relawan,
-            skor,
-            status,
-            jawaban,
-            latitude,
-            longitude,
-            catatan
-        FROM {table}
+            lr.waktu,
+            lr.id_relawan,
+            dr.nama_relawan,
+            lr.skor,
+            lr.status,
+            lr.jawaban,
+            lr.latitude,
+            lr.longitude,
+            lr.catatan,
+            lr.radius
+        FROM {table} lr
+        LEFT JOIN {relawan_table} dr
+          ON dr.id_relawan = lr.id_relawan
         WHERE waktu >= NOW() - (%s * INTERVAL '1 hour')
           AND latitude IS NOT NULL
           AND longitude IS NOT NULL
         ORDER BY waktu DESC;
     """
 
-    rows = pg_fetchall(sql, (hours,))
+    try:
+        rows = pg_fetchall(sql, (hours,))
+    except Exception:
+        # Fallback jika kolom radius belum ada
+        sql2 = f"""
+            SELECT
+                lr.waktu,
+                lr.id_relawan,
+                dr.nama_relawan,
+                lr.skor,
+                lr.status,
+                lr.jawaban,
+                lr.latitude,
+                lr.longitude,
+                lr.catatan,
+            FROM {table} lr
+            LEFT JOIN {relawan_table} dr
+              ON dr.id_relawan = lr.id_relawan
+            WHERE waktu >= NOW() - (%s * INTERVAL '1 hour')
+              AND latitude IS NOT NULL
+              AND longitude IS NOT NULL
+            ORDER BY waktu DESC;
+        """
+        rows = pg_fetchall(sql2, (hours,))
     out: List[Dict[str, Any]] = []
     for r in rows:
         rr = _json_safe_row(r)
@@ -682,21 +853,40 @@ def _pg_get_asesmen_last_hours(table_env: str, default_table: str, hours: int = 
     return out
 
 
-def pg_get_asesmen_kesehatan_last24h(hours: int = 24) -> List[Dict[str, Any]]:
+def pg_get_asesmen_kesehatan_last24h(hours: int = 168) -> List[Dict[str, Any]]:
     return _pg_get_asesmen_last_hours(
         table_env="PG_ASESMEN_KESEHATAN_TABLE",
         default_table="public.asesmen_kesehatan",
         hours=hours,
     )
 
-
-def pg_get_asesmen_pendidikan_last24h(hours: int = 24) -> List[Dict[str, Any]]:
+def pg_get_asesmen_pendidikan_last24h(hours: int = 168) -> List[Dict[str, Any]]:
     return _pg_get_asesmen_last_hours(
         table_env="PG_ASESMEN_PENDIDIKAN_TABLE",
         default_table="public.asesmen_pendidikan",
         hours=hours,
     )
 
+def pg_get_asesmen_psikososial_last24h(hours: int = 168) -> List[Dict[str, Any]]:
+    return _pg_get_asesmen_last_hours(
+        table_env="PG_ASESMEN_PSIKOSOSIAL_TABLE",
+        default_table="public.asesmen_psikososial",
+        hours=hours,
+    )
+
+def pg_get_asesmen_infrastruktur_last24h(hours: int = 168) -> List[Dict[str, Any]]:
+    return _pg_get_asesmen_last_hours(
+        table_env="PG_ASESMEN_INFRASTRUKTUR_TABLE",
+        default_table="public.asesmen_infrastruktur",
+        hours=hours,
+    )
+
+def pg_get_asesmen_wash_last24h(hours: int = 168) -> List[Dict[str, Any]]:
+    return _pg_get_asesmen_last_hours(
+        table_env="PG_ASESMEN_WASH_TABLE",
+        default_table="public.asesmen_wash",
+        hours=hours,
+    )
 
 # ------------------------------------------------------------------------------
 # 8) stok_gudang (opsional) - read
@@ -855,16 +1045,18 @@ def pg_insert_permintaan_posko(data: Dict[str, Any]) -> bool:
         data["id_permintaan"] = id_permintaan
 
     # Normalisasi field yang sering dipakai UI
-    tanggal = data.get("tanggal")
-    if not tanggal:
-        data["tanggal"] = datetime.now().strftime("%d-%B-%y")
+    # waktu = data.get("tanggal")
+    # if not waktu:
+    #     data["tanggal"] = datetime.now().strftime("%d-%B-%y")
+
+    data["tanggal"] = datetime.now(timezone.utc).replace(tzinfo=None)
 
     # Coba beberapa mapping kolom supaya tahan beda skema
     attempts: List[Tuple[str, Tuple[Any, ...]]] = [
         (
             f"""
             INSERT INTO {table}
-            (id_permintaan, tanggal, kode_posko, kode_barang, jumlah_diminta, status, keterangan, relawan, photo_link)
+            (id_permintaan, waktu, kode_posko, kode_barang, jumlah_diminta, status, keterangan, relawan, photo_link)
             VALUES (%s,%s,%s,%s,%s,%s,%s,%s,%s)
             """,
             (
@@ -909,3 +1101,135 @@ def pg_insert_permintaan_posko(data: Dict[str, Any]) -> bool:
     if last_err:
         raise last_err
     return False
+
+# ------------------------------------------------------------------------------
+# 12) LOGISTIK - Permintaan (public.logistik_permintaan)
+# ------------------------------------------------------------------------------
+
+def pg_insert_logistik_permintaan(data: Dict[str, Any]) -> bool:
+    """Insert permintaan logistik ke tabel logistik_permintaan.
+
+    Ekspektasi kolom (sesuai skema yang kamu tunjukkan di DBeaver):
+      - id (bigserial)
+      - tanggal (timestamptz, default now())
+      - kode_posko (varchar)
+      - keterangan (varchar)
+      - status_permintaan (varchar)
+      - id_relawan (varchar)
+      - photo_link (varchar)
+      - latitude (numeric)
+      - longitude (numeric)
+
+    Catatan: kita sengaja biarkan DB yang set default tanggal (now())
+    kalau field tanggal tidak dikirim.
+    """
+    table = _get_env("PG_LOGISTIK_PERMINTAAN_TABLE", "public.logistik_permintaan")
+
+    # Defaults (sesuai kebutuhan UI sekarang)
+    if not data.get("status_permintaan"):
+        data["status_permintaan"] = "Draft"
+
+    # Lat/Lon dipaksa float agar aman
+    lat = _to_float(data.get("latitude"))
+    lon = _to_float(data.get("longitude"))
+
+    # Simpan (tanpa 'id' karena bigserial)
+    sql = f"""
+        INSERT INTO {table}
+        (kode_posko, keterangan, status_permintaan, id_relawan, photo_link, latitude, longitude)
+        VALUES (%s,%s,%s,%s,%s,%s,%s)
+    """
+
+    pg_execute(
+        sql,
+        (
+            data.get("kode_posko"),
+            data.get("keterangan"),
+            data.get("status_permintaan"),
+            data.get("id_relawan"),
+            data.get("photo_link"),
+            lat,
+            lon,
+        ),
+    )
+    return True
+
+
+def pg_get_logistik_permintaan_last24h(hours: int = 168) -> List[Dict[str, Any]]:
+    """Ambil permintaan logistik dalam N jam terakhir (default 24 jam)."""
+    table = _get_env("PG_LOGISTIK_PERMINTAAN_TABLE", "public.logistik_permintaan")
+    relawan_table = _get_env("PG_RELAWAN_TABLE", "public.data_relawan")
+
+    h = 168
+    try:
+        h = max(1, int(hours))
+    except Exception:
+        h = 168
+
+    sql = f"""
+        SELECT
+            lr.id,
+            lr.waktu,
+            lr.kode_posko,
+            lr.keterangan,
+            lr.status_permintaan,
+            lr.id_relawan,
+            dr.nama_relawan,
+            lr.photo_link,
+            lr.latitude,
+            lr.longitude
+        FROM {table} lr
+        LEFT JOIN {relawan_table} dr
+          ON dr.id_relawan = lr.id_relawan
+        WHERE waktu >= (now() - interval '{h} hours')
+        ORDER BY waktu DESC;
+    """
+
+    rows = pg_fetchall(sql)
+    return [_json_safe_row(r) for r in rows]
+
+
+def pg_update_logistik_permintaan_status(id_permintaan: int, status_permintaan: str) -> bool:
+    """Update kolom status_permintaan pada tabel logistik_permintaan berdasarkan ID.
+
+    Status yang didukung (sesuai kebutuhan UI):
+      Draft, Diproses, Dikirim, Diterima, Ditolak
+
+    Catatan:
+    - id_permintaan mengacu ke kolom 'id' (bigserial).
+    - Validasi status dilakukan di sini agar backend aman (tidak sembarang teks).
+    """
+    table = _get_env("PG_LOGISTIK_PERMINTAAN_TABLE", "public.logistik_permintaan")
+
+    allowed = {"Draft", "Diproses", "Dikirim", "Diterima", "Ditolak"}
+    st = (status_permintaan or "").strip()
+
+    # Normalisasi sederhana: Title Case untuk aman
+    # (agar input "draft" tetap bisa diterima)
+    if st.lower() == "draft":
+        st = "Draft"
+    elif st.lower() == "diproses":
+        st = "Diproses"
+    elif st.lower() == "dikirim":
+        st = "Dikirim"
+    elif st.lower() == "diterima":
+        st = "Diterima"
+    elif st.lower() == "ditolak":
+        st = "Ditolak"
+
+    if st not in allowed:
+        raise ValueError("Status_permintaan tidak valid")
+
+    try:
+        pid = int(id_permintaan)
+    except Exception as e:
+        raise ValueError("ID permintaan tidak valid") from e
+
+    sql = f"""
+        UPDATE {table}
+        SET status_permintaan = %s
+        WHERE id = %s
+    """
+
+    pg_execute(sql, (st, pid))
+    return True

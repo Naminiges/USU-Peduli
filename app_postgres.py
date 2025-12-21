@@ -19,10 +19,19 @@ try:
         pg_insert_lokasi_relawan,
         pg_insert_asesmen_kesehatan,
         pg_insert_asesmen_pendidikan,
+        pg_insert_asesmen_infrastruktur,
+        pg_insert_asesmen_wash,
+        pg_insert_asesmen_psikososial,
         pg_get_relawan_locations_last24h,
         pg_get_asesmen_kesehatan_last24h,
         pg_get_asesmen_pendidikan_last24h,
+        pg_get_asesmen_infrastruktur_last24h,
+        pg_get_asesmen_wash_last24h,
+        pg_get_asesmen_psikososial_last24h,
         ensure_kabkota_geojson_static,
+        pg_get_logistik_permintaan_last24h,
+        pg_insert_logistik_permintaan,
+        pg_update_logistik_permintaan_status,
         # opsional (kalau tabel ada)
         pg_get_stok_gudang,
         pg_get_master_logistik_codes,
@@ -38,15 +47,24 @@ except Exception as _pg_err:
     pg_insert_lokasi_relawan = None
     pg_insert_asesmen_kesehatan = None
     pg_insert_asesmen_pendidikan = None
+    pg_insert_asesmen_infrastruktur = None
+    pg_insert_asesmen_wash = None
+    pg_insert_asesmen_psikososial = None
     pg_get_relawan_locations_last24h = None
     pg_get_asesmen_kesehatan_last24h = None
     pg_get_asesmen_pendidikan_last24h = None
+    pg_get_asesmen_infrastruktur_last24h = None
+    pg_get_asesmen_wash_last24h = None
+    pg_get_asesmen_psikososial_last24h = None
     ensure_kabkota_geojson_static = None
     pg_get_stok_gudang = None
     pg_get_master_logistik_codes = None
     pg_get_rekap_kabkota_latest = None
     pg_insert_permintaan_posko = None
     pg_next_id = None
+    pg_insert_logistik_permintaan = None
+    pg_get_logistik_permintaan_last24h = None
+    pg_update_logistik_permintaan_status = None
 
 
 app = Flask(__name__)
@@ -111,7 +129,13 @@ def get_relawan_list_any() -> list:
     """Ambil daftar relawan dari Postgres untuk login."""
     if _pg_enabled() and pg_get_relawan_list is not None:
         try:
-            return pg_get_relawan_list() or []
+            lst = pg_get_relawan_list() or []
+            # Urutkan A-Z untuk dropdown login
+            try:
+                lst.sort(key=lambda x: (x.get("nama_relawan") or "").strip().lower())
+            except Exception:
+                pass
+            return lst
         except Exception as e:
             print(f"[PG] get_relawan_list_any error: {e}")
     return []
@@ -225,8 +249,6 @@ def log_permintaan_posko(data_permintaan, nama_relawan, id_relawan, nama_posko=N
         id_permintaan = sanitize_for_log(data_permintaan.get("id_permintaan", "UNKNOWN"))
         kode_posko = sanitize_for_log(data_permintaan.get("kode_posko", "UNKNOWN"))
         nama_posko_safe = sanitize_for_log(nama_posko) if nama_posko else kode_posko
-        kode_barang = sanitize_for_log(data_permintaan.get("kode_barang", "UNKNOWN"))
-        jumlah_diminta = sanitize_for_log(data_permintaan.get("jumlah_diminta", "0"))
         keterangan = sanitize_for_log(data_permintaan.get("keterangan", ""))
         status = sanitize_for_log(data_permintaan.get("status", "Draft"))
         tanggal = sanitize_for_log(data_permintaan.get("tanggal", ""))
@@ -237,8 +259,6 @@ def log_permintaan_posko(data_permintaan, nama_relawan, id_relawan, nama_posko=N
             f"ID: {id_permintaan} | "
             f"Peminta: {nama_relawan_safe} (ID: {id_relawan_safe}) | "
             f"Posko: {nama_posko_safe} ({kode_posko}) | "
-            f"Barang: {kode_barang} | "
-            f"Jumlah: {jumlah_diminta} | "
             f"Status: {status} | "
             f"Tanggal: {tanggal} | "
             f"Keterangan: {keterangan if keterangan else '(tidak ada)'}"
@@ -278,9 +298,18 @@ def api_refresh_map():
         relawan_lokasi = []
         if pg_get_relawan_locations_last24h:
             try:
-                relawan_lokasi = pg_get_relawan_locations_last24h(24)
+                relawan_lokasi = pg_get_relawan_locations_last24h(168)
             except Exception as e:
                 print(f"Warning: gagal ambil lokasi_relawan dari Postgres: {e}")
+
+        
+        # Permintaan logistik (Postgres) - marker di map (ambil last 24 jam)
+        permintaan_logistik = []
+        if pg_get_logistik_permintaan_last24h:
+            try:
+                permintaan_logistik = pg_get_logistik_permintaan_last24h(168) or []
+            except Exception as e:
+                print(f"Warning: gagal ambil logistik_permintaan dari Postgres: {e}")
 
         return jsonify(
             {
@@ -288,8 +317,13 @@ def api_refresh_map():
                 "data_lokasi": data_lokasi,
                 "status_map": status_map,
                 "relawan_lokasi": relawan_lokasi,
-                "asesmen_kesehatan": pg_get_asesmen_kesehatan_last24h(24) if pg_get_asesmen_kesehatan_last24h else [],
-                "asesmen_pendidikan": pg_get_asesmen_pendidikan_last24h(24) if pg_get_asesmen_pendidikan_last24h else []
+                "asesmen_kesehatan": pg_get_asesmen_kesehatan_last24h(168) if pg_get_asesmen_kesehatan_last24h else [],
+                "asesmen_pendidikan": pg_get_asesmen_pendidikan_last24h(168) if pg_get_asesmen_pendidikan_last24h else [],
+                "asesmen_psikososial": pg_get_asesmen_psikososial_last24h(168) if pg_get_asesmen_psikososial_last24h else [],
+                "asesmen_infrastruktur": pg_get_asesmen_infrastruktur_last24h(168) if pg_get_asesmen_infrastruktur_last24h else [],
+                "asesmen_wash": pg_get_asesmen_wash_last24h(168) if pg_get_asesmen_wash_last24h else [],
+
+                "permintaan_logistik": permintaan_logistik
             }
         )
     except Exception as e:
@@ -345,9 +379,17 @@ def map_view():
     relawan_lokasi = []
     if pg_get_relawan_locations_last24h:
         try:
-            relawan_lokasi = pg_get_relawan_locations_last24h(24)
+            relawan_lokasi = pg_get_relawan_locations_last24h(168)
         except Exception as e:
             print(f"Warning: gagal ambil lokasi_relawan dari Postgres: {e}")
+
+    # Permintaan logistik (Postgres) - marker di map (ambil last 24 jam)
+    permintaan_logistik = []
+    if pg_get_logistik_permintaan_last24h:
+        try:
+            permintaan_logistik = pg_get_logistik_permintaan_last24h(168)
+        except Exception as e:
+            print(f"Warning: gagal ambil logistik_permintaan dari Postgres: {e}")
 
     data_barang = []
     if _pg_enabled() and pg_get_master_logistik_codes is not None:
@@ -367,9 +409,15 @@ def map_view():
         data_barang=data_barang,
         logged_in=session.get("logged_in", False),
         nama_relawan=session.get("nama_relawan", ""),
+        is_admin=session.get("is_admin", False),
         status_map=json.dumps(status_map),
-        asesmen_kesehatan=json.dumps(pg_get_asesmen_kesehatan_last24h(24) if pg_get_asesmen_kesehatan_last24h else []),
-        asesmen_pendidikan=json.dumps(pg_get_asesmen_pendidikan_last24h(24) if pg_get_asesmen_pendidikan_last24h else [])
+        asesmen_kesehatan=json.dumps(pg_get_asesmen_kesehatan_last24h(168) if pg_get_asesmen_kesehatan_last24h else []),
+        asesmen_pendidikan=json.dumps(pg_get_asesmen_pendidikan_last24h(168) if pg_get_asesmen_pendidikan_last24h else []),
+        asesmen_psikososial=json.dumps(pg_get_asesmen_psikososial_last24h(168) if pg_get_asesmen_psikososial_last24h else []),
+        asesmen_infrastruktur=json.dumps(pg_get_asesmen_infrastruktur_last24h(168) if pg_get_asesmen_infrastruktur_last24h else []),
+        asesmen_wash=json.dumps(pg_get_asesmen_wash_last24h(168) if pg_get_asesmen_wash_last24h else []),
+
+        permintaan_logistik=json.dumps(permintaan_logistik)
     )
 
 
@@ -413,6 +461,7 @@ def login():
     session["logged_in"] = True
     session["nama_relawan"] = matched["nama_relawan"]
     session["id_relawan"] = matched.get("id_relawan", "UNKNOWN")
+    session["is_admin"] = bool(matched.get("is_admin") or False)
     flash(f"Login berhasil! Selamat bertugas, {matched['nama_relawan']}.", "success")
     return redirect(url_for("map_view"))
 
@@ -422,25 +471,27 @@ def logout():
     session.pop("logged_in", None)
     session.pop("nama_relawan", None)
     session.pop("id_relawan", None)
+    session.pop("is_admin", None)
     flash("Logout Berhasil.", "success")
     return redirect(url_for("map_view"))
 
 
 # ==============================================================================
-# 2. LOGIKA PERMINTAAN POSKO
+# 2. LOGIKA PERMINTAAN LOGISTIK (logistik_permintaan)
 # ==============================================================================
 @app.route("/submit_permintaan", methods=["POST"])
 def submit_permintaan():
     if not session.get("logged_in"):
         return redirect(url_for("map_view"))
 
-    if not _pg_enabled() or pg_insert_permintaan_posko is None:
+    if not _pg_enabled() or pg_insert_logistik_permintaan is None:
         flash("Fitur permintaan belum aktif: tabel/pg_data belum siap.", "danger")
         return redirect(url_for("map_view"))
 
     kode_posko = request.form.get("kode_posko")
-    kode_barang = request.form.get("kode_barang")
-    jumlah_diminta = request.form.get("jumlah_diminta")
+    keterangan = request.form.get("keterangan", "")
+    latitude = request.form.get("latitude")
+    longitude = request.form.get("longitude")
 
     # Ambil nama posko untuk log yang lebih informatif
     nama_posko = None
@@ -451,19 +502,25 @@ def submit_permintaan():
             break
 
     data = {
-        "id_permintaan": get_next_id("PG_PERMINTAAN_POSKO_TABLE", "public.permintaan_posko", "id_permintaan", "R"),
+        # id untuk log saja (di DB pakai bigserial)
+        "id_permintaan": f"LP-{datetime.datetime.now().strftime('%Y%m%d%H%M%S')}",
         "tanggal": datetime.datetime.now().strftime("%d-%B-%y"),
         "kode_posko": kode_posko,
-        "kode_barang": kode_barang,
-        "jumlah_diminta": jumlah_diminta,
+        "keterangan": keterangan,
+        "status_permintaan": "Draft",
+        # kompatibel dengan logger lama
         "status": "Draft",
-        "keterangan": request.form.get("keterangan", ""),
+        "kode_barang": "-",
+        "jumlah_diminta": "-",
+        "id_relawan": session.get("id_relawan", session.get("nama_relawan")),
         "relawan": session.get("id_relawan", session.get("nama_relawan")),
         "photo_link": "",
+        "latitude": latitude,
+        "longitude": longitude,
     }
 
     try:
-        pg_insert_permintaan_posko(data)
+        pg_insert_logistik_permintaan(data)
     except Exception as e:
         flash(f"Gagal simpan permintaan: {e}", "danger")
         return redirect(url_for("map_view"))
@@ -475,6 +532,49 @@ def submit_permintaan():
 
     flash(f"Permintaan {nama_posko or kode_posko} berhasil dikirim!", "success")
     return redirect(url_for("map_view"))
+
+
+
+# ==============================================================================
+# 2b. ADMIN: UPDATE STATUS PERMINTAAN LOGISTIK (logistik_permintaan)
+# ==============================================================================
+@app.route("/api/update_permintaan_status", methods=["POST"])
+def api_update_permintaan_status():
+    """Update status_permintaan pada logistik_permintaan.
+    Hanya untuk relawan yang login dan is_admin=True.
+    Payload: {id: <int>, status: <str>}
+    """
+    if not session.get("logged_in"):
+        return jsonify({"success": False, "error": "Unauthorized"}), 401
+
+    if not session.get("is_admin"):
+        return jsonify({"success": False, "error": "Forbidden"}), 403
+
+    if not _pg_enabled() or pg_update_logistik_permintaan_status is None:
+        return jsonify({"success": False, "error": "Fitur belum aktif (pg_data belum siap)."}), 500
+
+    payload = request.get_json(silent=True) or {}
+    if not payload:
+        # fallback kalau dikirim sebagai form-urlencoded
+        payload = request.form.to_dict() if request.form else {}
+
+    id_raw = payload.get("id")
+    status_new = (payload.get("status") or "").strip()
+
+    allowed = {"Draft", "Diproses", "Dikirim", "Diterima", "Ditolak"}
+    if status_new not in allowed:
+        return jsonify({"success": False, "error": "Status tidak valid."}), 400
+
+    try:
+        id_int = int(str(id_raw).strip())
+    except Exception:
+        return jsonify({"success": False, "error": "ID tidak valid."}), 400
+
+    try:
+        pg_update_logistik_permintaan_status(id_int, status_new)
+        return jsonify({"success": True})
+    except Exception as e:
+        return jsonify({"success": False, "error": str(e)}), 500
 
 
 # ==============================================================================
@@ -668,6 +768,15 @@ def submit_asesmen_kesehatan():
     lat = request.form.get("latitude")
     lon = request.form.get("longitude")
     catatan = request.form.get("catatan") or None
+    radius_in = request.form.get("radius")
+    try:
+        radius = float(radius_in) if radius_in not in (None, "") else 2.0
+    except Exception:
+        radius = 2.0
+    if radius <= 0:
+        radius = 2.0
+    if radius > 50:
+        radius = 50.0
 
     p1 = _ask_int_1_5(request.form.get("p1"))
     p2 = _ask_int_1_5(request.form.get("p2"))
@@ -712,6 +821,7 @@ def submit_asesmen_kesehatan():
             latitude=lat,
             longitude=lon,
             catatan=catatan,
+            radius=radius,
         )
         flash(f"Asesmen Kesehatan tersimpan (Status: {status}, Skor: {skor_100:.1f}).", "success")
     except Exception as e:
@@ -733,6 +843,15 @@ def submit_asesmen_pendidikan():
     lat = request.form.get("latitude")
     lon = request.form.get("longitude")
     catatan = request.form.get("catatan") or None
+    radius_in = request.form.get("radius")
+    try:
+        radius = float(radius_in) if radius_in not in (None, "") else 2.0
+    except Exception:
+        radius = 2.0
+    if radius <= 0:
+        radius = 2.0
+    if radius > 50:
+        radius = 50.0
 
     # 10 soal (skala 1-5)
     answers = {f"p{i}": _ask_int_1_5(request.form.get(f"p{i}")) for i in range(1, 11)}
@@ -772,10 +891,218 @@ def submit_asesmen_pendidikan():
             latitude=lat,
             longitude=lon,
             catatan=catatan,
+            radius=radius,
         )
         flash(f"Asesmen Pendidikan tersimpan (Status: {status}, Skor: {skor_100:.1f}).", "success")
     except Exception as e:
         flash(f"Gagal simpan asesmen pendidikan: {e}", "danger")
+
+    return redirect(url_for("map_view"))
+
+@app.route("/submit_asesmen_psikososial", methods=["POST"])
+def submit_asesmen_psikososial():
+    if not _require_login():
+        return redirect(url_for("map_view"))
+
+    if not _pg_enabled() or pg_insert_asesmen_psikososial is None:
+        flash("Fitur asesmen belum aktif: DATABASE_URL/pg_data belum siap.", "danger")
+        return redirect(url_for("map_view"))
+
+    kode_posko = request.form.get("kode_posko") or None
+    lat = request.form.get("latitude")
+    lon = request.form.get("longitude")
+    catatan = request.form.get("catatan") or None
+    radius_in = request.form.get("radius")
+    try:
+        radius = float(radius_in) if radius_in not in (None, "") else 2.0
+    except Exception:
+        radius = 2.0
+    if radius <= 0:
+        radius = 2.0
+    if radius > 50:
+        radius = 50.0
+
+    # 10 soal (skala 1-5)
+    answers = {f"p{i}": _ask_int_1_5(request.form.get(f"p{i}")) for i in range(1, 11)}
+
+    weights = {
+        "p1": 1.4,
+        "p2": 1.0,
+        "p3": 1.0,
+        "p4": 1.0,
+        "p5": 0.8,
+        "p6": 1.5,
+        "p7": 0.9,
+        "p8": 1.3,
+        "p9": 0.8,
+        "p10": 0.9,
+    }
+
+    weighted_sum = sum(answers[k] * weights[k] for k in answers)
+    max_sum = sum(5 * weights[k] for k in answers)
+
+    skor_100 = (weighted_sum / max_sum) * 100.0
+
+    if skor_100 >= 80:
+        status = "Kritis"
+    elif skor_100 >= 60:
+        status = "Waspada"
+    else:
+        status = "Aman"
+
+    try:
+        pg_insert_asesmen_psikososial(
+            id_relawan=session.get("id_relawan", "UNKNOWN"),
+            kode_posko=kode_posko,
+            jawaban=answers,
+            skor=float(skor_100),
+            status=status,
+            latitude=lat,
+            longitude=lon,
+            catatan=catatan,
+            radius=radius,
+        )
+        flash(f"Asesmen Psikososial tersimpan (Status: {status}, Skor: {skor_100:.1f}).", "success")
+    except Exception as e:
+        flash(f"Gagal simpan asesmen psikososial: {e}", "danger")
+
+    return redirect(url_for("map_view"))
+
+@app.route("/submit_asesmen_infrastruktur", methods=["POST"])
+def submit_asesmen_infrastruktur():
+    if not _require_login():
+        return redirect(url_for("map_view"))
+
+    if not _pg_enabled() or pg_insert_asesmen_infrastruktur is None:
+        flash("Fitur asesmen belum aktif: DATABASE_URL/pg_data belum siap.", "danger")
+        return redirect(url_for("map_view"))
+
+    kode_posko = request.form.get("kode_posko") or None
+    lat = request.form.get("latitude")
+    lon = request.form.get("longitude")
+    catatan = request.form.get("catatan") or None
+    radius_in = request.form.get("radius")
+    try:
+        radius = float(radius_in) if radius_in not in (None, "") else 2.0
+    except Exception:
+        radius = 2.0
+    if radius <= 0:
+        radius = 2.0
+    if radius > 50:
+        radius = 50.0
+
+    # 10 soal (skala 1-5)
+    answers = {f"p{i}": _ask_int_1_5(request.form.get(f"p{i}")) for i in range(1, 11)}
+
+    weights = {
+        "p1": 1.4,
+        "p2": 1.0,
+        "p3": 1.0,
+        "p4": 1.0,
+        "p5": 0.8,
+        "p6": 1.5,
+        "p7": 0.9,
+        "p8": 1.3,
+        "p9": 0.8,
+        "p10": 0.9,
+    }
+
+    weighted_sum = sum(answers[k] * weights[k] for k in answers)
+    max_sum = sum(5 * weights[k] for k in answers)
+
+    skor_100 = (weighted_sum / max_sum) * 100.0
+
+    if skor_100 >= 80:
+        status = "Kritis"
+    elif skor_100 >= 60:
+        status = "Waspada"
+    else:
+        status = "Aman"
+
+    try:
+        pg_insert_asesmen_infrastruktur(
+            id_relawan=session.get("id_relawan", "UNKNOWN"),
+            kode_posko=kode_posko,
+            jawaban=answers,
+            skor=float(skor_100),
+            status=status,
+            latitude=lat,
+            longitude=lon,
+            catatan=catatan,
+            radius=radius,
+        )
+        flash(f"Asesmen Infrastruktur tersimpan (Status: {status}, Skor: {skor_100:.1f}).", "success")
+    except Exception as e:
+        flash(f"Gagal simpan asesmen infrastruktur: {e}", "danger")
+
+    return redirect(url_for("map_view"))
+
+@app.route("/submit_asesmen_wash", methods=["POST"])
+def submit_asesmen_wash():
+    if not _require_login():
+        return redirect(url_for("map_view"))
+
+    if not _pg_enabled() or pg_insert_asesmen_wash is None:
+        flash("Fitur asesmen belum aktif: DATABASE_URL/pg_data belum siap.", "danger")
+        return redirect(url_for("map_view"))
+
+    kode_posko = request.form.get("kode_posko") or None
+    lat = request.form.get("latitude")
+    lon = request.form.get("longitude")
+    catatan = request.form.get("catatan") or None
+    radius_in = request.form.get("radius")
+    try:
+        radius = float(radius_in) if radius_in not in (None, "") else 2.0
+    except Exception:
+        radius = 2.0
+    if radius <= 0:
+        radius = 2.0
+    if radius > 50:
+        radius = 50.0
+
+    # 10 soal (skala 1-5)
+    answers = {f"p{i}": _ask_int_1_5(request.form.get(f"p{i}")) for i in range(1, 11)}
+
+    weights = {
+        "p1": 1.4,
+        "p2": 1.0,
+        "p3": 1.0,
+        "p4": 1.0,
+        "p5": 0.8,
+        "p6": 1.5,
+        "p7": 0.9,
+        "p8": 1.3,
+        "p9": 0.8,
+        "p10": 0.9,
+    }
+
+    weighted_sum = sum(answers[k] * weights[k] for k in answers)
+    max_sum = sum(5 * weights[k] for k in answers)
+
+    skor_100 = (weighted_sum / max_sum) * 100.0
+
+    if skor_100 >= 80:
+        status = "Kritis"
+    elif skor_100 >= 60:
+        status = "Waspada"
+    else:
+        status = "Aman"
+
+    try:
+        pg_insert_asesmen_wash(
+            id_relawan=session.get("id_relawan", "UNKNOWN"),
+            kode_posko=kode_posko,
+            jawaban=answers,
+            skor=float(skor_100),
+            status=status,
+            latitude=lat,
+            longitude=lon,
+            catatan=catatan,
+            radius=radius,
+        )
+        flash(f"Asesmen Wash tersimpan (Status: {status}, Skor: {skor_100:.1f}).", "success")
+    except Exception as e:
+        flash(f"Gagal simpan asesmen wash: {e}", "danger")
 
     return redirect(url_for("map_view"))
 
