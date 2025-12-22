@@ -245,7 +245,7 @@
           data-bs-toggle="modal"
           data-bs-target="#asesmenKondisiModal"
         >
-          <i class="fa-solid fa-droplet me-2"></i> Asesmen Kondisi
+          <i class="fa-solid fa-clipboard-list me-2"></i> Asesmen Kondisi
         </button>
         {% if is_admin %}
 
@@ -1951,7 +1951,7 @@
     >
       <div class="modal-dialog modal-lg modal-dialog-centered">
         <div class="modal-content">
-          <form method="POST" action="{{ url_for('submit_asesmen_wash') }}">
+          <form method="POST" action="{{ url_for('submit_asesmen_kondisi') }}">
             <div class="modal-header">
               <h5 class="modal-title" id="asesmenKondisiLabel">
                 Asesmen Kondisi
@@ -2037,20 +2037,14 @@
                 </div>
               </div>
 
-              <input
-                type="hidden"
-                name="payload_kondisi"
-                id="payload_kondisi"
-              />
-
               <div class="mb-3">
                 <label class="form-label">Lokasi Desa/Kecamatan</label>
-                  <input
-                    type="text"
-                    class="form-control"
-                    id="kesehatan_radius"
-                    name="lokasi"
-                  />
+                <input
+                  type="text"
+                  class="form-control"
+                  id="kondisi_lokasi"
+                  name="lokasi"
+                />
               </div>
 
               <div class="mb-2 text-muted small">
@@ -2080,10 +2074,10 @@
               "Jumlah Kebutuhan Layanan Air Bersih", "Sekolah Rusak", "Sekolah
               Layak Digunakan", "Guru Tersedia" ] %}
 
-              <!-- ===================== DATA KUANTITATIF ===================== -->
+              <!-- ===================== DATA Kondisi ===================== -->
               <div class="mt-4">
                 <h6 class="fw-bold mb-3">
-                  <i class="fas fa-list-numeric"></i> Data Kuantitatif Kondisi
+                  <i class="fas fa-list-numeric"></i> Data Kondisi
                 </h6>
 
                 {% for i in range(kondisi_angka|length) %}
@@ -4445,36 +4439,6 @@
             }
           });
         }
-
-        // DATA ASESMEN KONDISI
-        document
-          .querySelector("#asesmenKondisiModal form")
-          .addEventListener("submit", function () {
-            const data = {};
-
-            // ===== p1: Lokasi Desa / Kecamatan =====
-            const lokasi = this.querySelector('[name="lokasi"]');
-            data.p1 = lokasi ? lokasi.value : "";
-
-            // ===== p2: Titik banjir (multiple) =====
-            data.p2 = state.kondisi_banjir?.points || {};
-
-            // ===== p3 – p11: data angka =====
-            for (let i = 1; i <= 9; i++) {
-              const el = this.querySelector(`[name="k${i}"]`);
-              data["p" + (i + 2)] = el ? parseInt(el.value || 0, 10) : 0;
-            }
-
-            // ===== CATATAN POSKO =====
-            const catatan = this.querySelector('[name="catatan"]');
-            data.catatan = catatan ? catatan.value.trim() : "";
-
-            // ===== SIMPAN KE HIDDEN INPUT =====
-            document.getElementById("payload_kondisi").value =
-              JSON.stringify(data);
-
-            console.log("PAYLOAD KONDISI:", data);
-          });
       });
     </script>
   </body>
