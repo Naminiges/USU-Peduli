@@ -738,6 +738,34 @@ def pg_insert_asesmen_wash(
         prefer_jsonb_cast=False,
     )
 
+def pg_insert_asesmen_kondisi(
+    id_relawan: str,
+    kode_posko: Optional[str],
+    jawaban: Dict[str, Any],
+    skor: float,
+    status: str,
+    latitude: Any,
+    longitude: Any,
+    catatan: Optional[str] = None,
+    radius: Optional[float] = None,
+    waktu: Optional[datetime] = None,
+) -> bool:
+    return _insert_asesmen(
+        table_env="PG_ASESMEN_KONDISI_TABLE",
+        default_table="public.asesmen_kondisi",
+        id_relawan=id_relawan,
+        kode_posko=kode_posko,
+        jawaban=jawaban,
+        skor=skor,
+        status=status,
+        latitude=latitude,
+        longitude=longitude,
+        catatan=catatan,
+        radius=radius,
+        waktu=waktu,
+        prefer_jsonb_cast=False,
+    )
+
 # ------------------------------------------------------------------------------
 # 7) Lokasi Relawan (marker di peta) - ambil lokasi terakhir per relawan dalam N jam
 # ------------------------------------------------------------------------------

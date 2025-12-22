@@ -21,6 +21,7 @@ try:
         pg_insert_asesmen_pendidikan,
         pg_insert_asesmen_infrastruktur,
         pg_insert_asesmen_wash,
+        pg_insert_asesmen_kondisi,
         pg_insert_asesmen_psikososial,
         pg_get_relawan_locations_last24h,
         pg_get_asesmen_kesehatan_last24h,
@@ -49,6 +50,7 @@ except Exception as _pg_err:
     pg_insert_asesmen_pendidikan = None
     pg_insert_asesmen_infrastruktur = None
     pg_insert_asesmen_wash = None
+    pg_insert_asesmen_kondisi = None
     pg_insert_asesmen_psikososial = None
     pg_get_relawan_locations_last24h = None
     pg_get_asesmen_kesehatan_last24h = None
@@ -1103,8 +1105,78 @@ def submit_asesmen_wash():
         flash(f"Asesmen Wash tersimpan (Status: {status}, Skor: {skor_100:.1f}).", "success")
     except Exception as e:
         flash(f"Gagal simpan asesmen wash: {e}", "danger")
+        print(e)
 
     return redirect(url_for("map_view"))
+
+@app.route("/submit_asesmen_kondisi", methods=["POST"])
+def submit_asesmen_kondisi():
+    if not _require_login():
+        return redirect(url_for("map_view"))
+
+    try:
+        if not _pg_enabled() or pg_insert_asesmen_kondisi is None:
+            flash("Fitur asesmen belum aktif.", "danger")
+            return redirect(url_for("map_view"))
+
+        kode_posko = request.form.get("kode_posko")
+        lat = request.form.get("latitude")
+        lon = request.form.get("longitude")
+        catatan = request.form.get("catatan")
+        radius = float(request.form.get("radius", 2) or 2)
+
+        # ===== Kondisi Banjir =====
+        lokasi = request.form.get("lokasi")
+        lat_list = request.form.getlist("banjir_lat[]")
+        lon_list = request.form.getlist("banjir_lon[]")
+        p2 = {}
+        for i, (lat, lon) in enumerate(zip(lat_list, lon_list), start=1):
+            p2[f"b{i}"] = [float(lat), float(lon)]
+
+        payload = {
+            "p1": lokasi,
+            "p2": p2,
+        }
+
+        for i in range(3, 12):
+            payload[f"p{i}"] = int(request.form.get(f"k{i-2}", 0))
+
+        answers = json.dumps(payload, ensure_ascii=False)
+
+        # ===== HITUNG SKOR (NANTI) =====
+        skor_100 = 0
+
+        if skor_100 >= 80:
+            status = "Kritis"
+        elif skor_100 >= 60:
+            status = "Waspada"
+        else:
+            status = "Aman"
+
+
+        print(f"Answers: {answers}")
+
+        # ===== SIMPAN =====
+        pg_insert_asesmen_kondisi(
+            id_relawan=session.get("id_relawan"),
+            kode_posko=kode_posko,
+            jawaban=answers,
+            skor=skor_100,
+            status=status,
+            latitude=lat,
+            longitude=lon,
+            catatan=catatan,
+            radius=radius,
+        )
+
+        flash("Asesmen Kondisi berhasil disimpan", "success")
+        return redirect(url_for("map_view"))
+
+    except Exception as e:
+        import traceback
+        traceback.print_exc()  # ⬅️ WAJIB UNTUK DEBUG
+        flash(f"Error asesmen kondisi: {e}", "danger")
+        return redirect(url_for("map_view"))
 
 
 if __name__ == "__main__":
