@@ -1031,7 +1031,7 @@ def _pg_get_asesmen_last_hours(table_env: str, default_table: str, hours: int =1
 
     sql = f"""
         SELECT
-            lr.waktu,
+            (lr.waktu + INTERVAL '0 hour')::timestamp AS waktu,
             lr.id_relawan,
             dr.nama_relawan,
             lr.skor,
