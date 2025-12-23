@@ -692,6 +692,7 @@ def _insert_asesmen(
     latitude: Any,
     longitude: Any,
     catatan: Optional[str],
+    photo_path: Optional[str] = None,
     radius: Optional[float] = None,
     waktu: Optional[datetime] = None,
     prefer_jsonb_cast: bool = True,
@@ -710,7 +711,56 @@ def _insert_asesmen(
     attempts: List[Tuple[str, Tuple[Any, ...]]] = []
 
     # Jika kolom 'radius' ada (baru), coba insert dengan radius dulu.
+    photo_v: Optional[str] = photo_path if photo_path not in (None, "") else None
+
+    # Jika kolom 'radius' ada (baru), coba insert dengan radius dulu.
     if rad_f is not None:
+        # radius + photo_path
+        if photo_v is not None:
+            if prefer_jsonb_cast:
+                attempts.append(
+                    (
+                        f"""
+                        INSERT INTO {table}
+                        (waktu, id_relawan, kode_posko, jawaban, skor, status, latitude, longitude, catatan, radius, photo_path)
+                        VALUES (%s,%s,%s,%s::jsonb,%s,%s,%s,%s,%s,%s,%s)
+                        """,
+                        (w, id_relawan, kode_posko, payload, float(skor), status, lat_f, lon_f, catatan, rad_f, photo_v),
+                    )
+                )
+                attempts.append(
+                    (
+                        f"""
+                        INSERT INTO {table}
+                        (waktu, id_relawan, kode_posko, jawaban, skor, status, latitude, longitude, catatan, radius, photo_path)
+                        VALUES (%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s)
+                        """,
+                        (w, id_relawan, kode_posko, payload, float(skor), status, lat_f, lon_f, catatan, rad_f, photo_v),
+                    )
+                )
+            else:
+                attempts.append(
+                    (
+                        f"""
+                        INSERT INTO {table}
+                        (waktu, id_relawan, kode_posko, jawaban, skor, status, latitude, longitude, catatan, radius, photo_path)
+                        VALUES (%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s)
+                        """,
+                        (w, id_relawan, kode_posko, payload, float(skor), status, lat_f, lon_f, catatan, rad_f, photo_v),
+                    )
+                )
+                attempts.append(
+                    (
+                        f"""
+                        INSERT INTO {table}
+                        (waktu, id_relawan, kode_posko, jawaban, skor, status, latitude, longitude, catatan, radius, photo_path)
+                        VALUES (%s,%s,%s,%s::jsonb,%s,%s,%s,%s,%s,%s,%s)
+                        """,
+                        (w, id_relawan, kode_posko, payload, float(skor), status, lat_f, lon_f, catatan, rad_f, photo_v),
+                    )
+                )
+
+        # radius (tanpa photo_path) - behavior lama
         if prefer_jsonb_cast:
             attempts.append(
                 (
@@ -753,49 +803,96 @@ def _insert_asesmen(
                     (w, id_relawan, kode_posko, payload, float(skor), status, lat_f, lon_f, catatan, rad_f),
                 )
             )
-
-    if prefer_jsonb_cast:
-        attempts.append(
-            (
-                f"""
-                INSERT INTO {table}
-                (waktu, id_relawan, kode_posko, jawaban, skor, status, latitude, longitude, catatan)
-                VALUES (%s,%s,%s,%s::jsonb,%s,%s,%s,%s,%s)
-                """,
-                (w, id_relawan, kode_posko, payload, float(skor), status, lat_f, lon_f, catatan),
-            )
-        )
-        attempts.append(
-            (
-                f"""
-                INSERT INTO {table}
-                (waktu, id_relawan, kode_posko, jawaban, skor, status, latitude, longitude, catatan)
-                VALUES (%s,%s,%s,%s,%s,%s,%s,%s,%s)
-                """,
-                (w, id_relawan, kode_posko, payload, float(skor), status, lat_f, lon_f, catatan),
-            )
-        )
     else:
-        attempts.append(
-            (
-                f"""
-                INSERT INTO {table}
-                (waktu, id_relawan, kode_posko, jawaban, skor, status, latitude, longitude, catatan)
-                VALUES (%s,%s,%s,%s,%s,%s,%s,%s,%s)
-                """,
-                (w, id_relawan, kode_posko, payload, float(skor), status, lat_f, lon_f, catatan),
+        # no radius + photo_path
+        if photo_v is not None:
+            if prefer_jsonb_cast:
+                attempts.append(
+                    (
+                        f"""
+                        INSERT INTO {table}
+                        (waktu, id_relawan, kode_posko, jawaban, skor, status, latitude, longitude, catatan, photo_path)
+                        VALUES (%s,%s,%s,%s::jsonb,%s,%s,%s,%s,%s,%s)
+                        """,
+                        (w, id_relawan, kode_posko, payload, float(skor), status, lat_f, lon_f, catatan, photo_v),
+                    )
+                )
+                attempts.append(
+                    (
+                        f"""
+                        INSERT INTO {table}
+                        (waktu, id_relawan, kode_posko, jawaban, skor, status, latitude, longitude, catatan, photo_path)
+                        VALUES (%s,%s,%s,%s,%s,%s,%s,%s,%s,%s)
+                        """,
+                        (w, id_relawan, kode_posko, payload, float(skor), status, lat_f, lon_f, catatan, photo_v),
+                    )
+                )
+            else:
+                attempts.append(
+                    (
+                        f"""
+                        INSERT INTO {table}
+                        (waktu, id_relawan, kode_posko, jawaban, skor, status, latitude, longitude, catatan, photo_path)
+                        VALUES (%s,%s,%s,%s,%s,%s,%s,%s,%s,%s)
+                        """,
+                        (w, id_relawan, kode_posko, payload, float(skor), status, lat_f, lon_f, catatan, photo_v),
+                    )
+                )
+                attempts.append(
+                    (
+                        f"""
+                        INSERT INTO {table}
+                        (waktu, id_relawan, kode_posko, jawaban, skor, status, latitude, longitude, catatan, photo_path)
+                        VALUES (%s,%s,%s,%s::jsonb,%s,%s,%s,%s,%s,%s)
+                        """,
+                        (w, id_relawan, kode_posko, payload, float(skor), status, lat_f, lon_f, catatan, photo_v),
+                    )
+                )
+
+        # no radius (tanpa photo_path) - behavior lama
+        if prefer_jsonb_cast:
+            attempts.append(
+                (
+                    f"""
+                    INSERT INTO {table}
+                    (waktu, id_relawan, kode_posko, jawaban, skor, status, latitude, longitude, catatan)
+                    VALUES (%s,%s,%s,%s::jsonb,%s,%s,%s,%s,%s)
+                    """,
+                    (w, id_relawan, kode_posko, payload, float(skor), status, lat_f, lon_f, catatan),
+                )
             )
-        )
-        attempts.append(
-            (
-                f"""
-                INSERT INTO {table}
-                (waktu, id_relawan, kode_posko, jawaban, skor, status, latitude, longitude, catatan)
-                VALUES (%s,%s,%s,%s::jsonb,%s,%s,%s,%s,%s)
-                """,
-                (w, id_relawan, kode_posko, payload, float(skor), status, lat_f, lon_f, catatan),
+            attempts.append(
+                (
+                    f"""
+                    INSERT INTO {table}
+                    (waktu, id_relawan, kode_posko, jawaban, skor, status, latitude, longitude, catatan)
+                    VALUES (%s,%s,%s,%s,%s,%s,%s,%s,%s)
+                    """,
+                    (w, id_relawan, kode_posko, payload, float(skor), status, lat_f, lon_f, catatan),
+                )
             )
-        )
+        else:
+            attempts.append(
+                (
+                    f"""
+                    INSERT INTO {table}
+                    (waktu, id_relawan, kode_posko, jawaban, skor, status, latitude, longitude, catatan)
+                    VALUES (%s,%s,%s,%s,%s,%s,%s,%s,%s)
+                    """,
+                    (w, id_relawan, kode_posko, payload, float(skor), status, lat_f, lon_f, catatan),
+                )
+            )
+            attempts.append(
+                (
+                    f"""
+                    INSERT INTO {table}
+                    (waktu, id_relawan, kode_posko, jawaban, skor, status, latitude, longitude, catatan)
+                    VALUES (%s,%s,%s,%s::jsonb,%s,%s,%s,%s,%s)
+                    """,
+                    (w, id_relawan, kode_posko, payload, float(skor), status, lat_f, lon_f, catatan),
+                )
+            )
+
 
     last_err: Optional[Exception] = None
     for sql, params in attempts:
@@ -820,6 +917,7 @@ def pg_insert_asesmen_kesehatan(
     latitude: Any,
     longitude: Any,
     catatan: Optional[str] = None,
+    photo_path: Optional[str] = None,
     radius: Optional[float] = None,
     waktu: Optional[datetime] = None,
 ) -> bool:
@@ -834,6 +932,7 @@ def pg_insert_asesmen_kesehatan(
         latitude=latitude,
         longitude=longitude,
         catatan=catatan,
+        photo_path=photo_path,
         radius=radius,
         waktu=waktu,
         prefer_jsonb_cast=True,
@@ -848,6 +947,7 @@ def pg_insert_asesmen_pendidikan(
     latitude: Any,
     longitude: Any,
     catatan: Optional[str] = None,
+    photo_path: Optional[str] = None,
     radius: Optional[float] = None,
     waktu: Optional[datetime] = None,
 ) -> bool:
@@ -862,6 +962,7 @@ def pg_insert_asesmen_pendidikan(
         latitude=latitude,
         longitude=longitude,
         catatan=catatan,
+        photo_path=photo_path,
         radius=radius,
         waktu=waktu,
         prefer_jsonb_cast=False,
@@ -876,6 +977,7 @@ def pg_insert_asesmen_infrastruktur(
     latitude: Any,
     longitude: Any,
     catatan: Optional[str] = None,
+    photo_path: Optional[str] = None,
     radius: Optional[float] = None,
     waktu: Optional[datetime] = None,
 ) -> bool:
@@ -890,6 +992,7 @@ def pg_insert_asesmen_infrastruktur(
         latitude=latitude,
         longitude=longitude,
         catatan=catatan,
+        photo_path=photo_path,
         radius=radius,
         waktu=waktu,
         prefer_jsonb_cast=False,
@@ -904,6 +1007,7 @@ def pg_insert_asesmen_psikososial(
     latitude: Any,
     longitude: Any,
     catatan: Optional[str] = None,
+    photo_path: Optional[str] = None,
     radius: Optional[float] = None,
     waktu: Optional[datetime] = None,
 ) -> bool:
@@ -918,6 +1022,7 @@ def pg_insert_asesmen_psikososial(
         latitude=latitude,
         longitude=longitude,
         catatan=catatan,
+        photo_path=photo_path,
         radius=radius,
         waktu=waktu,
         prefer_jsonb_cast=False,
@@ -932,6 +1037,7 @@ def pg_insert_asesmen_wash(
     latitude: Any,
     longitude: Any,
     catatan: Optional[str] = None,
+    photo_path: Optional[str] = None,
     radius: Optional[float] = None,
     waktu: Optional[datetime] = None,
 ) -> bool:
@@ -946,6 +1052,7 @@ def pg_insert_asesmen_wash(
         latitude=latitude,
         longitude=longitude,
         catatan=catatan,
+        photo_path=photo_path,
         radius=radius,
         waktu=waktu,
         prefer_jsonb_cast=False,
@@ -960,6 +1067,7 @@ def pg_insert_asesmen_kondisi(
     latitude: Any,
     longitude: Any,
     catatan: Optional[str] = None,
+    photo_path: Optional[str] = None,
     radius: Optional[float] = None,
     waktu: Optional[datetime] = None,
 ) -> bool:
@@ -974,6 +1082,7 @@ def pg_insert_asesmen_kondisi(
         latitude=latitude,
         longitude=longitude,
         catatan=catatan,
+        photo_path=photo_path,
         radius=radius,
         waktu=waktu,
         prefer_jsonb_cast=False,

@@ -5,6 +5,7 @@ import os  # Untuk mendapatkan waktu saat ini dan Secret Key
 import math
 from pathlib import Path
 from dotenv import load_dotenv
+from media_upload import save_asesmen_photos, photos_to_photo_path_value
 
 load_dotenv()
 
@@ -845,6 +846,18 @@ def _ask_int_1_5(val, default: int = 1) -> int:
         return default
 
 
+
+def _get_asesmen_photo_path(asesmen_name: str):
+    """Simpan max 2 foto asesmen ke media/asesmen/ dan return nilai untuk kolom photo_path (JSON string array)."""
+    files = request.files.getlist("photos")
+    paths = save_asesmen_photos(
+        files,
+        asesmen_name=asesmen_name,
+        id_relawan=session.get("id_relawan", "UNKNOWN"),
+        media_root=MEDIA_DIR,
+    )
+    return photos_to_photo_path_value(paths)
+
 def _require_login():
     if not session.get("logged_in"):
         flash("Silahkan login terlebih dahulu!", "danger")
@@ -860,6 +873,14 @@ def submit_asesmen_kesehatan():
     if not _pg_enabled() or pg_insert_asesmen_kesehatan is None:
         flash("Fitur asesmen belum aktif: DATABASE_URL/pg_data belum siap.", "danger")
         return redirect(url_for("map_view"))
+
+    # Upload foto (opsional, maksimal 2)
+    try:
+        photo_path = _get_asesmen_photo_path('kesehatan')
+    except Exception as e:
+        flash(f"Gagal upload foto asesmen kesehatan: {e}", "danger")
+        return redirect(url_for("map_view"))
+
 
     # Form data
     kode_posko = request.form.get("kode_posko") or None
@@ -919,6 +940,7 @@ def submit_asesmen_kesehatan():
             latitude=lat,
             longitude=lon,
             catatan=catatan,
+            photo_path=photo_path,
             radius=radius,
         )
         flash(f"Asesmen Kesehatan tersimpan (Status: {status}, Skor: {skor_100:.1f}).", "success")
@@ -936,6 +958,14 @@ def submit_asesmen_pendidikan():
     if not _pg_enabled() or pg_insert_asesmen_pendidikan is None:
         flash("Fitur asesmen belum aktif: DATABASE_URL/pg_data belum siap.", "danger")
         return redirect(url_for("map_view"))
+
+    # Upload foto (opsional, maksimal 2)
+    try:
+        photo_path = _get_asesmen_photo_path('pendidikan')
+    except Exception as e:
+        flash(f"Gagal upload foto asesmen pendidikan: {e}", "danger")
+        return redirect(url_for("map_view"))
+
 
     kode_posko = request.form.get("kode_posko") or None
     lat = request.form.get("latitude")
@@ -989,6 +1019,7 @@ def submit_asesmen_pendidikan():
             latitude=lat,
             longitude=lon,
             catatan=catatan,
+            photo_path=photo_path,
             radius=radius,
         )
         flash(f"Asesmen Pendidikan tersimpan (Status: {status}, Skor: {skor_100:.1f}).", "success")
@@ -1005,6 +1036,14 @@ def submit_asesmen_psikososial():
     if not _pg_enabled() or pg_insert_asesmen_psikososial is None:
         flash("Fitur asesmen belum aktif: DATABASE_URL/pg_data belum siap.", "danger")
         return redirect(url_for("map_view"))
+
+    # Upload foto (opsional, maksimal 2)
+    try:
+        photo_path = _get_asesmen_photo_path('psikososial')
+    except Exception as e:
+        flash(f"Gagal upload foto asesmen psikososial: {e}", "danger")
+        return redirect(url_for("map_view"))
+
 
     kode_posko = request.form.get("kode_posko") or None
     lat = request.form.get("latitude")
@@ -1058,6 +1097,7 @@ def submit_asesmen_psikososial():
             latitude=lat,
             longitude=lon,
             catatan=catatan,
+            photo_path=photo_path,
             radius=radius,
         )
         flash(f"Asesmen Psikososial tersimpan (Status: {status}, Skor: {skor_100:.1f}).", "success")
@@ -1074,6 +1114,14 @@ def submit_asesmen_infrastruktur():
     if not _pg_enabled() or pg_insert_asesmen_infrastruktur is None:
         flash("Fitur asesmen belum aktif: DATABASE_URL/pg_data belum siap.", "danger")
         return redirect(url_for("map_view"))
+
+    # Upload foto (opsional, maksimal 2)
+    try:
+        photo_path = _get_asesmen_photo_path('infrastruktur')
+    except Exception as e:
+        flash(f"Gagal upload foto asesmen infrastruktur: {e}", "danger")
+        return redirect(url_for("map_view"))
+
 
     kode_posko = request.form.get("kode_posko") or None
     lat = request.form.get("latitude")
@@ -1127,6 +1175,7 @@ def submit_asesmen_infrastruktur():
             latitude=lat,
             longitude=lon,
             catatan=catatan,
+            photo_path=photo_path,
             radius=radius,
         )
         flash(f"Asesmen Infrastruktur tersimpan (Status: {status}, Skor: {skor_100:.1f}).", "success")
@@ -1143,6 +1192,14 @@ def submit_asesmen_wash():
     if not _pg_enabled() or pg_insert_asesmen_wash is None:
         flash("Fitur asesmen belum aktif: DATABASE_URL/pg_data belum siap.", "danger")
         return redirect(url_for("map_view"))
+
+    # Upload foto (opsional, maksimal 2)
+    try:
+        photo_path = _get_asesmen_photo_path('wash')
+    except Exception as e:
+        flash(f"Gagal upload foto asesmen wash: {e}", "danger")
+        return redirect(url_for("map_view"))
+
 
     kode_posko = request.form.get("kode_posko") or None
     lat = request.form.get("latitude")
@@ -1196,6 +1253,7 @@ def submit_asesmen_wash():
             latitude=lat,
             longitude=lon,
             catatan=catatan,
+            photo_path=photo_path,
             radius=radius,
         )
         flash(f"Asesmen Wash tersimpan (Status: {status}, Skor: {skor_100:.1f}).", "success")
@@ -1214,6 +1272,14 @@ def submit_asesmen_kondisi():
         if not _pg_enabled() or pg_insert_asesmen_kondisi is None:
             flash("Fitur asesmen belum aktif.", "danger")
             return redirect(url_for("map_view"))
+
+        # Upload foto (opsional, maksimal 2)
+        try:
+            photo_path = _get_asesmen_photo_path('kondisi')
+        except Exception as e:
+            flash(f"Gagal upload foto asesmen kondisi: {e}", "danger")
+            return redirect(url_for("map_view"))
+
 
         kode_posko = request.form.get("kode_posko")
         lat = request.form.get("latitude")
@@ -1259,6 +1325,7 @@ def submit_asesmen_kondisi():
             latitude=lat,
             longitude=lon,
             catatan=catatan,
+            photo_path=photo_path,
             radius=radius,
         )
 

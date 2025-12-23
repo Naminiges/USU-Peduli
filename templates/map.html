@@ -1406,7 +1406,7 @@
           <form
             method="POST"
             action="{{ url_for('submit_asesmen_kesehatan') }}"
-          >
+           enctype="multipart/form-data">
             <div class="modal-header">
               <h5 class="modal-title" id="asesmenKesehatanLabel">
                 Asesmen Kesehatan
@@ -1525,7 +1525,15 @@
                   rows="3"
                 ></textarea>
               </div>
+             <div class="mb-3">
+              <label class="form-label">Foto (opsional, maks 2)</label>
+              <input class="form-control" type="file" name="photos" accept=".jpg,.jpeg,.png,.webp" multiple />
+              <div class="form-text">Maksimal 2 foto. Format: JPG/JPEG/PNG/WEBP.</div>
             </div>
+            </div>
+
+
+
 
             <div class="modal-footer">
               <button
@@ -1562,7 +1570,7 @@
           <form
             method="POST"
             action="{{ url_for('submit_asesmen_pendidikan') }}"
-          >
+           enctype="multipart/form-data">
             <div class="modal-header">
               <h5 class="modal-title" id="asesmenPendidikanLabel">
                 Asesmen Pendidikan
@@ -1682,7 +1690,15 @@
                   rows="3"
                 ></textarea>
               </div>
+            <div class="mb-3">
+              <label class="form-label">Foto (opsional, maks 2)</label>
+              <input class="form-control" type="file" name="photos" accept=".jpg,.jpeg,.png,.webp" multiple />
+              <div class="form-text">Maksimal 2 foto. Format: JPG/JPEG/PNG/WEBP.</div>
             </div>
+            </div>
+
+
+
 
             <div class="modal-footer">
               <button
@@ -1719,7 +1735,7 @@
           <form
             method="POST"
             action="{{ url_for('submit_asesmen_psikososial') }}"
-          >
+           enctype="multipart/form-data">
             <div class="modal-header">
               <h5 class="modal-title" id="asesmenPsikososialLabel">
                 Asesmen Psikososial
@@ -1842,7 +1858,15 @@
                   rows="3"
                 ></textarea>
               </div>
+            <div class="mb-3">
+              <label class="form-label">Foto (opsional, maks 2)</label>
+              <input class="form-control" type="file" name="photos" accept=".jpg,.jpeg,.png,.webp" multiple />
+              <div class="form-text">Maksimal 2 foto. Format: JPG/JPEG/PNG/WEBP.</div>
             </div>
+            </div>
+
+
+
 
             <div class="modal-footer">
               <button
@@ -1879,7 +1903,7 @@
           <form
             method="POST"
             action="{{ url_for('submit_asesmen_infrastruktur') }}"
-          >
+           enctype="multipart/form-data">
             <div class="modal-header">
               <h5 class="modal-title" id="asesmenInfrastrukturLabel">
                 Asesmen Infrastruktur
@@ -2001,7 +2025,15 @@
                   rows="3"
                 ></textarea>
               </div>
+            <div class="mb-3">
+              <label class="form-label">Foto (opsional, maks 2)</label>
+              <input class="form-control" type="file" name="photos" accept=".jpg,.jpeg,.png,.webp" multiple />
+              <div class="form-text">Maksimal 2 foto. Format: JPG/JPEG/PNG/WEBP.</div>
             </div>
+            </div>
+
+
+
 
             <div class="modal-footer">
               <button
@@ -2035,7 +2067,7 @@
     >
       <div class="modal-dialog modal-lg modal-dialog-centered">
         <div class="modal-content">
-          <form method="POST" action="{{ url_for('submit_asesmen_wash') }}">
+          <form method="POST" action="{{ url_for('submit_asesmen_wash') }}" enctype="multipart/form-data">
             <div class="modal-header">
               <h5 class="modal-title" id="asesmenWashLabel">Asesmen Wash</h5>
               <button
@@ -2153,7 +2185,13 @@
                   rows="3"
                 ></textarea>
               </div>
+            <div class="mb-3">
+              <label class="form-label">Foto (opsional, maks 2)</label>
+              <input class="form-control" type="file" name="photos" accept=".jpg,.jpeg,.png,.webp" multiple />
+              <div class="form-text">Maksimal 2 foto. Format: JPG/JPEG/PNG/WEBP.</div>
             </div>
+            </div>
+
 
             <div class="modal-footer">
               <button
@@ -2187,7 +2225,7 @@
     >
       <div class="modal-dialog modal-lg modal-dialog-centered">
         <div class="modal-content">
-          <form method="POST" action="{{ url_for('submit_asesmen_kondisi') }}">
+          <form method="POST" action="{{ url_for('submit_asesmen_kondisi') }}" enctype="multipart/form-data">
             <div class="modal-header">
               <h5 class="modal-title" id="asesmenKondisiLabel">
                 Asesmen Kondisi
@@ -2345,7 +2383,15 @@
                   rows="3"
                 ></textarea>
               </div>
+            <div class="mb-3">
+              <label class="form-label">Foto (opsional, maks 2)</label>
+              <input class="form-control" type="file" name="photos" accept=".jpg,.jpeg,.png,.webp" multiple />
+              <div class="form-text">Maksimal 2 foto. Format: JPG/JPEG/PNG/WEBP.</div>
             </div>
+            </div>
+
+
+
 
             <div class="modal-footer">
               <button
