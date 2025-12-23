@@ -28,6 +28,7 @@ try:
         pg_get_asesmen_pendidikan_last24h,
         pg_get_asesmen_infrastruktur_last24h,
         pg_get_asesmen_wash_last24h,
+        pg_get_asesmen_kondisi_last24h,
         pg_get_asesmen_psikososial_last24h,
         ensure_kabkota_geojson_static,
         pg_get_logistik_permintaan_last24h,
@@ -63,6 +64,7 @@ except Exception as _pg_err:
     pg_get_asesmen_pendidikan_last24h = None
     pg_get_asesmen_infrastruktur_last24h = None
     pg_get_asesmen_wash_last24h = None
+    pg_get_asesmen_kondisi_last24h = None
     pg_get_asesmen_psikososial_last24h = None
     ensure_kabkota_geojson_static = None
     pg_get_stok_gudang = None
@@ -374,6 +376,7 @@ def api_refresh_map():
                 "asesmen_psikososial": pg_get_asesmen_psikososial_last24h(168) if pg_get_asesmen_psikososial_last24h else [],
                 "asesmen_infrastruktur": pg_get_asesmen_infrastruktur_last24h(168) if pg_get_asesmen_infrastruktur_last24h else [],
                 "asesmen_wash": pg_get_asesmen_wash_last24h(168) if pg_get_asesmen_wash_last24h else [],
+                "asesmen_kondisi": pg_get_asesmen_kondisi_last24h(168) if pg_get_asesmen_kondisi_last24h else [],
 
                 "permintaan_logistik": permintaan_logistik
             }
@@ -500,6 +503,8 @@ def map_view():
         ref_status_lokasi=ref_status_lokasi,
         ref_tingkat_akses=ref_tingkat_akses,
         ref_kondisi=ref_kondisi,
+        asesmen_kondisi=json.dumps(pg_get_asesmen_kondisi_last24h(168) if pg_get_asesmen_kondisi_last24h else []),
+
         permintaan_logistik=json.dumps(permintaan_logistik)
     )
 
@@ -1217,12 +1222,12 @@ def submit_asesmen_kondisi():
         payload = {
             "p1": lokasi,
             "p2": p2,
+            **{
+                f"p{i}": int(request.form.get(f"k{i-2}", 0))
+                for i in range(3, 12)
+            }
         }
 
-        for i in range(3, 12):
-            payload[f"p{i}"] = int(request.form.get(f"k{i-2}", 0))
-
-        answers = json.dumps(payload, ensure_ascii=False)
 
         # ===== HITUNG SKOR (NANTI) =====
         skor_100 = 0
@@ -1234,14 +1239,11 @@ def submit_asesmen_kondisi():
         else:
             status = "Aman"
 
-
-        print(f"Answers: {answers}")
-
         # ===== SIMPAN =====
         pg_insert_asesmen_kondisi(
             id_relawan=session.get("id_relawan"),
             kode_posko=kode_posko,
-            jawaban=answers,
+            jawaban=payload,
             skor=skor_100,
             status=status,
             latitude=lat,

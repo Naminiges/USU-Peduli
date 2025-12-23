@@ -1129,6 +1129,13 @@ def pg_get_asesmen_wash_last24h(hours: int = 168) -> List[Dict[str, Any]]:
         hours=hours,
     )
 
+def pg_get_asesmen_kondisi_last24h(hours: int = 168) -> List[Dict[str, Any]]:
+    return _pg_get_asesmen_last_hours(
+        table_env="PG_ASESMEN_KONDISI_TABLE",
+        default_table="public.asesmen_kondisi",
+        hours=hours,
+    )
+
 # ------------------------------------------------------------------------------
 # 8) stok_gudang (opsional) - read
 # ------------------------------------------------------------------------------

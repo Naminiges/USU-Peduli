@@ -381,6 +381,17 @@
                 >Asesmen Wash</label
               >
             </div>
+            <div class="form-check">
+              <input
+                class="form-check-input"
+                type="checkbox"
+                id="toggleAsesmenKondisi"
+                checked
+              />
+              <label class="form-check-label" for="toggleAsesmenKondisi"
+                >Asesmen Kondisi</label
+              >
+            </div>
           </div>
         </div>
 
@@ -2224,6 +2235,8 @@
                   class="form-control"
                   id="kondisi_lokasi"
                   name="lokasi"
+                  placeholder="Masukkan Desa/Kecamatan"
+                  required
                 />
               </div>
 
@@ -2272,8 +2285,8 @@
                     name="k{{ i+1 }}"
                     min="0"
                     step="1"
+                    value="0"
                     placeholder="Masukkan angka"
-                    required
                   />
                 </div>
                 {% endfor %}
@@ -2335,6 +2348,7 @@
               let asesmenPsikososial = safeJsonParse({{ asesmen_psikososial | tojson | safe }}, []);
               let asesmenInfrastruktur = safeJsonParse({{ asesmen_infrastruktur | tojson | safe }}, []);
               let asesmenWash = safeJsonParse({{ asesmen_wash | tojson | safe }}, []);
+              let asesmenKondisi = safeJsonParse({{ asesmen_kondisi | tojson | safe }}, []);
               let permintaanLogistik = safeJsonParse({{ permintaan_logistik | tojson | safe }}, []);
 
               const CURRENT_IS_ADMIN = {{ 'true' if is_admin else 'false' }};
@@ -2366,15 +2380,17 @@
       let asesmenPsikososialLayer = L.layerGroup().addTo(map);
       let asesmenInfrastrukturLayer = L.layerGroup().addTo(map);
       let asesmenWashLayer = L.layerGroup().addTo(map);
+      let asesmenKondisiLayer = L.layerGroup().addTo(map);
 
 
       // Map pertanyaan p1..px (untuk popup buffer)
       const ASESMEN_QUESTIONS = {
         kesehatan: {{ kesehatan_questions | tojson | safe }},
         pendidikan: {{ pendidikan_questions | tojson | safe }},
-          psikososial: {{ psikososial_questions | tojson | safe }},
-          infrastruktur: {{ infrastruktur_questions | tojson | safe }},
-          wash: {{ wash_questions | tojson | safe }},
+        psikososial: {{ psikososial_questions | tojson | safe }},
+        infrastruktur: {{ infrastruktur_questions | tojson | safe }},
+        wash: {{ wash_questions | tojson | safe }},
+        kondisi: {{ kondisi_angka | tojson | safe }},
       };
 
       function escapeHtml(s){
@@ -2492,6 +2508,10 @@
           const rk = parseFloat(r.radius);
           if (isFinite(rk) && rk > 0) radiusMeters = rk * 1000;
 
+        if (jenisLabel == 'Asesmen Kondisi'){
+          console.log("Radius: "+jawabanHtml(r.jawaban, kind));
+        }
+
           const popup = `
             <div style="min-width:260px;">
               <div class="fw-bold mb-1">${escapeHtml(jenisLabel)}</div>
@@ -2535,12 +2555,156 @@
         });
       }
 
+      function jawabanKondisiHtml(j, kind) {
+        if (!j) return "<div class='text-muted'>-</div>";
+
+        let obj = j;
+        if (typeof obj === "string") {
+          try { obj = JSON.parse(obj); } catch(e) {
+            return `<pre class="mb-0">${escapeHtml(obj)}</pre>`;
+          }
+        }
+
+        // Ambil daftar pertanyaan untuk kind tertentu
+        const qList = (ASESMEN_QUESTIONS && ASESMEN_QUESTIONS[kind]) ? ASESMEN_QUESTIONS[kind] : [];
+
+        const htmlKeys = ["p1","p3","p4","p5","p6","p7","p8","p9","p10","p11"];
+        let html = "<ul class='mb-0 ps-3'>";
+
+        htmlKeys.forEach(k => {
+          if (obj[k] === undefined) return;
+
+          const idx = parseInt(String(k).replace(/\D/g,"") || "0",10) - 1;
+          let qText = (idx >= 0 && idx < qList.length) ? String(qList[idx] || "") : "";
+          // Hapus prefix nomor jika ada
+          qText = qText.replace(/^\s*\d+\.\s*/, "").trim();
+
+          const v = obj[k];
+          html += `
+            <li style="margin-bottom:6px;">
+              <div><b>${escapeHtml(k)}</b>${qText ? ` - ${escapeHtml(qText)}` : ""}</div>
+              <div>Jawaban: <b>${escapeHtml(v)}</b></div>
+            </li>
+          `;
+        });
+
+        html += "</ul>";
+        return html;
+      }
+
+
+      function renderAsesmenKondisiLayer(layer, rows, jenisLabel, kind) {
+        layer.clearLayers();
+
+        (rows || []).forEach(r => {
+          const lat = parseFloat(r.latitude);
+          const lon = parseFloat(r.longitude);
+          if (!isFinite(lat) || !isFinite(lon)) return;
+
+          const col = statusColor(r.status);
+          const catatanTextRaw = (r.catatan && String(r.catatan).trim()) ? String(r.catatan) : '-';
+          const catatanHtml = escapeHtml(catatanTextRaw).replace(/\r?\n/g, "<br>");
+
+          let radiusMeters = 2000;
+          const rk = parseFloat(r.radius);
+          if (isFinite(rk) && rk > 0) radiusMeters = rk * 1000;
+
+          // Buat popup unik per relawan
+          const popupId = `popupKondisiMap${r.id_relawan}`;
+
+          // HTML popup
+          const popupContent = `
+            <div style="min-width:260px;">
+              <div class="fw-bold mb-1">${escapeHtml(jenisLabel)}</div>
+              <div><b>ID Relawan:</b> ${escapeHtml(r.id_relawan)}</div>
+              <div><b>Nama Relawan:</b> ${escapeHtml(r.nama_relawan)}</div>
+              <div><b>Status:</b> <span style="color:${col};font-weight:700;">${escapeHtml(r.status)}</span></div>
+              <div><b>Waktu:</b> ${formatWIB(r.waktu)}</div>
+              <div><b>Catatan:</b><br>${catatanHtml}</div>
+
+
+              <hr class="my-2"/>
+              <div class="fw-bold mb-1">Jawaban</div>
+              ${jawabanKondisiHtml(r.jawaban, kind)}
+
+              <!-- Map untuk p2 -->
+              <div id="${popupId}" style="height:200px; margin-top:5px;"></div>
+            </div>
+          `;
+
+          // Circle & dot
+          const circle = L.circle([lat, lon], {
+            pane: 'asesmenPane',
+            radius: radiusMeters,
+            color: col,
+            weight: 2,
+            fill: true,
+            fillColor: col,
+            fillOpacity: 0.25,
+            bubblingMouseEvents: false
+          }).bindPopup(popupContent);
+
+          const dot = L.circleMarker([lat, lon], {
+            pane: 'asesmenPane',
+            radius: 5,
+            color: col,
+            weight: 2,
+            fillColor: col,
+            fillOpacity: 0.95,
+            bubblingMouseEvents: false
+          }).bindPopup(popupContent);
+
+          // Tambahkan ke layer
+          layer.addLayer(circle);
+          layer.addLayer(dot);
+
+          // Render map di popup saat dibuka
+          [circle, dot].forEach(m => {
+            m.on('popupopen', function() {
+              const mapDiv = document.getElementById(popupId);
+              if (!mapDiv) return;
+
+              // Reset map jika sudah ada
+              if (mapDiv._leaflet_map) {
+                mapDiv._leaflet_map.remove();
+              }
+
+              const popupMap = L.map(mapDiv).setView([0,0], 5);
+              mapDiv._leaflet_map = popupMap;
+
+              L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+                attribution: '© OpenStreetMap contributors'
+              }).addTo(popupMap);
+
+              // Plot titik p2
+              let j = r.jawaban;
+              if (typeof j === "string") {
+                try { j = JSON.parse(j); } catch(e) { console.error(e); j = {}; }
+              }
+              if (j.p2) {
+                const bounds = [];
+                Object.values(j.p2).forEach(pt => {
+                  if (Array.isArray(pt) && pt.length === 2) {
+                    L.marker(pt).addTo(popupMap);
+                    bounds.push(pt);
+                  }
+                });
+                if (bounds.length) popupMap.fitBounds(bounds, {padding:[10,10]});
+              }
+            });
+          });
+        });
+      }
+
+
+
       function renderAsesmenBuffers(){
         renderAsesmenLayer(asesmenKesehatanLayer, asesmenKesehatan, "Asesmen Kesehatan", "kesehatan");
         renderAsesmenLayer(asesmenPendidikanLayer, asesmenPendidikan, "Asesmen Pendidikan", "pendidikan");
         renderAsesmenLayer(asesmenPsikososialLayer,asesmenPsikososial, "Asesmen Psikososial", "psikososial");
         renderAsesmenLayer(asesmenInfrastrukturLayer,asesmenInfrastruktur,"Asesmen Infrastruktur", "infrastruktur");
         renderAsesmenLayer(asesmenWashLayer, asesmenWash, "Asesmen Wash", "wash");
+        renderAsesmenKondisiLayer(asesmenKondisiLayer, asesmenKondisi, "Asesmen Kondisi", "kondisi");
       }
       renderAsesmenBuffers();
 
@@ -2551,6 +2715,7 @@
       const ckInf = document.getElementById("toggleAsesmenInfrastruktur");
       const ckPsi = document.getElementById("toggleAsesmenPsikososial");
       const ckWas = document.getElementById("toggleAsesmenWash");
+      const ckKond = document.getElementById("toggleAsesmenKondisi");
 
       function setLayerVisible(layer, visible){
         if (visible) {
@@ -2567,12 +2732,14 @@
         const showInf = ckInf ? ckInf.checked : true;
         const showPsi = ckPsi ? ckPsi.checked : true;
         const showWas = ckWas ? ckWas.checked : true;
+        const showKond = ckKond ? ckKond.checked : true;
 
         setLayerVisible(asesmenKesehatanLayer, master && showKes);
         setLayerVisible(asesmenPendidikanLayer, master && showPen);
         setLayerVisible(asesmenInfrastrukturLayer, master && showInf);
         setLayerVisible(asesmenPsikososialLayer, master && showPsi);
         setLayerVisible(asesmenWashLayer, master && showWas);
+        setLayerVisible(asesmenKondisiLayer, master && showKond);
       }
 
       // (visibility asesmen akan di-handle oleh blok sinkronisasi filter di bawah)
@@ -3354,13 +3521,13 @@
               });
 
               // Asesmen (master + child)
-              if (ckAsesmenAll) ckAsesmenAll.addEventListener('change', () => syncGroupFromMaster(ckAsesmenAll, elAsesmenBody, [ckKes, ckPen, ckPsi, ckInf, ckWas], applyAsesmenVisibility));
-              [ckKes, ckPen, ckPsi, ckInf, ckWas].forEach(el => {
-                  if (el) el.addEventListener('change', () => syncMasterFromChildren(ckAsesmenAll, elAsesmenBody, [ckKes, ckPen, ckPsi, ckInf, ckWas], applyAsesmenVisibility));
+              if (ckAsesmenAll) ckAsesmenAll.addEventListener('change', () => syncGroupFromMaster(ckAsesmenAll, elAsesmenBody, [ckKes, ckPen, ckPsi, ckInf, ckWas, ckKond], applyAsesmenVisibility));
+              [ckKes, ckPen, ckPsi, ckInf, ckWas, ckKond].forEach(el => {
+                  if (el) el.addEventListener('change', () => syncMasterFromChildren(ckAsesmenAll, elAsesmenBody, [ckKes, ckPen, ckPsi, ckInf, ckWas, ckKond], applyAsesmenVisibility));
               });
 
               // Initial sync + render
-              syncGroupFromMaster(ckAsesmenAll, elAsesmenBody, [ckKes, ckPen, ckPsi, ckInf, ckWas], applyAsesmenVisibility);
+              syncGroupFromMaster(ckAsesmenAll, elAsesmenBody, [ckKes, ckPen, ckPsi, ckInf, ckWas, ckKond], applyAsesmenVisibility);
               syncGroupFromMaster(ckLokAll, elLokasiBody, [ckLokPosko, ckLokGudang, ckLokLain], applyLokasiFilter);
               syncGroupFromMaster(ckRelAll, elRelawanBody, [ckRelawanLok], applyRelawanVisibility);
               syncGroupFromMaster(ckPermintaan, elPermintaanBody, [ckPermDraft, ckPermDiproses, ckPermDikirim, ckPermDiterima, ckPermDitolak], applyPermintaanVisibility);
@@ -3478,6 +3645,7 @@
                           asesmenPsikososial = Array.isArray(result.asesmen_psikososial) ? result.asesmen_psikososial : (result.asesmen_psikososial || []);
                           asesmenInfrastruktur = Array.isArray(result.asesmen_infrastruktur) ? result.asesmen_infrastruktur : (result.asesmen_infrastruktur || []);
                           asesmenWash = Array.isArray(result.asesmen_wash) ? result.asesmen_wash : (result.asesmen_wash || []);
+                          asesmenKondisi = Array.isArray(result.asesmen_kondisi) ? result.asesmen_kondisi : (result.asesmen_kondisi || []);
                           renderAsesmenBuffers();
                           applyAsesmenVisibility();
                           // Tampilkan notifikasi sukses (centered)
@@ -4493,6 +4661,36 @@ window.getLocationForLokasi = function () {
         }
 
         //============= END Multiple Points ====================//
+
+        function syncBanjirPointsToForm(form) {
+          // hapus input lama
+          form.querySelectorAll(".banjir-point").forEach((e) => e.remove());
+
+          // buat input baru untuk setiap titik
+          Object.values(state.kondisi_banjir.points || {}).forEach((pt) => {
+            const lat = document.createElement("input");
+            lat.type = "hidden";
+            lat.name = "banjir_lat[]";
+            lat.value = pt[0];
+            lat.className = "banjir-point";
+
+            const lon = document.createElement("input");
+            lon.type = "hidden";
+            lon.name = "banjir_lon[]";
+            lon.value = pt[1];
+            lon.className = "banjir-point";
+
+            form.appendChild(lat);
+            form.appendChild(lon);
+          });
+        }
+        const formKondisi = document.querySelector("#asesmenKondisiModal form");
+
+        formKondisi.addEventListener("submit", function (e) {
+          e.preventDefault();
+          syncBanjirPointsToForm(formKondisi);
+          formKondisi.submit();
+        });
 
         // Public handler (dipakai tombol "Ambil Lokasi GPS")
         window.getLocationForAsesmen = function (jenis) {
