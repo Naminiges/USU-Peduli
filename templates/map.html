@@ -2656,29 +2656,56 @@
           }
         }
 
-        // Ambil daftar pertanyaan untuk kind tertentu
-        const qList = (ASESMEN_QUESTIONS && ASESMEN_QUESTIONS[kind]) ? ASESMEN_QUESTIONS[kind] : [];
+        // Ambil daftar pertanyaan untuk kind tertentu (tetap boleh ada kalau dipakai di tempat lain)
+const qList = (ASESMEN_QUESTIONS && ASESMEN_QUESTIONS[kind]) ? ASESMEN_QUESTIONS[kind] : [];
 
-        const htmlKeys = ["p1","p3","p4","p5","p6","p7","p8","p9","p10","p11"];
-        let html = "<ul class='mb-0 ps-3'>";
+const kondisiAngka = [
+  "Total Alamat Pengungsian",
+  "Total Jumlah Pengungsi (Jiwa)",
+  "Jumlah Warga yang Bertahan di Rumah (Jiwa)",
+  "Jumlah Korban Meninggal Dunia (Jiwa)",
+  "Total Alamat Dapur Umum",
+  "Jumlah Kebutuhan Layanan Air Bersih",
+  "Sekolah Rusak",
+  "Sekolah Layak Digunakan",
+  "Guru Tersedia"
+];
 
-        htmlKeys.forEach(k => {
-          if (obj[k] === undefined) return;
+const htmlKeys = ["p1","p3","p4","p5","p6","p7","p8","p9", 'p10', 'p11'];
+let html = "<ul class='mb-0 ps-3'>";
 
-          const idx = parseInt(String(k).replace(/\D/g,"") || "0",10) - 1;
-          let qText = (idx >= 0 && idx < qList.length) ? String(qList[idx] || "") : "";
-          // Hapus prefix nomor jika ada
-          qText = qText.replace(/^\s*\d+\.\s*/, "").trim();
+htmlKeys.forEach(k => {
+  if (obj[k] === undefined) return;
 
-          const v = obj[k];
-          html += `
-            <li style="margin-bottom:6px;">
-              <div><b>${escapeHtml(k)}</b>${qText ? ` - ${escapeHtml(qText)}` : ""}</div>
-              <div>Jawaban: <b>${escapeHtml(v)}</b></div>
-            </li>
-          `;
-        });
+  let qText = "";
 
+  // p1 khusus
+  if (k === 'p1') {
+    qText = 'Nama Desa/Kecamatan';
+
+  // p3 ke atas → kondisi angka
+  } else if (/^p\d+$/.test(k)) {
+    const num = parseInt(k.replace('p', ''), 10);
+    const idx = num - 3; // p3 = index 0
+
+    if (idx >= 0 && idx < kondisiAngka.length) {
+      qText = kondisiAngka[idx];
+    }
+  }
+
+  const v = obj[k];
+
+  html += `
+    <li style="margin-bottom:6px;">
+      <div><b>${escapeHtml(k)}</b>${qText ? ` - ${escapeHtml(qText)}` : ""}</div>
+      <div>Jawaban: <b>${escapeHtml(v)}</b></div>
+    </li>
+  `;
+});
+
+html += "</ul>";
+
+        
         html += "</ul>";
         return html;
       }
@@ -2709,7 +2736,6 @@
               <div class="fw-bold mb-1">${escapeHtml(jenisLabel)}</div>
               <div><b>ID Relawan:</b> ${escapeHtml(r.id_relawan)}</div>
               <div><b>Nama Relawan:</b> ${escapeHtml(r.nama_relawan)}</div>
-              <div><b>Status:</b> <span style="color:${col};font-weight:700;">${escapeHtml(r.status)}</span></div>
               <div><b>Waktu:</b> ${formatWIB(r.waktu)}</div>
               <div><b>Catatan:</b><br>${catatanHtml}</div>
 
@@ -2719,6 +2745,7 @@
               ${jawabanKondisiHtml(r.jawaban, kind)}
 
               <!-- Map untuk p2 -->
+              Lokasi Titik Banjir
               <div id="${popupId}" style="height:200px; margin-top:5px;"></div>
             </div>
           `;
@@ -2727,10 +2754,10 @@
           const circle = L.circle([lat, lon], {
             pane: 'asesmenPane',
             radius: radiusMeters,
-            color: col,
+            color: '#555555',
             weight: 2,
             fill: true,
-            fillColor: col,
+            fillColor: '#555555',
             fillOpacity: 0.25,
             bubblingMouseEvents: false
           }).bindPopup(popupContent);
@@ -2738,9 +2765,9 @@
           const dot = L.circleMarker([lat, lon], {
             pane: 'asesmenPane',
             radius: 5,
-            color: col,
+            color: '#555555',
             weight: 2,
-            fillColor: col,
+            fillColor: '#555555',
             fillOpacity: 0.95,
             bubblingMouseEvents: false
           }).bindPopup(popupContent);
