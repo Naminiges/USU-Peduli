@@ -469,8 +469,8 @@ _KABKOTA_CODE_MAP: Dict[str, str] = {
     "PADANG LAWAS": "PL",
     "PADANG LAWAS UTARA": "PU",
     "TANJUNG BALAI": "TJ",
-    "PADANGSIDIMPUAN": "PD",
-    "PADANG SIDIMPUAN": "PD",
+    "PADANGSIDEMPUAN": "PD",
+    "PADANG SIDEMPUAN": "PD",
 
     "ACEH TAMIANG": "AT",
 }

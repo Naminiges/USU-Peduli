@@ -446,6 +446,50 @@
                 >Gudang Logistik</label
               >
             </div>
+              <div class="form-check">
+              <input
+                class="form-check-input"
+                type="checkbox"
+                id="toggleLokasiStarlink"
+                checked
+              />
+              <label class="form-check-label" for="toggleLokasiStarlink"
+                >Starlink</label
+              >
+            </div>
+              <div class="form-check">
+              <input
+                class="form-check-input"
+                type="checkbox"
+                id="toggleLokasiJembatanRusak"
+                checked
+              />
+              <label class="form-check-label" for="toggleLokasiJembatanRusak"
+                >Jembatan Rusak</label
+              >
+            </div>
+              <div class="form-check">
+              <input
+                class="form-check-input"
+                type="checkbox"
+                id="toggleLokasiJalanPutus"
+                checked
+              />
+              <label class="form-check-label" for="toggleLokasiJalanPutus"
+                >Jalan Putus</label
+              >
+            </div>
+              <div class="form-check">
+              <input
+                class="form-check-input"
+                type="checkbox"
+                id="toggleLokasiTitikLongsor"
+                checked
+              />
+              <label class="form-check-label" for="toggleLokasiTitikLongsor"
+                >Titik Longsor</label
+              >
+            </div>
             {#
             <div class="form-check">
               #} {#
@@ -2896,6 +2940,10 @@
                       iconClass = 'fas fa-warehouse';
                       iconColor = '#ffffff';
                       bgColor = '#10b981'; // Hijau
+                  } else if (String(jenis || '').toLowerCase().includes('starlink')) {
+                      iconClass = 'fas fa-satellite-dish';
+                      iconColor = '#ffffff';
+                      bgColor = '#8b5cf6'; // ungu
                   } else if (jenis.includes('Rusak') || jenis.includes('Putus') || jenis.includes('Longsor')) {
                       iconClass = 'fas fa-exclamation-triangle';
                       iconColor = '#ffffff';
@@ -3290,6 +3338,10 @@
                   const fs = filterState || {};
                   const showPosko = fs.showPosko !== false;
                   const showGudang = fs.showGudang !== false;
+                  const showStarlink = fs.showStarlink !== false;
+                  const showJembatanRusak = fs.showJembatanRusak !== false;
+                  const showJalanPutus = fs.showJalanPutus !== false;
+                  const showTitikLongsor = fs.showTitikLongsor !== false;
                   const showLain = fs.showLain !== false;
                   // Hapus marker lama
                   markerLayerGroup.clearLayers();
@@ -3302,9 +3354,22 @@
                           const jenis = String(lokasi.jenis_lokasi || '');
                           const isPosko = /posko/i.test(jenis);
                           const isGudang = /gudang/i.test(jenis);
+                          // kategori baru
+const isStarlink = /starlink/i.test(jenis);
+const isJembatanRusak = /jembatan/i.test(jenis) && /rusak/i.test(jenis);
+const isJalanPutus = /jalan/i.test(jenis) && /putus/i.test(jenis);
+const isTitikLongsor = /longsor/i.test(jenis);
                           if (isPosko && !showPosko) return;
                           if (isGudang && !showGudang) return;
-                          if (!isPosko && !isGudang && !showLain) return;
+                          if (isStarlink && !showStarlink) return;
+if (isJembatanRusak && !showJembatanRusak) return;
+if (isJalanPutus && !showJalanPutus) return;
+if (isTitikLongsor && !showTitikLongsor) return;
+                          // sisanya dianggap "Lain"
+const isKnown =
+  isPosko || isGudang || isStarlink || isJembatanRusak || isJalanPutus || isTitikLongsor;
+
+if (!isKnown && !showLain) return;
 
                           let icon = getIcon(lokasi.jenis_lokasi);
 
@@ -3375,6 +3440,10 @@
               // ==============================================================================
               const ckLokPosko = document.getElementById('toggleLokasiPosko');
               const ckLokGudang = document.getElementById('toggleLokasiGudang');
+              const ckLokStarlink = document.getElementById('toggleLokasiStarlink');
+              const ckLokJembatanRusak = document.getElementById('toggleLokasiJembatanRusak');
+              const ckLokJalanPutus = document.getElementById('toggleLokasiJalanPutus');
+              const ckLokTitikLongsor = document.getElementById('toggleLokasiTitikLongsor');
               const ckLokLain = document.getElementById('toggleLokasiLain');
 
               const ckRelawanLok = document.getElementById('toggleLokasiRelawan');
@@ -3460,6 +3529,10 @@
                   return {
                       showPosko: ckLokPosko ? ckLokPosko.checked : true,
                       showGudang: ckLokGudang ? ckLokGudang.checked : true,
+                      showStarlink: ckLokStarlink ? ckLokStarlink.checked : true,
+                      showJembatanRusak: ckLokJembatanRusak ? ckLokJembatanRusak.checked : true,
+                      showJalanPutus: ckLokJalanPutus ? ckLokJalanPutus.checked : true,
+                      showTitikLongsor: ckLokTitikLongsor ? ckLokTitikLongsor.checked : true,
                       showLain: ckLokLain ? ckLokLain.checked : true,
                   };
               }
@@ -3505,9 +3578,9 @@
 
               // Event listeners
               // Lokasi (master + child)
-              if (ckLokAll) ckLokAll.addEventListener('change', () => syncGroupFromMaster(ckLokAll, elLokasiBody, [ckLokPosko, ckLokGudang, ckLokLain], applyLokasiFilter));
-              [ckLokPosko, ckLokGudang, ckLokLain].forEach(el => {
-                  if (el) el.addEventListener('change', () => syncMasterFromChildren(ckLokAll, elLokasiBody, [ckLokPosko, ckLokGudang, ckLokLain], applyLokasiFilter));
+              if (ckLokAll) ckLokAll.addEventListener('change', () => syncGroupFromMaster(ckLokAll, elLokasiBody, [ckLokPosko, ckLokGudang, ckLokStarlink,ckLokJembatanRusak, ckLokJalanPutus, ckLokTitikLongsor, ckLokLain], applyLokasiFilter));
+              [ckLokPosko, ckLokGudang,ckLokStarlink,ckLokJembatanRusak, ckLokJalanPutus, ckLokTitikLongsor, ckLokLain].forEach(el => {
+                  if (el) el.addEventListener('change', () => syncMasterFromChildren(ckLokAll, elLokasiBody, [ckLokPosko, ckLokGudang,ckLokStarlink,ckLokJembatanRusak, ckLokJalanPutus, ckLokTitikLongsor, ckLokLain], applyLokasiFilter));
               });
 
               // Relawan
@@ -3528,7 +3601,7 @@
 
               // Initial sync + render
               syncGroupFromMaster(ckAsesmenAll, elAsesmenBody, [ckKes, ckPen, ckPsi, ckInf, ckWas, ckKond], applyAsesmenVisibility);
-              syncGroupFromMaster(ckLokAll, elLokasiBody, [ckLokPosko, ckLokGudang, ckLokLain], applyLokasiFilter);
+              syncGroupFromMaster(ckLokAll, elLokasiBody, [ckLokPosko, ckLokGudang, ckLokStarlink,ckLokJembatanRusak, ckLokJalanPutus, ckLokTitikLongsor, ckLokLain], applyLokasiFilter);
               syncGroupFromMaster(ckRelAll, elRelawanBody, [ckRelawanLok], applyRelawanVisibility);
               syncGroupFromMaster(ckPermintaan, elPermintaanBody, [ckPermDraft, ckPermDiproses, ckPermDikirim, ckPermDiterima, ckPermDitolak], applyPermintaanVisibility);
 
