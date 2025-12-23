@@ -993,7 +993,7 @@ def pg_get_relawan_locations_last24h(hours: int = 168) -> List[Dict[str, Any]]:
             dr.nama_relawan,
             dr.unit,
             dr.photo_path,
-            lr.waktu,
+            (lr.waktu + INTERVAL '7 hour')::timestamp AS waktu,
             lr.latitude,
             lr.longitude,
             lr.catatan
