@@ -33,6 +33,12 @@ try:
         pg_get_logistik_permintaan_last24h,
         pg_insert_logistik_permintaan,
         pg_update_logistik_permintaan_status,
+        pg_insert_data_lokasi,
+        pg_get_ref_jenis_lokasi,
+        pg_get_ref_kabkota,
+        pg_get_ref_status_lokasi,
+        pg_get_ref_tingkat_akses,
+        pg_get_ref_kondisi,
         # opsional (kalau tabel ada)
         pg_get_stok_gudang,
         pg_get_master_logistik_codes,
@@ -67,7 +73,12 @@ except Exception as _pg_err:
     pg_insert_logistik_permintaan = None
     pg_get_logistik_permintaan_last24h = None
     pg_update_logistik_permintaan_status = None
-
+    pg_insert_data_lokasi = None
+    pg_get_ref_jenis_lokasi = None
+    pg_get_ref_kabkota = None
+    pg_get_ref_status_lokasi = None
+    pg_get_ref_tingkat_akses = None
+    pg_get_ref_kondisi = None
 
 app = Flask(__name__)
 
@@ -126,6 +137,45 @@ def get_data_lokasi_any() -> list:
             print(f"[PG] get_data_lokasi_any error: {e}")
     return []
 
+def get_ref_jenis_lokasi_any() -> list:
+    if _pg_enabled() and pg_get_ref_jenis_lokasi is not None:
+        try:
+            return pg_get_ref_jenis_lokasi() or []
+        except Exception as e:
+            print(f"[PG] get_ref_jenis_lokasi_any error: {e}")
+    return []
+
+def get_ref_kabkota_any() -> list:
+    if _pg_enabled() and pg_get_ref_kabkota is not None:
+        try:
+            return pg_get_ref_kabkota() or []
+        except Exception as e:
+            print(f"[PG] get_ref_kabkota_any error: {e}")
+    return []
+
+def get_ref_status_lokasi_any() -> list:
+    if _pg_enabled() and pg_get_ref_status_lokasi is not None:
+        try:
+            return pg_get_ref_status_lokasi() or []
+        except Exception as e:
+            print(f"[PG] get_ref_status_lokasi_any error: {e}")
+    return []
+
+def get_ref_tingkat_akses_any() -> list:
+    if _pg_enabled() and pg_get_ref_tingkat_akses is not None:
+        try:
+            return pg_get_ref_tingkat_akses() or []
+        except Exception as e:
+            print(f"[PG] get_ref_tingkat_akses_any error: {e}")
+    return []
+
+def get_ref_kondisi_any() -> list:
+    if _pg_enabled() and pg_get_ref_kondisi is not None:
+        try:
+            return pg_get_ref_kondisi() or []
+        except Exception as e:
+            print(f"[PG] get_ref_kondisi_any error: {e}")
+    return []
 
 def get_relawan_list_any() -> list:
     """Ambil daftar relawan dari Postgres untuk login."""
@@ -399,6 +449,33 @@ def map_view():
             data_barang = pg_get_master_logistik_codes() or []
         except Exception as e:
             print(f"[PG] get_master_logistik_codes error: {e}")
+    # --- dropdown refs untuk INPUT LOKASI (data_lokasi) ---
+    ref_jenis_lokasi = []
+    ref_kabkota = []
+    ref_status_lokasi = []
+    ref_tingkat_akses = []
+    ref_kondisi = []
+    if _pg_enabled():
+        try:
+            ref_jenis_lokasi = (pg_get_ref_jenis_lokasi() or [])
+        except Exception:
+            ref_jenis_lokasi = []
+        try:
+            ref_kabkota = (pg_get_ref_kabkota() or [])
+        except Exception:
+            ref_kabkota = []
+        try:
+            ref_status_lokasi = (pg_get_ref_status_lokasi() or [])
+        except Exception:
+            ref_status_lokasi = []
+        try:
+            ref_tingkat_akses = (pg_get_ref_tingkat_akses() or [])
+        except Exception:
+            ref_tingkat_akses = []
+        try:
+            ref_kondisi = (pg_get_ref_kondisi() or [])
+        except Exception:
+            ref_kondisi = []
 
     return render_template(
         "map.html",
@@ -418,7 +495,11 @@ def map_view():
         asesmen_psikososial=json.dumps(pg_get_asesmen_psikososial_last24h(168) if pg_get_asesmen_psikososial_last24h else []),
         asesmen_infrastruktur=json.dumps(pg_get_asesmen_infrastruktur_last24h(168) if pg_get_asesmen_infrastruktur_last24h else []),
         asesmen_wash=json.dumps(pg_get_asesmen_wash_last24h(168) if pg_get_asesmen_wash_last24h else []),
-
+        ref_jenis_lokasi=ref_jenis_lokasi,
+        ref_kabkota=ref_kabkota,
+        ref_status_lokasi=ref_status_lokasi,
+        ref_tingkat_akses=ref_tingkat_akses,
+        ref_kondisi=ref_kondisi,
         permintaan_logistik=json.dumps(permintaan_logistik)
     )
 
@@ -1178,6 +1259,74 @@ def submit_asesmen_kondisi():
         flash(f"Error asesmen kondisi: {e}", "danger")
         return redirect(url_for("map_view"))
 
+@app.route("/submit_lokasi", methods=["POST"])
+def submit_lokasi():
+    if not _require_login():
+        return redirect(url_for("map_view"))
+
+    if not _pg_enabled() or pg_insert_data_lokasi is None:
+        flash("Fitur input lokasi belum aktif: DATABASE_URL/pg_data belum siap.", "danger")
+        return redirect(url_for("map_view"))
+
+    # ID diset oleh sistem (relawan tidak perlu input)
+    id_lokasi = None
+
+    jenis_lokasi = (request.form.get("jenis_lokasi") or "").strip()
+    nama_kabkota = (request.form.get("nama_kabkota") or "").strip()
+    nama_lokasi = (request.form.get("nama_lokasi") or "").strip()
+
+    # defaults kalau kosong
+    status_lokasi = (request.form.get("status_lokasi") or "").strip() or "Aktif"
+    tingkat_akses = (request.form.get("tingkat_akses") or "").strip() or "Public"
+    kondisi = (request.form.get("kondisi") or "").strip() or "Normal"
+
+    alamat = (request.form.get("alamat") or "").strip() or None
+    kecamatan = (request.form.get("kecamatan") or "").strip() or None
+    desa_kelurahan = (request.form.get("desa_kelurahan") or "").strip() or None
+
+    latitude = (request.form.get("latitude") or "").strip()
+    longitude = (request.form.get("longitude") or "").strip()
+
+    if not latitude or not longitude:
+        flash("Gagal simpan lokasi: koordinat GPS belum didapat. Coba tunggu GPS OK / geser pin.", "danger")
+        return redirect(url_for("map_view"))
+
+    lokasi_text = (request.form.get("lokasi_text") or "").strip() or None
+    catatan = (request.form.get("catatan") or "").strip() or None
+
+    pic = (request.form.get("pic") or "").strip() or None
+    pic_hp = (request.form.get("pic_hp") or "").strip() or None
+    photo_path = (request.form.get("photo_path") or "").strip() or None
+
+    if not jenis_lokasi or not nama_kabkota or not nama_lokasi:
+        flash("Gagal simpan lokasi: Jenis Lokasi, Kab/Kota, dan Nama Lokasi wajib diisi.", "danger")
+        return redirect(url_for("map_view"))
+
+    try:
+        new_id = pg_insert_data_lokasi(
+            id_lokasi=id_lokasi,
+            jenis_lokasi=jenis_lokasi,
+            nama_kabkota=nama_kabkota,
+            status_lokasi=status_lokasi,
+            tingkat_akses=tingkat_akses,
+            kondisi=kondisi,
+            nama_lokasi=nama_lokasi,
+            alamat=alamat,
+            kecamatan=kecamatan,
+            desa_kelurahan=desa_kelurahan,
+            latitude=latitude,
+            longitude=longitude,
+            lokasi_text=lokasi_text,
+            catatan=catatan,
+            pic=pic,
+            pic_hp=pic_hp,
+            photo_path=photo_path,
+        )
+        flash(f"Lokasi berhasil disimpan: {new_id}", "success")
+    except Exception as e:
+        flash(f"Gagal simpan lokasi: {e}", "danger")
+
+    return redirect(url_for("map_view"))
 
 if __name__ == "__main__":
     app.run(debug=True)

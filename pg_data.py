@@ -50,7 +50,8 @@ from datetime import datetime, timezone
 from zoneinfo import ZoneInfo
 from decimal import Decimal
 from pathlib import Path
-from typing import Any, Dict, List, Optional, Tuple
+from typing import Any, Dict, List, Optional, Tuple, Sequence, Union
+import re
 
 # ------------------------------------------------------------------------------
 # Driver selection (psycopg v3 -> psycopg2)
@@ -368,6 +369,218 @@ def pg_get_data_lokasi() -> List[Dict[str, Any]]:
         )
 
     return out
+
+# ------------------------------------------------------------------------------
+# 3b) REF TABLES untuk dropdown INPUT LOKASI (opsional)
+# ------------------------------------------------------------------------------
+def _pg_ref_list(table: str, cols: Union[str, Sequence[str]]) -> List[str]:
+    """Ambil 1 kolom (atau beberapa kandidat kolom) dari tabel referensi untuk dropdown.
+    Return: list string unik (urut A-Z).
+    """
+    if isinstance(cols, str):
+        cols = [cols]
+
+    for col in cols:
+        try:
+            rows = pg_fetchall(
+                f"SELECT {col} AS v FROM {table} WHERE {col} IS NOT NULL ORDER BY {col} ASC;"
+            )
+        except Exception:
+            continue
+
+        out: List[str] = []
+        seen = set()
+        for r in rows:
+            v = (r.get("v") or "").strip()
+            if not v:
+                continue
+            key = v.lower()
+            if key in seen:
+                continue
+            seen.add(key)
+            out.append(v)
+
+        if out:
+            return out
+
+    return []
+
+
+def pg_get_ref_jenis_lokasi() -> List[str]:
+    table = _get_env("PG_REF_JENIS_LOKASI_TABLE", "public.ref_jenis_lokasi")
+    return _pg_ref_list(table, ["nama", "jenis_lokasi", "value", "label"])
+
+def pg_get_ref_kabkota() -> List[str]:
+    table = _get_env("PG_REF_KABKOTA_TABLE", "public.ref_kabkota")
+    return _pg_ref_list(table, ["nama_kabkota", "kabkota", "nama", "value", "label"])
+
+def pg_get_ref_status_lokasi() -> List[str]:
+    table = _get_env("PG_REF_STATUS_LOKASI_TABLE", "public.ref_status_lokasi")
+    return _pg_ref_list(table, ["nama", "status_lokasi", "value", "label"])
+
+def pg_get_ref_tingkat_akses() -> List[str]:
+    table = _get_env("PG_REF_TINGKAT_AKSES_TABLE", "public.ref_tingkat_akses")
+    return _pg_ref_list(table, ["nama", "tingkat_akses", "akses", "value", "label"])
+
+def pg_get_ref_kondisi() -> List[str]:
+    table = _get_env("PG_REF_KONDISI_TABLE", "public.ref_kondisi")
+    return _pg_ref_list(table, ["nama", "kondisi", "kondisi_umum", "value", "label"])
+
+# ------------------------------------------------------------------------------
+# 3c) data_lokasi (insert) + AUTO ID (prefix + kabkota_code + increment)
+# ------------------------------------------------------------------------------
+_KABKOTA_CODE_MAP: Dict[str, str] = {
+    "NIAS": "NI",
+    "NIAS SELATAN": "NS",
+    "NIAS UTARA": "NU",
+    "NIAS BARAT": "NB",
+    "GUNUNGSITOLI": "GS",
+
+    "TAPANULI SELATAN": "TS",
+    "TAPANULI TENGAH": "TT",
+    "TAPANULI UTARA": "TU",
+    "TOBA": "TB",
+    "SAMOSIR": "SM",
+    "HUMBANG HASUNDUTAN": "HH",
+    "PAKPAK BHARAT": "PB",
+    "DAIRI": "DA",
+    "KARO": "KA",
+    "SIBOLGA": "SI",
+
+    "LANGKAT": "LA",
+    "DELI SERDANG": "DS",
+    "SERDANG BEDAGAI": "SB",
+    "BATU BARA": "BB",
+    "ASAHAN": "AS",
+    "SIMALUNGUN": "SL",
+    "PEMATANGSIANTAR": "PS",
+    "TEBING TINGGI": "TG",
+    "BINJAI": "BI",
+    "MEDAN": "ME",
+
+    "LABUHAN BATU": "LB",
+    "LABUHANBATU": "LB",
+    "LABUHAN BATU SELATAN": "LS",
+    "LABUHANBATU SELATAN": "LS",
+    "LABUHAN BATU UTARA": "LU",
+    "LABUHANBATU UTARA": "LU",
+
+    "MANDAILING NATAL": "MN",
+    "PADANG LAWAS": "PL",
+    "PADANG LAWAS UTARA": "PU",
+    "TANJUNG BALAI": "TJ",
+    "PADANGSIDIMPUAN": "PD",
+    "PADANG SIDIMPUAN": "PD",
+
+    "ACEH TAMIANG": "AT",
+}
+
+_JENIS_PREFIX_MAP: Dict[str, str] = {
+    "POSKO PENGUNGSIAN": "P",
+    "GUDANG LOGISTIK": "G",
+    "STARLINK": "S",
+    "JEMBATAN RUSAK": "JR",
+    "JALAN PUTUS": "JP",
+    "TITIK LONGSOR": "TL",
+}
+
+def _norm_kabkota(nama: Any) -> str:
+    s = str(nama or "").strip()
+    s = " ".join(s.split()).upper()
+    for p in ("KABUPATEN ", "KOTA "):
+        if s.startswith(p):
+            s = s[len(p):].strip()
+            break
+    return s
+
+def _kabkota_code(nama_kabkota: Any) -> str:
+    key = _norm_kabkota(nama_kabkota)
+    if key in _KABKOTA_CODE_MAP:
+        return _KABKOTA_CODE_MAP[key]
+    parts = [p for p in key.split(" ") if p]
+    if len(parts) >= 2:
+        return (parts[0][:1] + parts[1][:1]).upper()
+    if len(parts) == 1:
+        return parts[0][:2].upper()
+    return "XX"
+
+def _jenis_prefix(jenis_lokasi: Any) -> str:
+    key = str(jenis_lokasi or "").strip().upper()
+    if key in _JENIS_PREFIX_MAP:
+        return _JENIS_PREFIX_MAP[key]
+    return (key[:1] or "X").upper()
+
+def pg_next_data_lokasi_id(jenis_lokasi: str, nama_kabkota: str) -> str:
+    table = _get_env("PG_DATA_LOKASI_TABLE", "public.data_lokasi")
+    prefix = _jenis_prefix(jenis_lokasi)
+    kabcode = _kabkota_code(nama_kabkota)
+    base = f"{prefix}-{kabcode}"
+    like = base + "%"
+
+    rows = pg_fetchall(
+        f"SELECT id_lokasi FROM {table} WHERE id_lokasi LIKE %s ORDER BY id_lokasi DESC LIMIT 1;",
+        (like,),
+    )
+    last_id = (rows[0].get("id_lokasi") if rows else "") or ""
+
+    n = 1  # start from 001
+    m = re.search(r"(\d{3})$", str(last_id))
+    if m:
+        try:
+            n = int(m.group(1)) + 1
+        except Exception:
+            n = 1
+
+    return f"{base}{n:03d}"
+
+def pg_insert_data_lokasi(
+    *,
+    id_lokasi: Optional[str],
+    jenis_lokasi: str,
+    nama_kabkota: str,
+    status_lokasi: str,
+    tingkat_akses: str,
+    kondisi: str,
+    nama_lokasi: str,
+    alamat: Optional[str] = None,
+    kecamatan: Optional[str] = None,
+    desa_kelurahan: Optional[str] = None,
+    latitude: Any = None,
+    longitude: Any = None,
+    lokasi_text: Optional[str] = None,
+    catatan: Optional[str] = None,
+    pic: Optional[str] = None,
+    pic_hp: Optional[str] = None,
+    photo_path: Optional[str] = None,
+) -> str:
+    table = _get_env("PG_DATA_LOKASI_TABLE", "public.data_lokasi")
+
+    final_id = (id_lokasi or "").strip()
+    if not final_id:
+        final_id = pg_next_data_lokasi_id(jenis_lokasi, nama_kabkota)
+
+    lat_f = _to_float(latitude)
+    lon_f = _to_float(longitude)
+
+    sql = f"""
+        INSERT INTO {table}
+        (id_lokasi, jenis_lokasi, nama_kabkota, status_lokasi, tingkat_akses, kondisi,
+         nama_lokasi, alamat, kecamatan, desa_kelurahan,
+         latitude, longitude, lokasi_text, catatan, pic, pic_hp, photo_path)
+        VALUES
+        (%s, %s, %s, %s, %s, %s,
+         %s, %s, %s, %s,
+         %s, %s, %s, %s, %s, %s, %s);
+    """
+
+    pg_execute(sql, (
+        final_id, jenis_lokasi, nama_kabkota, status_lokasi, tingkat_akses, kondisi,
+        nama_lokasi, alamat, kecamatan, desa_kelurahan,
+        lat_f, lon_f, lokasi_text, catatan, pic, pic_hp, photo_path
+    ))
+
+    return final_id
+
 
 
 # ------------------------------------------------------------------------------

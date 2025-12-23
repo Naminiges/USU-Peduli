@@ -183,6 +183,9 @@
       </div>
 
       <div class="d-grid gap-2">
+      <button class="btn btn-info feature-btn" data-bs-toggle="modal" data-bs-target="#inputLokasiModal">
+  <i class="fas fa-map-marker-alt"></i> Input Lokasi
+</button>
         <button
           class="btn btn-primary feature-btn"
           data-bs-toggle="modal"
@@ -1157,6 +1160,183 @@
       </div>
     </div>
 
+{#    MODAL DATA INPUT LOKASI #}
+<div class="modal fade" id="inputLokasiModal" tabindex="-1" aria-labelledby="inputLokasiModalLabel" aria-hidden="true">
+  <div class="modal-dialog modal-lg modal-dialog-centered">
+    <div class="modal-content">
+      <div class="modal-header bg-info text-white">
+        <h5 class="modal-title" id="inputLokasiModalLabel">
+          <i class="fas fa-map-marker-alt"></i> Input Lokasi (data_lokasi)
+        </h5>
+        <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="Close"></button>
+      </div>
+
+      <form action="{{ url_for('submit_lokasi') }}" method="POST">
+        <div class="modal-body">
+
+          <!-- Lokasi GPS Saat Ini -->
+          <div class="mb-3 p-3 bg-light rounded">
+            <div class="d-flex justify-content-between align-items-center mb-2">
+              <div class="fw-bold">
+                <i class="fas fa-map-marker-alt"></i> Lokasi GPS Saat Ini:
+              </div>
+              <span id="lokasi-location-status" class="badge bg-secondary">Menunggu</span>
+            </div>
+            <div id="lokasi-location-text" class="small text-muted">Menunggu lokasi...</div>
+
+            <!-- hidden lat/lon (diisi otomatis oleh modul mini-map yg sudah ada) -->
+            <input type="hidden" id="lokasi_lat" name="latitude" required>
+            <input type="hidden" id="lokasi_lon" name="longitude" required>
+
+            <div class="mb-2 text-muted small">
+              <i class="fas fa-map me-1"></i>
+              Koreksi titik: geser pin atau klik peta sebelum submit.
+            </div>
+            <div id="inputLokasiMiniMap"
+                 style="height:220px;border-radius:12px;overflow:hidden;border:1px solid #e5e7eb;"></div>
+          </div>
+
+          <!-- Dropdown utama -->
+          <div class="row g-2">
+            <div class="col-md-4">
+              <label class="form-label"><i class="fas fa-tags"></i> Jenis Lokasi</label>
+              <select class="form-select" name="jenis_lokasi" required>
+                <option value="">-- pilih --</option>
+
+                {% if ref_jenis_lokasi and ref_jenis_lokasi|length > 0 %}
+                  {% for v in ref_jenis_lokasi %}
+                    <option value="{{ v }}">{{ v }}</option>
+                  {% endfor %}
+                {% else %}
+                  <!-- fallback kalau ref table kosong -->
+                  <option value="Posko Pengungsian">Posko Pengungsian</option>
+                  <option value="Gudang Logistik">Gudang Logistik</option>
+                {% endif %}
+              </select>
+            </div>
+
+            <div class="col-md-4">
+              <label class="form-label"><i class="fas fa-city"></i> Nama Kab/Kota</label>
+              <select class="form-select" name="nama_kabkota" required>
+                <option value="">-- pilih --</option>
+
+                {% if ref_kabkota and ref_kabkota|length > 0 %}
+                  {% for v in ref_kabkota %}
+                    <option value="{{ v }}">{{ v }}</option>
+                  {% endfor %}
+                {% else %}
+                  <!-- fallback minimal -->
+                  <option value="Kota Medan">Kota Medan</option>
+                  <option value="Kabupaten Tapanuli Tengah">Kabupaten Tapanuli Tengah</option>
+                {% endif %}
+              </select>
+
+              <div class="form-text">Auto ID: prefix + kode kab/kota + increment (di Python).</div>
+            </div>
+
+            <div class="col-md-4">
+              <label class="form-label"><i class="fas fa-location-arrow"></i> Nama Lokasi</label>
+              <input type="text" class="form-control" name="nama_lokasi" required
+                     placeholder="Contoh: Posko Utama / Gudang Induk">
+            </div>
+          </div>
+
+          <!-- Dropdown status/akses/kondisi -->
+          <div class="row g-2 mt-2">
+            <div class="col-md-4">
+              <label class="form-label">Status Lokasi</label>
+              <select class="form-select" name="status_lokasi">
+                {% if ref_status_lokasi and ref_status_lokasi|length > 0 %}
+                  {% for v in ref_status_lokasi %}
+                    <option value="{{ v }}" {% if v|lower == "aktif" %}selected{% endif %}>{{ v }}</option>
+                  {% endfor %}
+                {% else %}
+                  <option value="Aktif" selected>Aktif</option>
+                  <option value="Nonaktif">Nonaktif</option>
+                {% endif %}
+              </select>
+            </div>
+
+            <div class="col-md-4">
+              <label class="form-label">Tingkat Akses</label>
+              <select class="form-select" name="tingkat_akses">
+                {% if ref_tingkat_akses and ref_tingkat_akses|length > 0 %}
+                  {% for v in ref_tingkat_akses %}
+                    <option value="{{ v }}" {% if v|lower == "public" %}selected{% endif %}>{{ v }}</option>
+                  {% endfor %}
+                {% else %}
+                  <option value="Public" selected>Public</option>
+                  <option value="Internal">Internal</option>
+                {% endif %}
+              </select>
+            </div>
+
+            <div class="col-md-4">
+              <label class="form-label">Kondisi</label>
+              <select class="form-select" name="kondisi">
+                {% if ref_kondisi and ref_kondisi|length > 0 %}
+                  {% for v in ref_kondisi %}
+                    <option value="{{ v }}" {% if v|lower == "normal" %}selected{% endif %}>{{ v }}</option>
+                  {% endfor %}
+                {% else %}
+                  <option value="Normal" selected>Normal</option>
+                  <option value="Rusak Ringan">Rusak Ringan</option>
+                  <option value="Rusak Berat">Rusak Berat</option>
+                {% endif %}
+              </select>
+            </div>
+          </div>
+
+          <!-- alamat & admin -->
+          <div class="mt-3">
+            <label class="form-label"><i class="fas fa-road"></i> Alamat</label>
+            <input type="text" class="form-control" name="alamat" placeholder="Alamat singkat">
+          </div>
+
+          <div class="row g-2 mt-2">
+            <div class="col-md-6">
+              <label class="form-label">Kecamatan</label>
+              <input type="text" class="form-control" name="kecamatan">
+            </div>
+            <div class="col-md-6">
+              <label class="form-label">Desa/Kelurahan</label>
+              <input type="text" class="form-control" name="desa_kelurahan">
+            </div>
+          </div>
+
+          <div class="row g-2 mt-2">
+            <div class="col-md-6">
+              <label class="form-label">PIC</label>
+              <input type="text" class="form-control" name="pic">
+            </div>
+            <div class="col-md-6">
+              <label class="form-label">PIC HP</label>
+              <input type="text" class="form-control" name="pic_hp" placeholder="08xxxxxxxxxx">
+            </div>
+          </div>
+
+          <div class="mt-3">
+            <label class="form-label"><i class="fas fa-sticky-note"></i> Catatan</label>
+            <textarea class="form-control" name="catatan" rows="3"></textarea>
+          </div>
+
+          <!-- optional -->
+          <input type="hidden" name="lokasi_text" value="">
+          <input type="hidden" name="photo_path" value="">
+
+        </div>
+
+        <div class="modal-footer">
+          <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Batal</button>
+          <button type="submit" id="btn-submit-lokasi" class="btn btn-info" disabled>
+            <i class="fas fa-save"></i> Simpan Lokasi
+          </button>
+        </div>
+      </form>
+
+    </div>
+  </div>
+</div>
     <!-- ===================== MODAL ASESMEN KESEHATAN ===================== -->
     <div
       class="modal fade"
@@ -3904,6 +4084,16 @@
         const DEFAULT_CENTER = [3.5952, 98.6722]; // Medan
 
         const cfg = {
+            lokasi: {
+        modalId: "inputLokasiModal",
+        mapId: "inputLokasiMiniMap",
+        latId: "lokasi_lat",
+        lonId: "lokasi_lon",
+        textId: "lokasi-location-text",
+        btnId: "btn-submit-lokasi",
+        statusId: "lokasi-location-status",
+        autoOnOpen: true,
+      },
           kesehatan: {
             modalId: "asesmenKesehatanModal",
             mapId: "kesehatanMiniMap",
@@ -4020,6 +4210,8 @@
             watchId: null,
             timeoutId: null,
           },
+            lokasi: { map: null, marker: null, watchId: null, timeoutId: null },
+
         };
 
         function _el(id) {
@@ -4039,6 +4231,13 @@
             }
           } catch (e) {}
         }
+
+window.getLocationForLokasi = function () {
+  const kind = 'lokasi';
+  if (!cfg[kind]) return;
+  _initMap(kind);
+  _getBestLocation(kind);
+};
 
         function _initMap(kind) {
           const c = cfg[kind];
@@ -4441,5 +4640,7 @@
         }
       });
     </script>
+
+
   </body>
 </html>
