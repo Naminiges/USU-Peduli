@@ -995,10 +995,10 @@
                   name="kode_posko"
                   required
                 >
-                  <option value="" selected disabled>Pilih Posko Tujuan</option>
-                  {% for posko in data_posko %}
-                  <option value="{{ posko.kode }}">
-                    {{ posko.nama }} ({{ posko.kode }})
+                  <option value="" selected disabled>-- pilih posko --</option>
+                  {% for p in data_posko %}
+                  <option value="{{ p.kode }}">
+                    {{ p.kode }} - {{p.kabkota}} - {{ p.nama }}
                   </option>
                   {% endfor %}
                 </select>
@@ -1465,7 +1465,7 @@
                   <option value="" selected disabled>-- pilih posko --</option>
                   {% for p in data_posko %}
                   <option value="{{ p.kode }}">
-                    {{ p.kode }} - {{ p.nama }}
+                    {{ p.kode }} - {{p.kabkota}} - {{ p.nama }}
                   </option>
                   {% endfor %}
                 </select>
@@ -1622,7 +1622,7 @@
                   <option value="" selected disabled>-- pilih posko --</option>
                   {% for p in data_posko %}
                   <option value="{{ p.kode }}">
-                    {{ p.kode }} - {{ p.nama }}
+                    {{ p.kode }} - {{p.kabkota}} - {{ p.nama }}
                   </option>
                   {% endfor %}
                 </select>
@@ -1779,7 +1779,7 @@
                   <option value="" selected disabled>-- pilih posko --</option>
                   {% for p in data_posko %}
                   <option value="{{ p.kode }}">
-                    {{ p.kode }} - {{ p.nama }}
+                    {{ p.kode }} - {{p.kabkota}} - {{ p.nama }}
                   </option>
                   {% endfor %}
                 </select>
@@ -1939,7 +1939,7 @@
                   <option value="" selected disabled>-- pilih posko --</option>
                   {% for p in data_posko %}
                   <option value="{{ p.kode }}">
-                    {{ p.kode }} - {{ p.nama }}
+                    {{ p.kode }} - {{p.kabkota}} - {{ p.nama }}
                   </option>
                   {% endfor %}
                 </select>
@@ -2093,7 +2093,7 @@
                   <option value="" selected disabled>-- pilih posko --</option>
                   {% for p in data_posko %}
                   <option value="{{ p.kode }}">
-                    {{ p.kode }} - {{ p.nama }}
+                    {{ p.kode }} - {{p.kabkota}} - {{ p.nama }}
                   </option>
                   {% endfor %}
                 </select>
@@ -2247,7 +2247,7 @@
                   <option value="" selected disabled>-- pilih posko --</option>
                   {% for p in data_posko %}
                   <option value="{{ p.kode }}">
-                    {{ p.kode }} - {{ p.nama }}
+                    {{ p.kode }} - {{p.kabkota}} - {{ p.nama }}
                   </option>
                   {% endfor %}
                 </select>
@@ -2944,11 +2944,36 @@
                       iconClass = 'fas fa-satellite-dish';
                       iconColor = '#ffffff';
                       bgColor = '#8b5cf6'; // ungu
-                  } else if (jenis.includes('Rusak') || jenis.includes('Putus') || jenis.includes('Longsor')) {
-                      iconClass = 'fas fa-exclamation-triangle';
-                      iconColor = '#ffffff';
-                      bgColor = '#f59e0b'; // Orange
-                  } else {
+                  // =====================
+                  // INFRA / BENCANA
+                      // =====================
+                  } else if (
+                    ['jalan putus','akses putus','jalan terputus','jalan tertutup','road closed','road block']
+                    .some(k => String(jenis || '').toLowerCase().includes(k))
+                    ) {
+        // Kalau FontAwesome kamu v6, bisa ganti jadi: 'fas fa-road-barrier' atau 'fa-solid fa-road-barrier'
+  iconClass = 'fas fa-road';
+  iconColor = '#ffffff';
+  bgColor = '#ef4444'; // merah (akses putus)
+} else if (
+  ['longsor','titik longsor','landslide','rockslide','tanah longsor']
+    .some(k => String(jenis || '').toLowerCase().includes(k))
+) {
+  // Kalau FontAwesome kamu v6, bisa ganti jadi: 'fas fa-hill-rockslide' / 'fas fa-landslide'
+  iconClass = 'fas fa-mountain';
+  iconColor = '#ffffff';
+  bgColor = '#f97316'; // oranye (longsor)
+
+} else if (
+  ['jembatan rusak','jembatan putus','bridge damaged','bridge']
+    .some(k => String(jenis || '').toLowerCase().includes(k))
+) {
+  // Kalau FontAwesome kamu v6, bisa ganti jadi: 'fas fa-bridge' / 'fas fa-bridge-water'
+  iconClass = 'fas fa-archway';
+  iconColor = '#ffffff';
+  bgColor = '#2563eb'; // biru (jembatan)
+}
+                   else {
                       iconClass = 'fas fa-map-marker-alt';
                       iconColor = '#ffffff';
                       bgColor = '#3b82f6'; // Biru
@@ -3077,16 +3102,37 @@
       }
 
       function _poskoNameByKode(kode) {
-        try {
-          const k = String(kode || '').trim();
-          if (!k) return '-';
-          const found = (dataLokasi || []).find(d => String(d.kode_lokasi || d.kode || '').trim() === k);
-          if (!found) return k;
-          return (found.nama_lokasi || found.nama || found.kabupaten_kota || k);
-        } catch (e) {
-          return kode || '-';
-        }
-      }
+  try {
+    const k = String(kode || '').trim();
+    if (!k) return '-';
+
+    const found = (dataLokasi || []).find(d => String(d.kode_lokasi || d.kode || '').trim() === k);
+    if (!found) return k;
+
+    const kab = String(found.kabupaten_kota || found.kabkota || '').trim();
+    const nama = String(found.nama_lokasi || found.nama || '').trim();
+
+    const kabN = kab.toLowerCase();
+    const namaN = nama.toLowerCase();
+
+    // Jika nama kosong -> tampilkan kab saja (jangan bikin "kab - kab")
+    if (kab && !nama) return kab;
+
+    // Jika nama ada tapi sama persis dengan kab -> tampilkan kab saja
+    if (kab && nama && namaN === kabN) return kab;
+
+    // Jika nama sudah mengandung kab (mis. "Medan - Posko A") -> pakai nama saja biar tidak double
+    if (kab && nama && namaN.includes(kabN)) return nama;
+
+    // Normal case
+    if (kab && nama) return `${kab} - ${nama}`;
+    if (nama) return nama;
+
+    return k;
+  } catch (e) {
+    return kode || '-';
+  }
+}
 
       function renderPermintaanMarkers(rows) {
         permintaanLayerGroup.clearLayers();

@@ -426,9 +426,19 @@ def map_view():
     data_posko_list = []
     for d in data_lokasi:
         if d.get("jenis_lokasi") == "Posko Pengungsian":
-            kode = d.get("kode_lokasi")
-            nama = d.get("nama_lokasi") or d.get("kabupaten_kota") or kode
-            data_posko_list.append({"kode": kode, "nama": nama})
+            kode = d.get("kode_lokasi") or d.get("id_lokasi") or ""
+            kab = d.get("nama_kabkota") or d.get("kabupaten_kota") or ""
+            nm = d.get("nama_lokasi") or ""
+            data_posko_list.append({"kode": kode, "nama": nm, "kabkota":kab})
+
+    # urutkan: Kab/Kota A-Z, lalu kode A-Z
+    data_posko_list.sort(
+        key=lambda x: (
+            (x.get("kabkota") or "").strip().lower(),
+            (x.get("kode") or "").strip().lower(),
+            (x.get("nama") or "").strip().lower(),
+        )
+    )
 
     # Lokasi relawan (Postgres) - marker di map (ambil last 24 jam)
     relawan_lokasi = []
