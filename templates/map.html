@@ -2417,6 +2417,7 @@
 
     <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/js/bootstrap.bundle.min.js"></script>
     <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+    <script src="{{ url_for('static', filename='js/gallery.js') }}"></script>
     <script>
               // Data Lokasi dari Flask
               function safeJsonParse(raw, fallback) {
@@ -2441,7 +2442,7 @@
               let asesmenWash = safeJsonParse({{ asesmen_wash | tojson | safe }}, []);
               let asesmenKondisi = safeJsonParse({{ asesmen_kondisi | tojson | safe }}, []);
               let permintaanLogistik = safeJsonParse({{ permintaan_logistik | tojson | safe }}, []);
-
+              console.log("asesmenKondisi: ", asesmenKondisi);
               const CURRENT_IS_ADMIN = {{ 'true' if is_admin else 'false' }};
 
               // Inisialisasi Peta
@@ -2599,20 +2600,76 @@
           const rk = parseFloat(r.radius);
           if (isFinite(rk) && rk > 0) radiusMeters = rk * 1000;
 
-        if (jenisLabel == 'Asesmen Kondisi'){
-          console.log("Radius: "+jawabanHtml(r.jawaban, kind));
-        }
+          let photoPath = r.photo_path ? JSON.parse(r.photo_path) : [];
+
+          let photoPathHtml = photoPath.length
+            ? `
+              <div class="simple-gallery"
+                  data-images='${JSON.stringify(
+                    photoPath.map(p => _normalizePhotoUrl("media/" + p))
+                  )}'
+                  style="cursor:pointer;">
+                <img src="${_normalizePhotoUrl('media/' + photoPath[0])}"
+                    style="width:78px;height:78px;object-fit:cover;
+                            border-radius:10px;border:1px solid #e5e7eb;">
+              </div>
+            `
+            : `
+              <div style="width:78px;height:78px;border-radius:10px;
+                          border:1px solid #e5e7eb;display:flex;
+                          align-items:center;justify-content:center;
+                          background:#f8fafc;">
+                <i class="fas fa-image" style="opacity:.45;"></i>
+              </div>
+            `;
 
           const popup = `
             <div style="min-width:260px;">
-              <div class="fw-bold mb-1">${escapeHtml(jenisLabel)}</div>
-              <div><b>ID Relawan:</b> ${escapeHtml(r.id_relawan)}</div>
-              <div><b>Nama Relawan:</b> ${escapeHtml(r.nama_relawan)}</div>
-              <div><b>Skor:</b> ${escapeHtml(r.skor)}</div>
-              <div><b>Status:</b> <span style="color:${col};font-weight:700;">${escapeHtml(r.status)}</span></div>
-              <div><b>Waktu:</b> ${formatWIB(r.waktu)}</div>
-              <div><b>Catatan:</b><br>${catatanHtml}</div>
+              <div style="display:flex;gap:10px;align-items:flex-start;">
+                <div>
+                  ${photoPathHtml}
+                </div>
+                <div style="margin-bottom:5px;">
+                     <div style="font-weight:700;line-height:1.1;">
+                      <span class="text-primary">${escapeHtml(jenisLabel)}</span>
+                    </div>
 
+                    <div style="margin-top:6px;">
+                      <small class="text-muted">ID Relawan:</small>
+                      <small><b>${escapeHtml(r.id_relawan)}</b></small>
+                    </div>
+
+                    <div style="margin-top:2px;">
+                      <small class="text-muted">Nama Relawan:</small>
+                      <small><b>${escapeHtml(r.nama_relawan)}</b></small>
+                    </div>
+
+                    <div style="margin-top:2px;">
+                      <small class="text-muted">Skor:</small>
+                      <small><b>${escapeHtml(r.skor)}</b></small>
+                    </div>
+
+                    <div style="margin-top:2px;">
+                      <small class="text-muted">Status:</small>
+                      <small>
+                        <b style="color:${col};font-weight:700;">
+                          ${escapeHtml(r.status)}
+                        </b>
+                      </small>
+                    </div>
+
+                    <div style="margin-top:6px;">
+                      <small class="text-muted">Waktu:</small>
+                      <small><b>${formatWIB(r.waktu)}</b></small>
+                    </div>
+
+                    <div style="margin-top:6px;">
+                      <small class="text-muted">Catatan:</small><br>
+                      <small>${catatanHtml}</small>
+                    </div>
+ 
+                </div>
+              </div>
 
               <hr class="my-2"/>
               <div class="fw-bold mb-1">Jawaban</div>
@@ -2643,6 +2700,19 @@
 
           layer.addLayer(circle);
           layer.addLayer(dot);
+
+          [circle, dot].forEach(m => {
+            m.on('popupopen', function(e) {
+
+              // Gallery Jika Ada
+              var popupEl = e.popup && e.popup.getElement();
+              if (!popupEl) return;
+
+              popupEl.querySelectorAll('.simple-gallery').forEach(gallery => {
+                initSimpleGallery(gallery);
+              });
+            });
+          });
         });
       }
 
@@ -2657,53 +2727,53 @@
         }
 
         // Ambil daftar pertanyaan untuk kind tertentu (tetap boleh ada kalau dipakai di tempat lain)
-const qList = (ASESMEN_QUESTIONS && ASESMEN_QUESTIONS[kind]) ? ASESMEN_QUESTIONS[kind] : [];
+        const qList = (ASESMEN_QUESTIONS && ASESMEN_QUESTIONS[kind]) ? ASESMEN_QUESTIONS[kind] : [];
 
-const kondisiAngka = [
-  "Total Alamat Pengungsian",
-  "Total Jumlah Pengungsi (Jiwa)",
-  "Jumlah Warga yang Bertahan di Rumah (Jiwa)",
-  "Jumlah Korban Meninggal Dunia (Jiwa)",
-  "Total Alamat Dapur Umum",
-  "Jumlah Kebutuhan Layanan Air Bersih",
-  "Sekolah Rusak",
-  "Sekolah Layak Digunakan",
-  "Guru Tersedia"
-];
+        const kondisiAngka = [
+          "Total Alamat Pengungsian",
+          "Total Jumlah Pengungsi (Jiwa)",
+          "Jumlah Warga yang Bertahan di Rumah (Jiwa)",
+          "Jumlah Korban Meninggal Dunia (Jiwa)",
+          "Total Alamat Dapur Umum",
+          "Jumlah Kebutuhan Layanan Air Bersih",
+          "Sekolah Rusak",
+          "Sekolah Layak Digunakan",
+          "Guru Tersedia"
+        ];
 
-const htmlKeys = ["p1","p3","p4","p5","p6","p7","p8","p9", 'p10', 'p11'];
-let html = "<ul class='mb-0 ps-3'>";
+        const htmlKeys = ["p1","p3","p4","p5","p6","p7","p8","p9", 'p10', 'p11'];
+        let html = "<ul class='mb-0 ps-3'>";
 
-htmlKeys.forEach(k => {
-  if (obj[k] === undefined) return;
+        htmlKeys.forEach(k => {
+          if (obj[k] === undefined) return;
 
-  let qText = "";
+          let qText = "";
 
-  // p1 khusus
-  if (k === 'p1') {
-    qText = 'Nama Desa/Kecamatan';
+          // p1 khusus
+          if (k === 'p1') {
+            qText = 'Nama Desa/Kecamatan';
 
-  // p3 ke atas → kondisi angka
-  } else if (/^p\d+$/.test(k)) {
-    const num = parseInt(k.replace('p', ''), 10);
-    const idx = num - 3; // p3 = index 0
+          // p3 ke atas → kondisi angka
+          } else if (/^p\d+$/.test(k)) {
+            const num = parseInt(k.replace('p', ''), 10);
+            const idx = num - 3; // p3 = index 0
 
-    if (idx >= 0 && idx < kondisiAngka.length) {
-      qText = kondisiAngka[idx];
-    }
-  }
+            if (idx >= 0 && idx < kondisiAngka.length) {
+              qText = kondisiAngka[idx];
+            }
+          }
 
-  const v = obj[k];
+          const v = obj[k];
 
-  html += `
-    <li style="margin-bottom:6px;">
-      <div><b>${escapeHtml(k)}</b>${qText ? ` - ${escapeHtml(qText)}` : ""}</div>
-      <div>Jawaban: <b>${escapeHtml(v)}</b></div>
-    </li>
-  `;
-});
+          html += `
+            <li style="margin-bottom:6px;">
+              <div><b>${escapeHtml(k)}</b>${qText ? ` - ${escapeHtml(qText)}` : ""}</div>
+              <div>Jawaban: <b>${escapeHtml(v)}</b></div>
+            </li>
+          `;
+        });
 
-html += "</ul>";
+        html += "</ul>";
 
         
         html += "</ul>";
@@ -2727,25 +2797,85 @@ html += "</ul>";
           const rk = parseFloat(r.radius);
           if (isFinite(rk) && rk > 0) radiusMeters = rk * 1000;
 
+          let photoPath = r.photo_path ? JSON.parse(r.photo_path) : [];
+
+          let photoPathHtml = photoPath.length
+            ? `
+              <div class="simple-gallery"
+                  data-images='${JSON.stringify(
+                    photoPath.map(p => _normalizePhotoUrl("media/" + p))
+                  )}'
+                  style="cursor:pointer;">
+                <img src="${_normalizePhotoUrl('media/' + photoPath[0])}"
+                    style="width:78px;height:78px;object-fit:cover;
+                            border-radius:10px;border:1px solid #e5e7eb;">
+              </div>
+            `
+            : `
+              <div style="width:78px;height:78px;border-radius:10px;
+                          border:1px solid #e5e7eb;display:flex;
+                          align-items:center;justify-content:center;
+                          background:#f8fafc;">
+                <i class="fas fa-image" style="opacity:.45;"></i>
+              </div>
+            `;
+
           // Buat popup unik per relawan
           const popupId = `popupKondisiMap${r.id_relawan}`;
 
           // HTML popup
           const popupContent = `
             <div style="min-width:260px;">
-              <div class="fw-bold mb-1">${escapeHtml(jenisLabel)}</div>
-              <div><b>ID Relawan:</b> ${escapeHtml(r.id_relawan)}</div>
-              <div><b>Nama Relawan:</b> ${escapeHtml(r.nama_relawan)}</div>
-              <div><b>Waktu:</b> ${formatWIB(r.waktu)}</div>
-              <div><b>Catatan:</b><br>${catatanHtml}</div>
+              <div style="display:flex;gap:10px;align-items:flex-start;">
+                <div>
+                  ${photoPathHtml}
+                </div>
+                <div style="margin-bottom:5px;">
+                  <div style="font-weight:700;line-height:1.1;">
+                    <span class="text-primary">${escapeHtml(jenisLabel)}</span>
+                  </div>
 
+                  <div style="margin-top:6px;">
+                    <small class="text-muted">ID Relawan:</small>
+                    <small><b>${escapeHtml(r.id_relawan)}</b></small>
+                  </div>
 
+                  <div style="margin-top:2px;">
+                    <small class="text-muted">Nama Relawan:</small>
+                    <small><b>${escapeHtml(r.nama_relawan)}</b></small>
+                  </div>
+
+                  <div style="margin-top:2px;">
+                    <small class="text-muted">Skor:</small>
+                    <small><b>${escapeHtml(r.skor)}</b></small>
+                  </div>
+
+                  <div style="margin-top:2px;">
+                    <small class="text-muted">Status:</small>
+                    <small>
+                      <b style="color:${col};font-weight:700;">
+                        ${escapeHtml(r.status)}
+                      </b>
+                    </small>
+                  </div>
+
+                  <div style="margin-top:6px;">
+                    <small class="text-muted">Waktu:</small>
+                    <small><b>${formatWIB(r.waktu)}</b></small>
+                  </div>
+
+                  <div style="margin-top:6px;">
+                    <small class="text-muted">Catatan:</small><br>
+                    <small>${catatanHtml}</small>
+                  </div>
+
+                </div>
+              </div>
               <hr class="my-2"/>
               <div class="fw-bold mb-1">Jawaban</div>
-              ${jawabanKondisiHtml(r.jawaban, kind)}
-
-              <!-- Map untuk p2 -->
-              Lokasi Titik Banjir
+              ${jawabanHtml(r.jawaban, kind)}
+              <hr class="my-2"/>
+              <div><b>Lokasi Titik Banjir</b></div>
               <div id="${popupId}" style="height:200px; margin-top:5px;"></div>
             </div>
           `;
@@ -2778,7 +2908,7 @@ html += "</ul>";
 
           // Render map di popup saat dibuka
           [circle, dot].forEach(m => {
-            m.on('popupopen', function() {
+            m.on('popupopen', function(e) {
               const mapDiv = document.getElementById(popupId);
               if (!mapDiv) return;
 
@@ -2786,6 +2916,14 @@ html += "</ul>";
               if (mapDiv._leaflet_map) {
                 mapDiv._leaflet_map.remove();
               }
+
+              // Gallery Jika Ada
+              var popupEl = e.popup && e.popup.getElement();
+              if (!popupEl) return;
+
+              popupEl.querySelectorAll('.simple-gallery').forEach(gallery => {
+                initSimpleGallery(gallery);
+              });
 
               const popupMap = L.map(mapDiv).setView([0,0], 5);
               mapDiv._leaflet_map = popupMap;

@@ -1149,7 +1149,9 @@ def _pg_get_asesmen_last_hours(table_env: str, default_table: str, hours: int =1
             lr.latitude,
             lr.longitude,
             lr.catatan,
-            lr.radius
+            lr.radius,
+            lr.photo_path,
+            lr.is_active
         FROM {table} lr
         LEFT JOIN {relawan_table} dr
           ON dr.id_relawan = lr.id_relawan
