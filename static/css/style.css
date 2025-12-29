@@ -566,3 +566,40 @@ button:focus-visible,
         padding: 8px 14px;
     }
 }
+
+
+/* ========== Lightbox ========== */
+.simple-lightbox {
+  position: fixed;
+  inset: 0;
+  background: rgba(0,0,0,.9);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 99999;
+}
+
+.simple-lightbox img {
+  max-width: 90%;
+  max-height: 90%;
+}
+
+.lb-btn {
+  position: absolute;
+  top: 50%;
+  transform: translateY(-50%);
+  color: #fff;
+  font-size: 40px;
+  cursor: pointer;
+  user-select: none;
+  padding: 10px;
+}
+
+.lb-prev { left: 20px; }
+.lb-next { right: 20px; }
+.lb-close {
+  top: 20px;
+  right: 20px;
+  transform: none;
+  font-size: 30px;
+}
