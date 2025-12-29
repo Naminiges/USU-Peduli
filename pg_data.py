@@ -50,7 +50,8 @@ from datetime import datetime, timezone
 from zoneinfo import ZoneInfo
 from decimal import Decimal
 from pathlib import Path
-from typing import Any, Dict, List, Optional, Tuple
+from typing import Any, Dict, List, Optional, Tuple, Sequence, Union
+import re
 
 # ------------------------------------------------------------------------------
 # Driver selection (psycopg v3 -> psycopg2)
@@ -369,6 +370,218 @@ def pg_get_data_lokasi() -> List[Dict[str, Any]]:
 
     return out
 
+# ------------------------------------------------------------------------------
+# 3b) REF TABLES untuk dropdown INPUT LOKASI (opsional)
+# ------------------------------------------------------------------------------
+def _pg_ref_list(table: str, cols: Union[str, Sequence[str]]) -> List[str]:
+    """Ambil 1 kolom (atau beberapa kandidat kolom) dari tabel referensi untuk dropdown.
+    Return: list string unik (urut A-Z).
+    """
+    if isinstance(cols, str):
+        cols = [cols]
+
+    for col in cols:
+        try:
+            rows = pg_fetchall(
+                f"SELECT {col} AS v FROM {table} WHERE {col} IS NOT NULL ORDER BY {col} ASC;"
+            )
+        except Exception:
+            continue
+
+        out: List[str] = []
+        seen = set()
+        for r in rows:
+            v = (r.get("v") or "").strip()
+            if not v:
+                continue
+            key = v.lower()
+            if key in seen:
+                continue
+            seen.add(key)
+            out.append(v)
+
+        if out:
+            return out
+
+    return []
+
+
+def pg_get_ref_jenis_lokasi() -> List[str]:
+    table = _get_env("PG_REF_JENIS_LOKASI_TABLE", "public.ref_jenis_lokasi")
+    return _pg_ref_list(table, ["nama", "jenis_lokasi", "value", "label"])
+
+def pg_get_ref_kabkota() -> List[str]:
+    table = _get_env("PG_REF_KABKOTA_TABLE", "public.ref_kabkota")
+    return _pg_ref_list(table, ["nama_kabkota", "kabkota", "nama", "value", "label"])
+
+def pg_get_ref_status_lokasi() -> List[str]:
+    table = _get_env("PG_REF_STATUS_LOKASI_TABLE", "public.ref_status_lokasi")
+    return _pg_ref_list(table, ["nama", "status_lokasi", "value", "label"])
+
+def pg_get_ref_tingkat_akses() -> List[str]:
+    table = _get_env("PG_REF_TINGKAT_AKSES_TABLE", "public.ref_tingkat_akses")
+    return _pg_ref_list(table, ["nama", "tingkat_akses", "akses", "value", "label"])
+
+def pg_get_ref_kondisi() -> List[str]:
+    table = _get_env("PG_REF_KONDISI_TABLE", "public.ref_kondisi")
+    return _pg_ref_list(table, ["nama", "kondisi", "kondisi_umum", "value", "label"])
+
+# ------------------------------------------------------------------------------
+# 3c) data_lokasi (insert) + AUTO ID (prefix + kabkota_code + increment)
+# ------------------------------------------------------------------------------
+_KABKOTA_CODE_MAP: Dict[str, str] = {
+    "NIAS": "NI",
+    "NIAS SELATAN": "NS",
+    "NIAS UTARA": "NU",
+    "NIAS BARAT": "NB",
+    "GUNUNGSITOLI": "GS",
+
+    "TAPANULI SELATAN": "TS",
+    "TAPANULI TENGAH": "TT",
+    "TAPANULI UTARA": "TU",
+    "TOBA": "TB",
+    "SAMOSIR": "SM",
+    "HUMBANG HASUNDUTAN": "HH",
+    "PAKPAK BHARAT": "PB",
+    "DAIRI": "DA",
+    "KARO": "KA",
+    "SIBOLGA": "SI",
+
+    "LANGKAT": "LA",
+    "DELI SERDANG": "DS",
+    "SERDANG BEDAGAI": "SB",
+    "BATU BARA": "BB",
+    "ASAHAN": "AS",
+    "SIMALUNGUN": "SL",
+    "PEMATANGSIANTAR": "PS",
+    "TEBING TINGGI": "TG",
+    "BINJAI": "BI",
+    "MEDAN": "ME",
+
+    "LABUHAN BATU": "LB",
+    "LABUHANBATU": "LB",
+    "LABUHAN BATU SELATAN": "LS",
+    "LABUHANBATU SELATAN": "LS",
+    "LABUHAN BATU UTARA": "LU",
+    "LABUHANBATU UTARA": "LU",
+
+    "MANDAILING NATAL": "MN",
+    "PADANG LAWAS": "PL",
+    "PADANG LAWAS UTARA": "PU",
+    "TANJUNG BALAI": "TJ",
+    "PADANGSIDEMPUAN": "PD",
+    "PADANG SIDEMPUAN": "PD",
+
+    "ACEH TAMIANG": "AT",
+}
+
+_JENIS_PREFIX_MAP: Dict[str, str] = {
+    "POSKO PENGUNGSIAN": "P",
+    "GUDANG LOGISTIK": "G",
+    "STARLINK": "S",
+    "JEMBATAN RUSAK": "JR",
+    "JALAN PUTUS": "JP",
+    "TITIK LONGSOR": "TL",
+}
+
+def _norm_kabkota(nama: Any) -> str:
+    s = str(nama or "").strip()
+    s = " ".join(s.split()).upper()
+    for p in ("KABUPATEN ", "KOTA "):
+        if s.startswith(p):
+            s = s[len(p):].strip()
+            break
+    return s
+
+def _kabkota_code(nama_kabkota: Any) -> str:
+    key = _norm_kabkota(nama_kabkota)
+    if key in _KABKOTA_CODE_MAP:
+        return _KABKOTA_CODE_MAP[key]
+    parts = [p for p in key.split(" ") if p]
+    if len(parts) >= 2:
+        return (parts[0][:1] + parts[1][:1]).upper()
+    if len(parts) == 1:
+        return parts[0][:2].upper()
+    return "XX"
+
+def _jenis_prefix(jenis_lokasi: Any) -> str:
+    key = str(jenis_lokasi or "").strip().upper()
+    if key in _JENIS_PREFIX_MAP:
+        return _JENIS_PREFIX_MAP[key]
+    return (key[:1] or "X").upper()
+
+def pg_next_data_lokasi_id(jenis_lokasi: str, nama_kabkota: str) -> str:
+    table = _get_env("PG_DATA_LOKASI_TABLE", "public.data_lokasi")
+    prefix = _jenis_prefix(jenis_lokasi)
+    kabcode = _kabkota_code(nama_kabkota)
+    base = f"{prefix}-{kabcode}"
+    like = base + "%"
+
+    rows = pg_fetchall(
+        f"SELECT id_lokasi FROM {table} WHERE id_lokasi LIKE %s ORDER BY id_lokasi DESC LIMIT 1;",
+        (like,),
+    )
+    last_id = (rows[0].get("id_lokasi") if rows else "") or ""
+
+    n = 1  # start from 001
+    m = re.search(r"(\d{3})$", str(last_id))
+    if m:
+        try:
+            n = int(m.group(1)) + 1
+        except Exception:
+            n = 1
+
+    return f"{base}{n:03d}"
+
+def pg_insert_data_lokasi(
+    *,
+    id_lokasi: Optional[str],
+    jenis_lokasi: str,
+    nama_kabkota: str,
+    status_lokasi: str,
+    tingkat_akses: str,
+    kondisi: str,
+    nama_lokasi: str,
+    alamat: Optional[str] = None,
+    kecamatan: Optional[str] = None,
+    desa_kelurahan: Optional[str] = None,
+    latitude: Any = None,
+    longitude: Any = None,
+    lokasi_text: Optional[str] = None,
+    catatan: Optional[str] = None,
+    pic: Optional[str] = None,
+    pic_hp: Optional[str] = None,
+    photo_path: Optional[str] = None,
+) -> str:
+    table = _get_env("PG_DATA_LOKASI_TABLE", "public.data_lokasi")
+
+    final_id = (id_lokasi or "").strip()
+    if not final_id:
+        final_id = pg_next_data_lokasi_id(jenis_lokasi, nama_kabkota)
+
+    lat_f = _to_float(latitude)
+    lon_f = _to_float(longitude)
+
+    sql = f"""
+        INSERT INTO {table}
+        (id_lokasi, jenis_lokasi, nama_kabkota, status_lokasi, tingkat_akses, kondisi,
+         nama_lokasi, alamat, kecamatan, desa_kelurahan,
+         latitude, longitude, lokasi_text, catatan, pic, pic_hp, photo_path)
+        VALUES
+        (%s, %s, %s, %s, %s, %s,
+         %s, %s, %s, %s,
+         %s, %s, %s, %s, %s, %s, %s);
+    """
+
+    pg_execute(sql, (
+        final_id, jenis_lokasi, nama_kabkota, status_lokasi, tingkat_akses, kondisi,
+        nama_lokasi, alamat, kecamatan, desa_kelurahan,
+        lat_f, lon_f, lokasi_text, catatan, pic, pic_hp, photo_path
+    ))
+
+    return final_id
+
+
 
 # ------------------------------------------------------------------------------
 # 4) data_relawan (login)
@@ -479,6 +692,7 @@ def _insert_asesmen(
     latitude: Any,
     longitude: Any,
     catatan: Optional[str],
+    photo_path: Optional[str] = None,
     radius: Optional[float] = None,
     waktu: Optional[datetime] = None,
     prefer_jsonb_cast: bool = True,
@@ -497,7 +711,56 @@ def _insert_asesmen(
     attempts: List[Tuple[str, Tuple[Any, ...]]] = []
 
     # Jika kolom 'radius' ada (baru), coba insert dengan radius dulu.
+    photo_v: Optional[str] = photo_path if photo_path not in (None, "") else None
+
+    # Jika kolom 'radius' ada (baru), coba insert dengan radius dulu.
     if rad_f is not None:
+        # radius + photo_path
+        if photo_v is not None:
+            if prefer_jsonb_cast:
+                attempts.append(
+                    (
+                        f"""
+                        INSERT INTO {table}
+                        (waktu, id_relawan, kode_posko, jawaban, skor, status, latitude, longitude, catatan, radius, photo_path)
+                        VALUES (%s,%s,%s,%s::jsonb,%s,%s,%s,%s,%s,%s,%s)
+                        """,
+                        (w, id_relawan, kode_posko, payload, float(skor), status, lat_f, lon_f, catatan, rad_f, photo_v),
+                    )
+                )
+                attempts.append(
+                    (
+                        f"""
+                        INSERT INTO {table}
+                        (waktu, id_relawan, kode_posko, jawaban, skor, status, latitude, longitude, catatan, radius, photo_path)
+                        VALUES (%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s)
+                        """,
+                        (w, id_relawan, kode_posko, payload, float(skor), status, lat_f, lon_f, catatan, rad_f, photo_v),
+                    )
+                )
+            else:
+                attempts.append(
+                    (
+                        f"""
+                        INSERT INTO {table}
+                        (waktu, id_relawan, kode_posko, jawaban, skor, status, latitude, longitude, catatan, radius, photo_path)
+                        VALUES (%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s)
+                        """,
+                        (w, id_relawan, kode_posko, payload, float(skor), status, lat_f, lon_f, catatan, rad_f, photo_v),
+                    )
+                )
+                attempts.append(
+                    (
+                        f"""
+                        INSERT INTO {table}
+                        (waktu, id_relawan, kode_posko, jawaban, skor, status, latitude, longitude, catatan, radius, photo_path)
+                        VALUES (%s,%s,%s,%s::jsonb,%s,%s,%s,%s,%s,%s,%s)
+                        """,
+                        (w, id_relawan, kode_posko, payload, float(skor), status, lat_f, lon_f, catatan, rad_f, photo_v),
+                    )
+                )
+
+        # radius (tanpa photo_path) - behavior lama
         if prefer_jsonb_cast:
             attempts.append(
                 (
@@ -540,49 +803,96 @@ def _insert_asesmen(
                     (w, id_relawan, kode_posko, payload, float(skor), status, lat_f, lon_f, catatan, rad_f),
                 )
             )
-
-    if prefer_jsonb_cast:
-        attempts.append(
-            (
-                f"""
-                INSERT INTO {table}
-                (waktu, id_relawan, kode_posko, jawaban, skor, status, latitude, longitude, catatan)
-                VALUES (%s,%s,%s,%s::jsonb,%s,%s,%s,%s,%s)
-                """,
-                (w, id_relawan, kode_posko, payload, float(skor), status, lat_f, lon_f, catatan),
-            )
-        )
-        attempts.append(
-            (
-                f"""
-                INSERT INTO {table}
-                (waktu, id_relawan, kode_posko, jawaban, skor, status, latitude, longitude, catatan)
-                VALUES (%s,%s,%s,%s,%s,%s,%s,%s,%s)
-                """,
-                (w, id_relawan, kode_posko, payload, float(skor), status, lat_f, lon_f, catatan),
-            )
-        )
     else:
-        attempts.append(
-            (
-                f"""
-                INSERT INTO {table}
-                (waktu, id_relawan, kode_posko, jawaban, skor, status, latitude, longitude, catatan)
-                VALUES (%s,%s,%s,%s,%s,%s,%s,%s,%s)
-                """,
-                (w, id_relawan, kode_posko, payload, float(skor), status, lat_f, lon_f, catatan),
+        # no radius + photo_path
+        if photo_v is not None:
+            if prefer_jsonb_cast:
+                attempts.append(
+                    (
+                        f"""
+                        INSERT INTO {table}
+                        (waktu, id_relawan, kode_posko, jawaban, skor, status, latitude, longitude, catatan, photo_path)
+                        VALUES (%s,%s,%s,%s::jsonb,%s,%s,%s,%s,%s,%s)
+                        """,
+                        (w, id_relawan, kode_posko, payload, float(skor), status, lat_f, lon_f, catatan, photo_v),
+                    )
+                )
+                attempts.append(
+                    (
+                        f"""
+                        INSERT INTO {table}
+                        (waktu, id_relawan, kode_posko, jawaban, skor, status, latitude, longitude, catatan, photo_path)
+                        VALUES (%s,%s,%s,%s,%s,%s,%s,%s,%s,%s)
+                        """,
+                        (w, id_relawan, kode_posko, payload, float(skor), status, lat_f, lon_f, catatan, photo_v),
+                    )
+                )
+            else:
+                attempts.append(
+                    (
+                        f"""
+                        INSERT INTO {table}
+                        (waktu, id_relawan, kode_posko, jawaban, skor, status, latitude, longitude, catatan, photo_path)
+                        VALUES (%s,%s,%s,%s,%s,%s,%s,%s,%s,%s)
+                        """,
+                        (w, id_relawan, kode_posko, payload, float(skor), status, lat_f, lon_f, catatan, photo_v),
+                    )
+                )
+                attempts.append(
+                    (
+                        f"""
+                        INSERT INTO {table}
+                        (waktu, id_relawan, kode_posko, jawaban, skor, status, latitude, longitude, catatan, photo_path)
+                        VALUES (%s,%s,%s,%s::jsonb,%s,%s,%s,%s,%s,%s)
+                        """,
+                        (w, id_relawan, kode_posko, payload, float(skor), status, lat_f, lon_f, catatan, photo_v),
+                    )
+                )
+
+        # no radius (tanpa photo_path) - behavior lama
+        if prefer_jsonb_cast:
+            attempts.append(
+                (
+                    f"""
+                    INSERT INTO {table}
+                    (waktu, id_relawan, kode_posko, jawaban, skor, status, latitude, longitude, catatan)
+                    VALUES (%s,%s,%s,%s::jsonb,%s,%s,%s,%s,%s)
+                    """,
+                    (w, id_relawan, kode_posko, payload, float(skor), status, lat_f, lon_f, catatan),
+                )
             )
-        )
-        attempts.append(
-            (
-                f"""
-                INSERT INTO {table}
-                (waktu, id_relawan, kode_posko, jawaban, skor, status, latitude, longitude, catatan)
-                VALUES (%s,%s,%s,%s::jsonb,%s,%s,%s,%s,%s)
-                """,
-                (w, id_relawan, kode_posko, payload, float(skor), status, lat_f, lon_f, catatan),
+            attempts.append(
+                (
+                    f"""
+                    INSERT INTO {table}
+                    (waktu, id_relawan, kode_posko, jawaban, skor, status, latitude, longitude, catatan)
+                    VALUES (%s,%s,%s,%s,%s,%s,%s,%s,%s)
+                    """,
+                    (w, id_relawan, kode_posko, payload, float(skor), status, lat_f, lon_f, catatan),
+                )
             )
-        )
+        else:
+            attempts.append(
+                (
+                    f"""
+                    INSERT INTO {table}
+                    (waktu, id_relawan, kode_posko, jawaban, skor, status, latitude, longitude, catatan)
+                    VALUES (%s,%s,%s,%s,%s,%s,%s,%s,%s)
+                    """,
+                    (w, id_relawan, kode_posko, payload, float(skor), status, lat_f, lon_f, catatan),
+                )
+            )
+            attempts.append(
+                (
+                    f"""
+                    INSERT INTO {table}
+                    (waktu, id_relawan, kode_posko, jawaban, skor, status, latitude, longitude, catatan)
+                    VALUES (%s,%s,%s,%s::jsonb,%s,%s,%s,%s,%s)
+                    """,
+                    (w, id_relawan, kode_posko, payload, float(skor), status, lat_f, lon_f, catatan),
+                )
+            )
+
 
     last_err: Optional[Exception] = None
     for sql, params in attempts:
@@ -607,6 +917,7 @@ def pg_insert_asesmen_kesehatan(
     latitude: Any,
     longitude: Any,
     catatan: Optional[str] = None,
+    photo_path: Optional[str] = None,
     radius: Optional[float] = None,
     waktu: Optional[datetime] = None,
 ) -> bool:
@@ -621,6 +932,7 @@ def pg_insert_asesmen_kesehatan(
         latitude=latitude,
         longitude=longitude,
         catatan=catatan,
+        photo_path=photo_path,
         radius=radius,
         waktu=waktu,
         prefer_jsonb_cast=True,
@@ -635,6 +947,7 @@ def pg_insert_asesmen_pendidikan(
     latitude: Any,
     longitude: Any,
     catatan: Optional[str] = None,
+    photo_path: Optional[str] = None,
     radius: Optional[float] = None,
     waktu: Optional[datetime] = None,
 ) -> bool:
@@ -649,6 +962,7 @@ def pg_insert_asesmen_pendidikan(
         latitude=latitude,
         longitude=longitude,
         catatan=catatan,
+        photo_path=photo_path,
         radius=radius,
         waktu=waktu,
         prefer_jsonb_cast=False,
@@ -663,6 +977,7 @@ def pg_insert_asesmen_infrastruktur(
     latitude: Any,
     longitude: Any,
     catatan: Optional[str] = None,
+    photo_path: Optional[str] = None,
     radius: Optional[float] = None,
     waktu: Optional[datetime] = None,
 ) -> bool:
@@ -677,6 +992,7 @@ def pg_insert_asesmen_infrastruktur(
         latitude=latitude,
         longitude=longitude,
         catatan=catatan,
+        photo_path=photo_path,
         radius=radius,
         waktu=waktu,
         prefer_jsonb_cast=False,
@@ -691,6 +1007,7 @@ def pg_insert_asesmen_psikososial(
     latitude: Any,
     longitude: Any,
     catatan: Optional[str] = None,
+    photo_path: Optional[str] = None,
     radius: Optional[float] = None,
     waktu: Optional[datetime] = None,
 ) -> bool:
@@ -705,6 +1022,7 @@ def pg_insert_asesmen_psikososial(
         latitude=latitude,
         longitude=longitude,
         catatan=catatan,
+        photo_path=photo_path,
         radius=radius,
         waktu=waktu,
         prefer_jsonb_cast=False,
@@ -719,6 +1037,7 @@ def pg_insert_asesmen_wash(
     latitude: Any,
     longitude: Any,
     catatan: Optional[str] = None,
+    photo_path: Optional[str] = None,
     radius: Optional[float] = None,
     waktu: Optional[datetime] = None,
 ) -> bool:
@@ -733,6 +1052,37 @@ def pg_insert_asesmen_wash(
         latitude=latitude,
         longitude=longitude,
         catatan=catatan,
+        photo_path=photo_path,
+        radius=radius,
+        waktu=waktu,
+        prefer_jsonb_cast=False,
+    )
+
+def pg_insert_asesmen_kondisi(
+    id_relawan: str,
+    kode_posko: Optional[str],
+    jawaban: Dict[str, Any],
+    skor: float,
+    status: str,
+    latitude: Any,
+    longitude: Any,
+    catatan: Optional[str] = None,
+    photo_path: Optional[str] = None,
+    radius: Optional[float] = None,
+    waktu: Optional[datetime] = None,
+) -> bool:
+    return _insert_asesmen(
+        table_env="PG_ASESMEN_KONDISI_TABLE",
+        default_table="public.asesmen_kondisi",
+        id_relawan=id_relawan,
+        kode_posko=kode_posko,
+        jawaban=jawaban,
+        skor=skor,
+        status=status,
+        latitude=latitude,
+        longitude=longitude,
+        catatan=catatan,
+        photo_path=photo_path,
         radius=radius,
         waktu=waktu,
         prefer_jsonb_cast=False,
@@ -752,7 +1102,7 @@ def pg_get_relawan_locations_last24h(hours: int = 168) -> List[Dict[str, Any]]:
             dr.nama_relawan,
             dr.unit,
             dr.photo_path,
-            lr.waktu,
+            (lr.waktu + INTERVAL '0 hour')::timestamp AS waktu,
             lr.latitude,
             lr.longitude,
             lr.catatan
@@ -790,7 +1140,7 @@ def _pg_get_asesmen_last_hours(table_env: str, default_table: str, hours: int =1
 
     sql = f"""
         SELECT
-            lr.waktu,
+            (lr.waktu + INTERVAL '0 hour')::timestamp AS waktu,
             lr.id_relawan,
             dr.nama_relawan,
             lr.skor,
@@ -799,7 +1149,9 @@ def _pg_get_asesmen_last_hours(table_env: str, default_table: str, hours: int =1
             lr.latitude,
             lr.longitude,
             lr.catatan,
-            lr.radius
+            lr.radius,
+            lr.photo_path,
+            lr.is_active
         FROM {table} lr
         LEFT JOIN {relawan_table} dr
           ON dr.id_relawan = lr.id_relawan
@@ -885,6 +1237,13 @@ def pg_get_asesmen_wash_last24h(hours: int = 168) -> List[Dict[str, Any]]:
     return _pg_get_asesmen_last_hours(
         table_env="PG_ASESMEN_WASH_TABLE",
         default_table="public.asesmen_wash",
+        hours=hours,
+    )
+
+def pg_get_asesmen_kondisi_last24h(hours: int = 168) -> List[Dict[str, Any]]:
+    return _pg_get_asesmen_last_hours(
+        table_env="PG_ASESMEN_KONDISI_TABLE",
+        default_table="public.asesmen_kondisi",
         hours=hours,
     )
 
