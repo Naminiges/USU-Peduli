@@ -1129,7 +1129,7 @@ def pg_get_relawan_locations_last24h(hours: int = 168) -> List[Dict[str, Any]]:
         out.append(rr)
     return out
 
-def _pg_get_asesmen_last_hours(table_env: str, default_table: str, hours: int =168) -> List[Dict[str, Any]]:
+def _pg_get_asesmen_last_hours(table_env: str, default_table: str, hours: int =168, only_active: bool = True) -> List[Dict[str, Any]]:
     """Ambil asesmen dalam N jam terakhir untuk kebutuhan peta (buffer).
 
     Return field minimal:
@@ -1137,12 +1137,15 @@ def _pg_get_asesmen_last_hours(table_env: str, default_table: str, hours: int =1
     """
     table = _get_env(table_env, default_table)
     relawan_table = _get_env("PG_RELAWAN_TABLE", "public.data_relawan")
+    active_filter = "AND (lr.is_active IS DISTINCT FROM false)" if only_active else ""
 
     sql = f"""
         SELECT
+            lr.id,
             (lr.waktu + INTERVAL '0 hour')::timestamp AS waktu,
             lr.id_relawan,
             dr.nama_relawan,
+            lr.kode_posko,
             lr.skor,
             lr.status,
             lr.jawaban,
@@ -1156,6 +1159,7 @@ def _pg_get_asesmen_last_hours(table_env: str, default_table: str, hours: int =1
         LEFT JOIN {relawan_table} dr
           ON dr.id_relawan = lr.id_relawan
         WHERE waktu >= NOW() - (%s * INTERVAL '1 hour')
+          {active_filter}
           AND latitude IS NOT NULL
           AND longitude IS NOT NULL
         ORDER BY waktu DESC;
@@ -1167,19 +1171,24 @@ def _pg_get_asesmen_last_hours(table_env: str, default_table: str, hours: int =1
         # Fallback jika kolom radius belum ada
         sql2 = f"""
             SELECT
+                lr.id,
                 lr.waktu,
                 lr.id_relawan,
                 dr.nama_relawan,
+                lr.kode_posko,
                 lr.skor,
                 lr.status,
                 lr.jawaban,
                 lr.latitude,
                 lr.longitude,
                 lr.catatan,
+                lr.photo_path,
+                lr.is_active
             FROM {table} lr
             LEFT JOIN {relawan_table} dr
               ON dr.id_relawan = lr.id_relawan
             WHERE waktu >= NOW() - (%s * INTERVAL '1 hour')
+              {active_filter}
               AND latitude IS NOT NULL
               AND longitude IS NOT NULL
             ORDER BY waktu DESC;
@@ -1592,3 +1601,248 @@ def pg_update_logistik_permintaan_status(id_permintaan: int, status_permintaan: 
 
     pg_execute(sql, (st, pid))
     return True
+
+# ------------------------------------------------------------------------------
+# 13) ADMIN - Soft delete asesmen (is_active=false) + log aksi admin
+# ------------------------------------------------------------------------------
+
+def _ensure_admin_action_log_table() -> None:
+    """Pastikan tabel log aksi admin tersedia.
+
+    Catatan:
+    - Sengaja dibuat ringan & aman: CREATE TABLE IF NOT EXISTS.
+    - Jika user DB tidak punya permission CREATE, fungsi ini tidak akan mematikan app
+      (aksi log akan di-skip).
+    """
+    table = _get_env("PG_ADMIN_ACTION_LOG_TABLE", "public.admin_action_log")
+
+    sql = f"""
+        CREATE TABLE IF NOT EXISTS {table} (
+            id bigserial PRIMARY KEY,
+            waktu timestamptz NOT NULL DEFAULT now(),
+            actor_id_relawan varchar(20),
+            actor_nama_relawan text,
+            action text NOT NULL,
+            target_kind text,
+            target_table text,
+            target_id bigint,
+            note text,
+            payload text
+        );
+    """
+
+    try:
+        pg_execute(sql)
+    except Exception:
+        # Jangan raise: logging sifatnya opsional, app harus tetap jalan
+        return
+
+
+def pg_insert_admin_action_log(
+    actor_id_relawan: Optional[str],
+    actor_nama_relawan: Optional[str],
+    action: str,
+    target_kind: Optional[str] = None,
+    target_table: Optional[str] = None,
+    target_id: Optional[int] = None,
+    note: Optional[str] = None,
+    payload: Optional[Dict[str, Any]] = None,
+) -> bool:
+    """Tulis log aksi admin ke tabel admin_action_log."""
+    _ensure_admin_action_log_table()
+
+    table = _get_env("PG_ADMIN_ACTION_LOG_TABLE", "public.admin_action_log")
+    payload_s = None
+    if payload is not None:
+        try:
+            payload_s = json.dumps(payload, ensure_ascii=False)
+        except Exception:
+            payload_s = str(payload)
+
+    sql = f"""
+        INSERT INTO {table}
+        (actor_id_relawan, actor_nama_relawan, action, target_kind, target_table, target_id, note, payload)
+        VALUES (%s,%s,%s,%s,%s,%s,%s,%s)
+    """
+
+    try:
+        pg_execute(
+            sql,
+            (
+                actor_id_relawan,
+                actor_nama_relawan,
+                action,
+                target_kind,
+                target_table,
+                int(target_id) if target_id is not None else None,
+                note,
+                payload_s,
+            ),
+        )
+        return True
+    except Exception:
+        return False
+
+
+def pg_get_admin_action_logs(limit: int = 200) -> List[Dict[str, Any]]:
+    """Ambil log aksi admin terbaru."""
+    table = _get_env("PG_ADMIN_ACTION_LOG_TABLE", "public.admin_action_log")
+    try:
+        lim = max(1, min(1000, int(limit)))
+    except Exception:
+        lim = 200
+
+    sql = f"""
+        SELECT
+            id,
+            waktu,
+            actor_id_relawan,
+            actor_nama_relawan,
+            action,
+            target_kind,
+            target_table,
+            target_id,
+            note,
+            payload
+        FROM {table}
+        ORDER BY waktu DESC
+        LIMIT {lim};
+    """
+
+    try:
+        rows = pg_fetchall(sql)
+        return [_json_safe_row(r) for r in rows]
+    except Exception:
+        return []
+
+
+def pg_set_asesmen_active(
+    kind: str,
+    asesmen_id: int,
+    is_active: bool,
+    actor_id_relawan: Optional[str] = None,
+    actor_nama_relawan: Optional[str] = None,
+    note: Optional[str] = None,
+) -> bool:
+    """Set is_active True/False untuk 1 record asesmen.
+
+    kind: kesehatan|pendidikan|psikososial|infrastruktur|wash|kondisi
+    """
+    kind_key = (kind or "").strip().lower()
+
+    kind_map = {
+        "kesehatan": ("PG_ASESMEN_KESEHATAN_TABLE", "public.asesmen_kesehatan"),
+        "pendidikan": ("PG_ASESMEN_PENDIDIKAN_TABLE", "public.asesmen_pendidikan"),
+        "psikososial": ("PG_ASESMEN_PSIKOSOSIAL_TABLE", "public.asesmen_psikososial"),
+        "infrastruktur": ("PG_ASESMEN_INFRASTRUKTUR_TABLE", "public.asesmen_infrastruktur"),
+        "wash": ("PG_ASESMEN_WASH_TABLE", "public.asesmen_wash"),
+        "kondisi": ("PG_ASESMEN_KONDISI_TABLE", "public.asesmen_kondisi"),
+    }
+
+    if kind_key not in kind_map:
+        raise ValueError("kind asesmen tidak dikenal")
+
+    try:
+        aid = int(asesmen_id)
+    except Exception as e:
+        raise ValueError("ID asesmen tidak valid") from e
+
+    table_env, default_table = kind_map[kind_key]
+    table = _get_env(table_env, default_table)
+
+    sql = f"""
+        UPDATE {table}
+        SET is_active = %s
+        WHERE id = %s
+        RETURNING id;
+    """
+
+    rows = pg_fetchall(sql, (bool(is_active), aid))
+    ok = bool(rows)
+
+    if ok:
+        action = "ACTIVATE_ASESMEN" if bool(is_active) else "DEACTIVATE_ASESMEN"
+        pg_insert_admin_action_log(
+            actor_id_relawan=actor_id_relawan,
+            actor_nama_relawan=actor_nama_relawan,
+            action=action,
+            target_kind=kind_key,
+            target_table=table,
+            target_id=aid,
+            note=note,
+            payload={"kind": kind_key, "id": aid, "is_active": bool(is_active)},
+        )
+
+    return ok
+
+
+def pg_deactivate_asesmen(
+    kind: str,
+    asesmen_id: int,
+    actor_id_relawan: Optional[str] = None,
+    actor_nama_relawan: Optional[str] = None,
+    note: Optional[str] = None,
+) -> bool:
+    """Backward compatible: set is_active=false."""
+    return pg_set_asesmen_active(
+        kind=kind,
+        asesmen_id=asesmen_id,
+        is_active=False,
+        actor_id_relawan=actor_id_relawan,
+        actor_nama_relawan=actor_nama_relawan,
+        note=note,
+    )
+
+
+def pg_get_admin_asesmen_list(hours: int = 24, limit_per_kind: int = 200) -> List[Dict[str, Any]]:
+    """Ambil daftar asesmen (aktif + nonaktif) untuk panel admin.
+
+    NOTE: Front-end peta tetap mengambil yang aktif saja.
+    """
+    try:
+        h = int(hours)
+    except Exception:
+        h = 24
+    h = max(1, min(24 * 14, h))
+
+    try:
+        lim = int(limit_per_kind)
+    except Exception:
+        lim = 200
+    lim = max(1, min(2000, lim))
+
+    buckets = [
+        ("kesehatan", "PG_ASESMEN_KESEHATAN_TABLE", "public.asesmen_kesehatan"),
+        ("pendidikan", "PG_ASESMEN_PENDIDIKAN_TABLE", "public.asesmen_pendidikan"),
+        ("psikososial", "PG_ASESMEN_PSIKOSOSIAL_TABLE", "public.asesmen_psikososial"),
+        ("infrastruktur", "PG_ASESMEN_INFRASTRUKTUR_TABLE", "public.asesmen_infrastruktur"),
+        ("wash", "PG_ASESMEN_WASH_TABLE", "public.asesmen_wash"),
+        ("kondisi", "PG_ASESMEN_KONDISI_TABLE", "public.asesmen_kondisi"),
+    ]
+
+    out: List[Dict[str, Any]] = []
+    for kind, env, default_table in buckets:
+        try:
+            rows = _pg_get_asesmen_last_hours(env, default_table, hours=h, only_active=False)
+        except Exception:
+            rows = []
+
+        for r in (rows or [])[:lim]:
+            rr = _json_safe_row(r)
+            out.append(
+                {
+                    "kind": kind,
+                    "id": rr.get("id"),
+                    "kode_posko": rr.get("kode_posko"),
+                    "id_relawan": rr.get("id_relawan"),
+                    "nama_relawan": rr.get("nama_relawan"),
+                    "waktu": rr.get("waktu"),
+                    "skor": rr.get("skor"),
+                    "status": rr.get("status"),
+                    "is_active": rr.get("is_active"),
+                }
+            )
+
+    out.sort(key=lambda x: str(x.get("waktu") or ""), reverse=True)
+    return out
+

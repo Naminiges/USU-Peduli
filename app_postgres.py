@@ -35,6 +35,10 @@ try:
         pg_get_logistik_permintaan_last24h,
         pg_insert_logistik_permintaan,
         pg_update_logistik_permintaan_status,
+        pg_deactivate_asesmen,
+        pg_set_asesmen_active,
+        pg_get_admin_asesmen_list,
+        pg_get_admin_action_logs,
         pg_insert_data_lokasi,
         pg_get_ref_jenis_lokasi,
         pg_get_ref_kabkota,
@@ -76,6 +80,10 @@ except Exception as _pg_err:
     pg_insert_logistik_permintaan = None
     pg_get_logistik_permintaan_last24h = None
     pg_update_logistik_permintaan_status = None
+    pg_deactivate_asesmen = None
+    pg_set_asesmen_active = None
+    pg_get_admin_asesmen_list = None
+    pg_get_admin_action_logs = None
     pg_insert_data_lokasi = None
     pg_get_ref_jenis_lokasi = None
     pg_get_ref_kabkota = None
@@ -677,6 +685,160 @@ def api_update_permintaan_status():
 
 
 # ==============================================================================
+
+
+# ==============================================================================
+# ==============================================================================
+# 2c. ADMIN: SET ASESMEN is_active (toggle True/False)
+# ==============================================================================
+@app.route("/api/set_asesmen_active", methods=["POST"])
+def api_set_asesmen_active():
+    """Set is_active True/False pada asesmen tertentu.
+
+    Hanya untuk relawan yang login dan is_admin=True.
+    Payload: {kind: 'kesehatan|pendidikan|psikososial|infrastruktur|wash|kondisi', id: <int>, is_active: true/false, note?: <str>}
+    """
+    if not session.get("logged_in"):
+        return jsonify({"success": False, "error": "Unauthorized"}), 401
+
+    if not session.get("is_admin"):
+        return jsonify({"success": False, "error": "Forbidden"}), 403
+
+    if not _pg_enabled() or pg_set_asesmen_active is None:
+        return jsonify({"success": False, "error": "Fitur belum aktif (pg_data belum siap)."}), 500
+
+    payload = request.get_json(silent=True) or {}
+    if not payload:
+        payload = request.form.to_dict() if request.form else {}
+
+    kind = (payload.get("kind") or "").strip()
+    asesmen_id = payload.get("id")
+    is_active_raw = payload.get("is_active")
+    note = (payload.get("note") or "").strip() or None
+
+    if not kind or asesmen_id is None or is_active_raw is None:
+        return jsonify({"success": False, "error": "Payload tidak lengkap."}), 400
+
+    # Normalisasi bool
+    if isinstance(is_active_raw, str):
+        is_active_val = is_active_raw.strip().lower() in ("1", "true", "yes", "y", "on")
+    else:
+        is_active_val = bool(is_active_raw)
+
+    try:
+        ok = pg_set_asesmen_active(
+            kind=kind,
+            asesmen_id=asesmen_id,
+            is_active=is_active_val,
+            actor_id_relawan=session.get("id_relawan"),
+            actor_nama_relawan=session.get("nama_relawan"),
+            note=note,
+        )
+
+        if ok:
+            return jsonify({"success": True})
+        return jsonify({"success": False, "error": "Data tidak ditemukan."}), 404
+
+    except Exception as e:
+        return jsonify({"success": False, "error": str(e)}), 400
+
+
+# Backward compatible (dipakai patch sebelumnya)
+@app.route("/api/deactivate_asesmen", methods=["POST"])
+def api_deactivate_asesmen():
+    """Alias untuk set is_active=false."""
+    if not session.get("logged_in"):
+        return jsonify({"success": False, "error": "Unauthorized"}), 401
+
+    if not session.get("is_admin"):
+        return jsonify({"success": False, "error": "Forbidden"}), 403
+
+    if not _pg_enabled() or pg_set_asesmen_active is None:
+        return jsonify({"success": False, "error": "Fitur belum aktif (pg_data belum siap)."}), 500
+
+    payload = request.get_json(silent=True) or {}
+    if not payload:
+        payload = request.form.to_dict() if request.form else {}
+
+    kind = (payload.get("kind") or "").strip()
+    asesmen_id = payload.get("id")
+    note = (payload.get("note") or "").strip() or None
+
+    if not kind or asesmen_id is None:
+        return jsonify({"success": False, "error": "Payload tidak lengkap."}), 400
+
+    try:
+        ok = pg_set_asesmen_active(
+            kind=kind,
+            asesmen_id=asesmen_id,
+            is_active=False,
+            actor_id_relawan=session.get("id_relawan"),
+            actor_nama_relawan=session.get("nama_relawan"),
+            note=note,
+        )
+        if ok:
+            return jsonify({"success": True})
+        return jsonify({"success": False, "error": "Data tidak ditemukan."}), 404
+    except Exception as e:
+        return jsonify({"success": False, "error": str(e)}), 400
+
+
+# ==============================================================================
+# 2d. ADMIN: LIST ASESMEN (AKTIF + NONAKTIF) UNTUK PANEL ADMIN
+# ==============================================================================
+@app.route("/api/admin_asesmen_list", methods=["GET"])
+def api_admin_asesmen_list():
+    """Ambil daftar asesmen (aktif + nonaktif) untuk panel admin."""
+    if not session.get("logged_in"):
+        return jsonify({"success": False, "error": "Unauthorized"}), 401
+
+    if not session.get("is_admin"):
+        return jsonify({"success": False, "error": "Forbidden"}), 403
+
+    if not _pg_enabled() or pg_get_admin_asesmen_list is None:
+        return jsonify({"success": False, "error": "Fitur belum aktif (pg_data belum siap)."}), 500
+
+    hours_raw = request.args.get("hours", "24")
+    try:
+        hours = int(str(hours_raw).strip())
+    except Exception:
+        hours = 24
+
+    try:
+        rows = pg_get_admin_asesmen_list(hours=hours, limit_per_kind=200)
+        return jsonify({"success": True, "rows": rows})
+    except Exception as e:
+        return jsonify({"success": False, "error": str(e)}), 500
+
+
+# ==============================================================================
+
+# ==============================================================================
+# 2d. ADMIN: BACA LOG AKSI ADMIN
+# ==============================================================================
+@app.route("/api/admin_action_logs", methods=["GET"])
+def api_admin_action_logs():
+    """Ambil log aksi admin (untuk ditampilkan di modal admin)."""
+    if not session.get("logged_in"):
+        return jsonify({"success": False, "error": "Unauthorized"}), 401
+
+    if not session.get("is_admin"):
+        return jsonify({"success": False, "error": "Forbidden"}), 403
+
+    if not _pg_enabled() or pg_get_admin_action_logs is None:
+        return jsonify({"success": False, "error": "Fitur belum aktif (pg_data belum siap)."}), 500
+
+    limit_raw = request.args.get("limit", "200")
+    try:
+        limit = int(str(limit_raw).strip())
+    except Exception:
+        limit = 200
+
+    try:
+        logs = pg_get_admin_action_logs(limit)
+        return jsonify({"success": True, "logs": logs})
+    except Exception as e:
+        return jsonify({"success": False, "error": str(e)}), 500
 # 3. LOGIKA ABSENSI RELAWAN
 # ==============================================================================
 def point_in_polygon(point, polygon):

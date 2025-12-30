@@ -1099,6 +1099,73 @@
                 </tbody>
               </table>
             </div>
+
+            <hr class="my-4" />
+
+            <div class="d-flex justify-content-between align-items-center mb-2">
+              <h6 class="fw-bold mb-0">
+                <i class="fas fa-clipboard-check me-1"></i> Kelola Asesmen (is_active)
+              </h6>
+              <button type="button" class="btn btn-sm btn-light" id="btnRefreshAsesmenAdmin" title="Refresh Data Asesmen">
+                <i class="fas fa-sync-alt"></i>
+              </button>
+            </div>
+            <div class="alert alert-warning small mb-3">
+              <i class="fas fa-exclamation-triangle me-1"></i>
+              Tombol <b>Nonaktifkan</b> akan mengubah <code>is_active</code> menjadi <code>false</code> (soft delete). Data yang dinonaktifkan tidak akan tampil lagi di peta.
+            </div>
+
+            <div class="table-responsive">
+              <table class="table table-sm table-bordered align-middle">
+                <thead class="table-light">
+                  <tr>
+                    <th style="width: 120px">Jenis</th>
+                    <th style="width: 90px">ID</th>
+                    <th style="width: 220px">Posko</th>
+                    <th style="width: 180px">Relawan</th>
+                    <th style="width: 170px">Waktu</th>
+                    <th style="width: 90px">Skor</th>
+                    <th style="width: 120px">Status</th>
+                    <th style="width: 140px">Aksi</th>
+                  </tr>
+                </thead>
+                <tbody id="asesmenAdminTableBody">
+                  <tr>
+                    <td colspan="8" class="text-muted text-center">Memuat...</td>
+                  </tr>
+                </tbody>
+              </table>
+            </div>
+
+            <hr class="my-4" />
+
+            <div class="d-flex justify-content-between align-items-center mb-2">
+              <h6 class="fw-bold mb-0">
+                <i class="fas fa-list-alt me-1"></i> Log Admin
+              </h6>
+              <button type="button" class="btn btn-sm btn-light" id="btnRefreshAdminLogs" title="Refresh Log Admin">
+                <i class="fas fa-sync-alt"></i>
+              </button>
+            </div>
+
+            <div class="table-responsive">
+              <table class="table table-sm table-striped table-bordered align-middle">
+                <thead class="table-light">
+                  <tr>
+                    <th style="width: 170px">Waktu</th>
+                    <th style="width: 180px">Admin</th>
+                    <th style="width: 180px">Aksi</th>
+                    <th>Target</th>
+                    <th style="width: 260px">Catatan</th>
+                  </tr>
+                </thead>
+                <tbody id="adminLogTableBody">
+                  <tr>
+                    <td colspan="5" class="text-muted text-center">Memuat...</td>
+                  </tr>
+                </tbody>
+              </table>
+            </div>
           </div>
 
           <div class="modal-footer">
@@ -2589,6 +2656,11 @@
           const lon = parseFloat(r.longitude);
           if (!isFinite(lat) || !isFinite(lon)) return;
 
+          // is_active: skip item yang sudah dinonaktifkan (soft delete)
+          if (r.is_active === false) return;
+          if (typeof r.is_active === "string" && r.is_active.toLowerCase() === "false") return;
+
+
           const col = statusColor(r.status);
           const catatanTextRaw = (r.catatan && String(r.catatan).trim()) ? String(r.catatan) : '-';
 
@@ -2788,6 +2860,11 @@
           const lat = parseFloat(r.latitude);
           const lon = parseFloat(r.longitude);
           if (!isFinite(lat) || !isFinite(lon)) return;
+
+          // is_active: skip item yang sudah dinonaktifkan (soft delete)
+          if (r.is_active === false) return;
+          if (typeof r.is_active === "string" && r.is_active.toLowerCase() === "false") return;
+
 
           const col = statusColor(r.status);
           const catatanTextRaw = (r.catatan && String(r.catatan).trim()) ? String(r.catatan) : '-';
@@ -3353,6 +3430,11 @@
           const lon = parseFloat(r.longitude);
           if (!isFinite(lat) || !isFinite(lon)) return;
 
+          // is_active: skip item yang sudah dinonaktifkan (soft delete)
+          if (r.is_active === false) return;
+          if (typeof r.is_active === "string" && r.is_active.toLowerCase() === "false") return;
+
+
           const waktuText = _formatWaktuGMT7(r.tanggal || r.waktu || r.timestamp);
           const status = r.status_permintaan || r.status || 'Draft';
           const kodePosko = r.kode_posko || '-';
@@ -3482,6 +3564,8 @@
 
             // Refresh tabel admin
             renderPermintaanAdminTable();
+            loadAdminAsesmen();
+            loadAdminLogs();
 
             showNotification('Status permintaan berhasil diperbarui.', 'success', true);
           } else {
@@ -3497,12 +3581,234 @@
         }
       }
 
+
+      // =============================================================================
+      // ADMIN: Kelola Asesmen (is_active) + Log Admin
+      // =============================================================================
+      const ASESMEN_KIND_LABELS = {
+        kesehatan: 'Kesehatan',
+        pendidikan: 'Pendidikan',
+        psikososial: 'Psikososial',
+        infrastruktur: 'Infrastruktur',
+        wash: 'WASH',
+        kondisi: 'Kondisi'
+      };
+
+      let ADMIN_ASESMEN_ROWS = [];
+
+      function _asesmenKindLabel(kind) {
+        const k = String(kind || '').trim().toLowerCase();
+        return ASESMEN_KIND_LABELS[k] || (k || '-');
+      }
+
+      function _isActiveValue(v) {
+        if (v === false) return false;
+        if (typeof v === 'string' && v.toLowerCase() === 'false') return false;
+        return true;
+      }
+
+      async function loadAdminAsesmen() {
+        const tbody = document.getElementById('asesmenAdminTableBody');
+        if (tbody) {
+          tbody.innerHTML = '<tr><td colspan="8" class="text-muted text-center">Memuat...</td></tr>';
+        }
+
+        if (!CURRENT_IS_ADMIN) {
+          if (tbody) {
+            tbody.innerHTML = '<tr><td colspan="8" class="text-muted text-center">Bukan admin.</td></tr>';
+          }
+          ADMIN_ASESMEN_ROWS = [];
+          return;
+        }
+
+        try {
+          const resp = await fetch('/api/admin_asesmen_list?hours=24');
+          const result = await resp.json().catch(() => ({}));
+          if (resp.ok && result && result.success) {
+            ADMIN_ASESMEN_ROWS = Array.isArray(result.rows) ? result.rows : [];
+            renderAsesmenAdminTable();
+          } else {
+            const err = (result && result.error) ? result.error : 'Unknown error';
+            if (tbody) {
+              tbody.innerHTML = `<tr><td colspan="8" class="text-muted text-center">Gagal memuat asesmen: ${escapeHtml(err)}</td></tr>`;
+            }
+            ADMIN_ASESMEN_ROWS = [];
+          }
+        } catch (e) {
+          console.error(e);
+          if (tbody) {
+            tbody.innerHTML = '<tr><td colspan="8" class="text-muted text-center">Error memuat data asesmen.</td></tr>';
+          }
+          ADMIN_ASESMEN_ROWS = [];
+        }
+      }
+
+      function renderAsesmenAdminTable() {
+        const tbody = document.getElementById('asesmenAdminTableBody');
+        if (!tbody) return;
+
+        const rows = ADMIN_ASESMEN_ROWS || [];
+        tbody.innerHTML = '';
+
+        if (!rows.length) {
+          tbody.innerHTML = '<tr><td colspan="8" class="text-muted text-center">Belum ada data asesmen (24 jam terakhir).</td></tr>';
+          return;
+        }
+
+        rows.forEach(row => {
+          const kind = String(row.kind || '').trim().toLowerCase();
+          const id = row.id ?? '-';
+          const kodePosko = row.kode_posko || '-';
+          const namaPosko = _poskoNameByKode(kodePosko);
+          const relawanText = `${row.id_relawan || '-'} - ${row.nama_relawan || '-'}`;
+          const waktuText = formatWIB(row.waktu);
+          const skor = (row.skor ?? '-');
+          const status = (row.status ?? '-');
+
+          const active = _isActiveValue(row.is_active);
+          const activeBadge = active
+            ? '<span class="badge bg-success">Aktif</span>'
+            : '<span class="badge bg-secondary">Nonaktif</span>';
+
+          const btnHtml = active
+            ? `<button type="button" class="btn btn-sm btn-danger"
+                       onclick="adminSetAsesmenActive('${escapeHtml(kind)}','${escapeHtml(id)}',false)">
+                 Nonaktifkan
+               </button>`
+            : `<button type="button" class="btn btn-sm btn-success"
+                       onclick="adminSetAsesmenActive('${escapeHtml(kind)}','${escapeHtml(id)}',true)">
+                 Aktifkan
+               </button>`;
+
+          tbody.insertAdjacentHTML('beforeend', `
+            <tr>
+              <td>
+                <div class="d-flex align-items-center gap-2">
+                  <span class="badge bg-secondary">${escapeHtml(_asesmenKindLabel(kind))}</span>
+                  ${activeBadge}
+                </div>
+              </td>
+              <td><code>${escapeHtml(id)}</code></td>
+              <td>
+                <div class="fw-bold">${escapeHtml(namaPosko)}</div>
+                <div class="text-muted small">${escapeHtml(kodePosko)}</div>
+              </td>
+              <td class="small">${escapeHtml(relawanText)}</td>
+              <td class="small">${escapeHtml(waktuText)}</td>
+              <td class="small">${escapeHtml(skor)}</td>
+              <td class="small">${escapeHtml(status)}</td>
+              <td>${btnHtml}</td>
+            </tr>
+          `);
+        });
+      }
+
+      async function adminSetAsesmenActive(kind, id, isActive) {
+        if (!CURRENT_IS_ADMIN) {
+          showNotification('Anda bukan admin.', 'danger', true);
+          return;
+        }
+
+        const k = String(kind || '').trim().toLowerCase();
+        const sid = String(id || '').trim();
+        if (!k || !sid) return;
+
+        const label = _asesmenKindLabel(k);
+        const verb = isActive ? 'aktifkan' : 'nonaktifkan';
+        const ok = confirm(`Anda yakin ingin ${verb} asesmen ${label} (ID: ${sid})?`);
+        if (!ok) return;
+
+        try {
+          const resp = await fetch('/api/set_asesmen_active', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ kind: k, id: sid, is_active: !!isActive })
+          });
+
+          const result = await resp.json().catch(() => ({}));
+          if (resp.ok && result && result.success) {
+            // Refresh panel admin (aktif + nonaktif)
+            await loadAdminAsesmen();
+            await loadAdminLogs();
+
+            // Refresh data map (hanya yang aktif) via tombol refresh yang sudah ada
+            const btnRefresh = document.getElementById('btnRefreshPermintaanAdmin');
+            if (btnRefresh) btnRefresh.click();
+
+            showNotification('Berhasil memperbarui is_active asesmen.', 'success', true);
+          } else {
+            showNotification('Gagal: ' + (result.error || 'Unknown error'), 'danger', true);
+          }
+        } catch (e) {
+          console.error(e);
+          showNotification('Error saat update is_active asesmen.', 'danger', true);
+        }
+      }
+
+      function renderAdminLogs(logs) {
+        const tbody = document.getElementById('adminLogTableBody');
+        if (!tbody) return;
+
+        const rows = Array.isArray(logs) ? logs : [];
+        tbody.innerHTML = '';
+
+        if (!rows.length) {
+          tbody.innerHTML = '<tr><td colspan="5" class="text-muted text-center">Belum ada log.</td></tr>';
+          return;
+        }
+
+        rows.forEach(l => {
+          const waktu = formatWIB(l.waktu);
+          const adminText = `${l.actor_id_relawan || '-'} - ${l.actor_nama_relawan || '-'}`;
+          const aksi = (l.action || '-');
+          const target = `${l.target_kind || '-'} #${l.target_id || '-'}`;
+          const note = (l.note && String(l.note).trim()) ? String(l.note) : '-';
+
+          tbody.insertAdjacentHTML('beforeend', `
+            <tr>
+              <td class="small">${escapeHtml(waktu)}</td>
+              <td class="small">${escapeHtml(adminText)}</td>
+              <td class="small">${escapeHtml(aksi)}</td>
+              <td class="small">${escapeHtml(target)}</td>
+              <td class="small" style="white-space:normal;">${escapeHtml(note)}</td>
+            </tr>
+          `);
+        });
+      }
+
+      async function loadAdminLogs() {
+        const tbody = document.getElementById('adminLogTableBody');
+        if (!tbody) return;
+
+        tbody.innerHTML = '<tr><td colspan="5" class="text-muted text-center">Memuat...</td></tr>';
+
+        if (!CURRENT_IS_ADMIN) {
+          tbody.innerHTML = '<tr><td colspan="5" class="text-muted text-center">Bukan admin.</td></tr>';
+          return;
+        }
+
+        try {
+          const resp = await fetch('/api/admin_action_logs?limit=200');
+          const result = await resp.json().catch(() => ({}));
+          if (resp.ok && result && result.success) {
+            renderAdminLogs(result.logs || []);
+          } else {
+            tbody.innerHTML = `<tr><td colspan="5" class="text-muted text-center">Gagal memuat log: ${escapeHtml(result.error || 'Unknown error')}</td></tr>`;
+          }
+        } catch (e) {
+          console.error(e);
+          tbody.innerHTML = '<tr><td colspan="5" class="text-muted text-center">Error memuat log.</td></tr>';
+        }
+      }
+
       // Hook modal admin (render table saat dibuka / refresh)
       document.addEventListener('DOMContentLoaded', function() {
         const modalEl = document.getElementById('permintaanAdminModal');
         if (modalEl) {
           modalEl.addEventListener('shown.bs.modal', function() {
             renderPermintaanAdminTable();
+            loadAdminAsesmen();
+            loadAdminLogs();
           });
         }
 
@@ -3516,9 +3822,33 @@
                 permintaanLogistik = Array.isArray(result.permintaan_logistik)
                   ? result.permintaan_logistik
                   : (result.permintaan_logistik || []);
+
+                // Update data asesmen (jika tersedia dari refresh_map)
+                asesmenKesehatan = Array.isArray(result.asesmen_kesehatan)
+                  ? result.asesmen_kesehatan
+                  : (result.asesmen_kesehatan || []);
+                asesmenPendidikan = Array.isArray(result.asesmen_pendidikan)
+                  ? result.asesmen_pendidikan
+                  : (result.asesmen_pendidikan || []);
+                asesmenPsikososial = Array.isArray(result.asesmen_psikososial)
+                  ? result.asesmen_psikososial
+                  : (result.asesmen_psikososial || []);
+                asesmenInfrastruktur = Array.isArray(result.asesmen_infrastruktur)
+                  ? result.asesmen_infrastruktur
+                  : (result.asesmen_infrastruktur || []);
+                asesmenWash = Array.isArray(result.asesmen_wash)
+                  ? result.asesmen_wash
+                  : (result.asesmen_wash || []);
+                asesmenKondisi = Array.isArray(result.asesmen_kondisi)
+                  ? result.asesmen_kondisi
+                  : (result.asesmen_kondisi || []);
+
+                applyAsesmenVisibility();
                 applyPermintaanVisibility();
                 renderPermintaanAdminTable();
-                showNotification('Data permintaan diperbarui.', 'success', true);
+                loadAdminAsesmen();
+                loadAdminLogs();
+                showNotification('Data admin diperbarui.', 'success', true);
               } else {
                 showNotification('Gagal refresh permintaan: ' + (result.error || 'Unknown error'), 'danger', true);
               }
@@ -3526,6 +3856,20 @@
               console.error(e);
               showNotification('Error refresh permintaan.', 'danger', true);
             }
+          });
+        }
+
+        const btnRefreshAsesmen = document.getElementById('btnRefreshAsesmenAdmin');
+        if (btnRefreshAsesmen && btnRefresh) {
+          btnRefreshAsesmen.addEventListener('click', function() {
+            btnRefresh.click();
+          });
+        }
+
+        const btnRefreshLogs = document.getElementById('btnRefreshAdminLogs');
+        if (btnRefreshLogs) {
+          btnRefreshLogs.addEventListener('click', function() {
+            loadAdminLogs();
           });
         }
       });
