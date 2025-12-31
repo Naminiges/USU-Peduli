@@ -3518,7 +3518,7 @@
         tbody.innerHTML = '';
 
         if (!rows.length) {
-          tbody.innerHTML = '<tr><td colspan="6" class="text-muted text-center">Belum ada permintaan (24 jam terakhir).</td></tr>';
+          tbody.innerHTML = '<tr><td colspan="6" class="text-muted text-center">Belum ada permintaan.</td></tr>';
           return;
         }
 
@@ -3659,7 +3659,7 @@
         }
 
         try {
-          const resp = await fetch('/api/admin_asesmen_list?hours=24');
+          const resp = await fetch('/api/admin_asesmen_list?hours=720');
           const result = await resp.json().catch(() => ({}));
           if (resp.ok && result && result.success) {
             ADMIN_ASESMEN_ROWS = Array.isArray(result.rows) ? result.rows : [];
@@ -3688,7 +3688,7 @@
         tbody.innerHTML = '';
 
         if (!rows.length) {
-          tbody.innerHTML = '<tr><td colspan="8" class="text-muted text-center">Belum ada data asesmen (24 jam terakhir).</td></tr>';
+          tbody.innerHTML = '<tr><td colspan="8" class="text-muted text-center">Belum ada data asesmen.</td></tr>';
           return;
         }
 
