@@ -1137,6 +1137,39 @@
               </table>
             </div>
 
+
+            <hr class="my-4" />
+
+            <div class="d-flex justify-content-between align-items-center mb-2">
+              <h6 class="fw-bold mb-0">
+                <i class="fas fa-map-marker-alt me-1"></i> Kelola Data Lokasi
+              </h6>
+              <button type="button" class="btn btn-sm btn-light" id="btnRefreshLokasiAdmin" title="Refresh Data Lokasi">
+                <i class="fas fa-sync-alt"></i>
+              </button>
+            </div>
+
+            <div id="adminLokasiAlert" class="alert alert-info py-2 small d-none"></div>
+
+            <div class="table-responsive">
+              <table class="table table-sm table-striped table-bordered align-middle">
+                <thead class="table-light">
+                  <tr>
+                    <th style="width: 120px">ID</th>
+                    <th style="width: 180px">Kab/Kota</th>
+                    <th>Nama Lokasi</th>
+                    <th style="width: 200px">Jenis</th>
+                    <th style="width: 90px">Aktif</th>
+                    <th style="width: 170px">Aksi</th>
+                  </tr>
+                </thead>
+                <tbody id="adminLokasiTableBody">
+                  <tr>
+                    <td colspan="6" class="text-muted text-center">Memuat...</td>
+                  </tr>
+                </tbody>
+              </table>
+            </div>
             <hr class="my-4" />
 
             <div class="d-flex justify-content-between align-items-center mb-2">
@@ -2512,6 +2545,9 @@
               console.log("asesmenKondisi: ", asesmenKondisi);
               const CURRENT_IS_ADMIN = {{ 'true' if is_admin else 'false' }};
 
+              // Ref jenis lokasi untuk admin (dropdown)
+              const REF_JENIS_LOKASI = safeJsonParse({{ ref_jenis_lokasi | tojson | safe }}, []);
+
               // Inisialisasi Peta
               var map = L.map('map').setView([2.3693, 99.0763], 9); // Koordinat tengah Sumatera Utara
 
@@ -3565,6 +3601,7 @@
             // Refresh tabel admin
             renderPermintaanAdminTable();
             loadAdminAsesmen();
+            loadAdminLokasi();
             loadAdminLogs();
 
             showNotification('Status permintaan berhasil diperbarui.', 'success', true);
@@ -3761,7 +3798,7 @@
           const waktu = formatWIB(l.waktu);
           const adminText = `${l.actor_id_relawan || '-'} - ${l.actor_nama_relawan || '-'}`;
           const aksi = (l.action || '-');
-          const target = `${l.target_kind || '-'} #${l.target_id || '-'}`;
+          const target = `${l.target_kind || '-'} #${(l.target_ref || l.target_id || '-')}`;
           const note = (l.note && String(l.note).trim()) ? String(l.note) : '-';
 
           tbody.insertAdjacentHTML('beforeend', `
@@ -3776,6 +3813,220 @@
         });
       }
 
+
+
+      // ============================================================================
+      // ADMIN: KELOLA DATA LOKASI (is_active + jenis_lokasi)
+      // ============================================================================
+      const adminLokasiTableBody = document.getElementById('adminLokasiTableBody');
+      const adminLokasiAlert = document.getElementById('adminLokasiAlert');
+      const btnRefreshLokasiAdmin = document.getElementById('btnRefreshLokasiAdmin');
+
+      function _normalizeBool(val) {
+        if (val === true) return true;
+        if (val === false) return false;
+        if (typeof val === 'string') {
+          const v = val.trim().toLowerCase();
+          if (v === 'true' || v === '1' || v === 'yes' || v === 'y' || v === 'on') return true;
+          if (v === 'false' || v === '0' || v === 'no' || v === 'n' || v === 'off') return false;
+        }
+        return Boolean(val);
+      }
+
+      function _showAdminLokasiAlert(msg, type) {
+        if (!adminLokasiAlert) return;
+        const t = (type || 'info').toLowerCase();
+        adminLokasiAlert.classList.remove('d-none', 'alert-info', 'alert-success', 'alert-warning', 'alert-danger');
+        if (t === 'success') adminLokasiAlert.classList.add('alert-success');
+        else if (t === 'warning') adminLokasiAlert.classList.add('alert-warning');
+        else if (t === 'danger' || t === 'error') adminLokasiAlert.classList.add('alert-danger');
+        else adminLokasiAlert.classList.add('alert-info');
+        adminLokasiAlert.textContent = String(msg || '');
+      }
+
+      function _buildJenisOptions(currentValue) {
+        const cur = (currentValue || '').trim();
+        const refs = Array.isArray(REF_JENIS_LOKASI) ? REF_JENIS_LOKASI : [];
+
+        // Uniq + keep order
+        const seen = {};
+        const list = [];
+        refs.forEach(v => {
+          const s = String(v || '').trim();
+          if (!s) return;
+          if (!seen[s]) {
+            seen[s] = true;
+            list.push(s);
+          }
+        });
+
+        if (cur && !seen[cur]) {
+          list.unshift(cur);
+        }
+
+        let html = '';
+        list.forEach(v => {
+          const sel = (v === cur) ? ' selected' : '';
+          html += `<option value="${escapeHtml(v)}"${sel}>${escapeHtml(v)}</option>`;
+        });
+        return html;
+      }
+
+      function renderAdminLokasiTable(rows) {
+        if (!adminLokasiTableBody) return;
+
+        if (!rows || !rows.length) {
+          adminLokasiTableBody.innerHTML = `<tr><td colspan="6" class="text-muted text-center">Tidak ada data.</td></tr>`;
+          return;
+        }
+
+        let html = '';
+        rows.forEach(r => {
+          const idLok = String(r.id_lokasi || '').trim();
+          const kab = String(r.nama_kabkota || r.kabupaten_kota || '').trim();
+          const nama = String(r.nama_lokasi || '').trim();
+          const jenis = String(r.jenis_lokasi || '').trim();
+          const isAct = _normalizeBool(r.is_active);
+
+          const badge = isAct
+            ? '<span class="badge bg-success">Ya</span>'
+            : '<span class="badge bg-secondary">Tidak</span>';
+
+          const btnText = isAct ? 'Nonaktifkan' : 'Aktifkan';
+          const btnClass = isAct ? 'btn-outline-danger' : 'btn-outline-success';
+
+          html += `
+            <tr>
+              <td><code>${escapeHtml(idLok || '-')}</code></td>
+              <td>${escapeHtml(kab || '-')}</td>
+              <td>${escapeHtml(nama || '-')}</td>
+              <td>
+                <select class="form-select form-select-sm admin-jenis-select" data-id="${escapeHtml(idLok)}">
+                  ${_buildJenisOptions(jenis)}
+                </select>
+              </td>
+              <td class="text-center">${badge}</td>
+              <td class="text-center">
+                <button type="button" class="btn btn-sm ${btnClass} admin-lokasi-toggle" data-id="${escapeHtml(idLok)}" data-active="${isAct ? '1' : '0'}">
+                  ${btnText}
+                </button>
+              </td>
+            </tr>
+          `;
+        });
+
+        adminLokasiTableBody.innerHTML = html;
+
+        // Bind toggle buttons
+        (adminLokasiTableBody.querySelectorAll('.admin-lokasi-toggle') || []).forEach(btn => {
+          btn.addEventListener('click', async () => {
+            const idLok = btn.getAttribute('data-id') || '';
+            const curAct = (btn.getAttribute('data-active') || '0') === '1';
+            const nextAct = !curAct;
+            await adminSetLokasiActive(idLok, nextAct);
+          });
+        });
+
+        // Bind jenis select
+        (adminLokasiTableBody.querySelectorAll('.admin-jenis-select') || []).forEach(sel => {
+          sel.addEventListener('change', async () => {
+            const idLok = sel.getAttribute('data-id') || '';
+            const newJenis = sel.value;
+            await adminUpdateLokasiJenis(idLok, newJenis);
+          });
+        });
+      }
+
+      async function loadAdminLokasi() {
+        if (!CURRENT_IS_ADMIN) return;
+        if (!adminLokasiTableBody) return;
+
+        try {
+          adminLokasiTableBody.innerHTML = `<tr><td colspan="6" class="text-muted text-center">Memuat...</td></tr>`;
+          const res = await fetch('/api/admin_lokasi_list?limit=2000', { method: 'GET', credentials: 'same-origin' });
+          const data = await res.json();
+          if (!data || !data.success) {
+            _showAdminLokasiAlert((data && data.error) ? data.error : 'Gagal memuat data lokasi.', 'danger');
+            renderAdminLokasiTable([]);
+            return;
+          }
+          _showAdminLokasiAlert('Data lokasi dimuat.', 'success');
+          renderAdminLokasiTable(data.rows || []);
+        } catch (e) {
+          console.error(e);
+          _showAdminLokasiAlert('Terjadi error saat memuat data lokasi.', 'danger');
+          renderAdminLokasiTable([]);
+        }
+      }
+
+      async function adminSetLokasiActive(idLokasi, isActive) {
+        if (!CURRENT_IS_ADMIN) return;
+        const idLok = String(idLokasi || '').trim();
+        if (!idLok) return;
+
+        try {
+          _showAdminLokasiAlert('Menyimpan perubahan...', 'info');
+          const res = await fetch('/api/set_lokasi_active', {
+            method: 'POST',
+            credentials: 'same-origin',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ id_lokasi: idLok, is_active: Boolean(isActive) })
+          });
+          const data = await res.json();
+          if (!data || !data.success) {
+            _showAdminLokasiAlert((data && data.error) ? data.error : 'Gagal menyimpan.', 'danger');
+            return;
+          }
+
+          _showAdminLokasiAlert('Berhasil disimpan.', 'success');
+
+          // Refresh map + panel admin
+          try { await refreshMap(); } catch (e) {}
+          await loadAdminLokasi();
+          try { loadAdminLogs(); } catch (e) {}
+        } catch (e) {
+          console.error(e);
+          _showAdminLokasiAlert('Terjadi error saat menyimpan.', 'danger');
+        }
+      }
+
+      async function adminUpdateLokasiJenis(idLokasi, jenisLokasi) {
+        if (!CURRENT_IS_ADMIN) return;
+        const idLok = String(idLokasi || '').trim();
+        const j = String(jenisLokasi || '').trim();
+        if (!idLok || !j) return;
+
+        try {
+          _showAdminLokasiAlert('Menyimpan perubahan jenis...', 'info');
+          const res = await fetch('/api/update_lokasi_jenis', {
+            method: 'POST',
+            credentials: 'same-origin',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ id_lokasi: idLok, jenis_lokasi: j })
+          });
+          const data = await res.json();
+          if (!data || !data.success) {
+            _showAdminLokasiAlert((data && data.error) ? data.error : 'Gagal update jenis.', 'danger');
+            return;
+          }
+
+          _showAdminLokasiAlert('Jenis lokasi berhasil diupdate.', 'success');
+
+          // Refresh map + panel admin
+          try { await refreshMap(); } catch (e) {}
+          await loadAdminLokasi();
+          try { loadAdminLogs(); } catch (e) {}
+        } catch (e) {
+          console.error(e);
+          _showAdminLokasiAlert('Terjadi error saat update jenis.', 'danger');
+        }
+      }
+
+      if (btnRefreshLokasiAdmin) {
+        btnRefreshLokasiAdmin.addEventListener('click', () => {
+          loadAdminLokasi();
+        });
+      }
       async function loadAdminLogs() {
         const tbody = document.getElementById('adminLogTableBody');
         if (!tbody) return;
@@ -3808,6 +4059,7 @@
           modalEl.addEventListener('shown.bs.modal', function() {
             renderPermintaanAdminTable();
             loadAdminAsesmen();
+            loadAdminLokasi();
             loadAdminLogs();
           });
         }
@@ -3847,6 +4099,7 @@
                 applyPermintaanVisibility();
                 renderPermintaanAdminTable();
                 loadAdminAsesmen();
+                loadAdminLokasi();
                 loadAdminLogs();
                 showNotification('Data admin diperbarui.', 'success', true);
               } else {
@@ -3950,6 +4203,14 @@
 
                   // Tambah marker baru
                   lokasiData.forEach(lokasi => {
+
+        // ADMIN_SKIP_INACTIVE_LOKASI: hanya tampilkan lokasi yang is_active = True
+        const _activeRaw = lokasi.is_active;
+        if (_activeRaw === false) return;
+        if (typeof _activeRaw === 'string') {
+          const _av = _activeRaw.trim().toLowerCase();
+          if (_av === 'false' || _av === '0' || _av === 'no' || _av === 'n') return;
+        }
                       const lat = parseFloat(lokasi.latitude);
                       const lon = parseFloat(lokasi.longitude);
                       if (!isNaN(lat) && !isNaN(lon)) {
