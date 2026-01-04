@@ -2542,7 +2542,6 @@
               let asesmenWash = safeJsonParse({{ asesmen_wash | tojson | safe }}, []);
               let asesmenKondisi = safeJsonParse({{ asesmen_kondisi | tojson | safe }}, []);
               let permintaanLogistik = safeJsonParse({{ permintaan_logistik | tojson | safe }}, []);
-              console.log("asesmenKondisi: ", asesmenKondisi);
               const CURRENT_IS_ADMIN = {{ 'true' if is_admin else 'false' }};
 
               // Ref jenis lokasi untuk admin (dropdown)
@@ -2986,7 +2985,7 @@
               </div>
               <hr class="my-2"/>
               <div class="fw-bold mb-1">Jawaban</div>
-              ${jawabanHtml(r.jawaban, kind)}
+              ${jawabanKondisiHtml(r.jawaban, kind)}
               <hr class="my-2"/>
               <div><b>Lokasi Titik Banjir</b></div>
               <div id="${popupId}" style="height:200px; margin-top:5px;"></div>
