@@ -491,6 +491,7 @@ _JENIS_PREFIX_MAP: Dict[str, str] = {
     "JEMBATAN RUSAK": "JR",
     "JALAN PUTUS": "JP",
     "TITIK LONGSOR": "TL",
+    "SUMUR BOR": "SB",
 }
 
 def _norm_kabkota(nama: Any) -> str:
@@ -1566,50 +1567,56 @@ def pg_get_logistik_permintaan_last24h(hours: int = 168) -> List[Dict[str, Any]]
     return [_json_safe_row(r) for r in rows]
 
 
-def pg_update_logistik_permintaan_status(id_permintaan: int, status_permintaan: str) -> bool:
-    """Update kolom status_permintaan pada tabel logistik_permintaan berdasarkan ID.
+def pg_update_logistik_permintaan_status(
+    id_permintaan: int,
+    status_new: str,
+    actor_id_relawan: Optional[str] = None,
+    actor_nama_relawan: Optional[str] = None,
+    note: Optional[str] = None,
+) -> bool:
+    table = _get_env("PG_LOGISTIK_PERMINTAAN_TABLE", "public.logistik_permintaan").strip()
 
-    Status yang didukung (sesuai kebutuhan UI):
-      Draft, Diproses, Dikirim, Diterima, Ditolak
+    # 1) ambil status lama (buat payload log)
+    row_old = pg_fetchone(
+        f"SELECT status_permintaan FROM {table} WHERE id=%s LIMIT 1",
+        (id_permintaan,),
+    )
+    if not row_old:
+        return False
 
-    Catatan:
-    - id_permintaan mengacu ke kolom 'id' (bigserial).
-    - Validasi status dilakukan di sini agar backend aman (tidak sembarang teks).
-    """
-    table = _get_env("PG_LOGISTIK_PERMINTAAN_TABLE", "public.logistik_permintaan")
+    old_status = (row_old.get("status_permintaan") or "").strip()
 
-    allowed = {"Draft", "Diproses", "Dikirim", "Diterima", "Ditolak"}
-    st = (status_permintaan or "").strip()
+    # 2) update + pastikan benar-benar ada row yang berubah
+    sql = f"UPDATE {table} SET status_permintaan=%s WHERE id=%s RETURNING id;"
+    rows = pg_fetchall(sql, (status_new, id_permintaan))
+    ok = bool(rows)
 
-    # Normalisasi sederhana: Title Case untuk aman
-    # (agar input "draft" tetap bisa diterima)
-    if st.lower() == "draft":
-        st = "Draft"
-    elif st.lower() == "diproses":
-        st = "Diproses"
-    elif st.lower() == "dikirim":
-        st = "Dikirim"
-    elif st.lower() == "diterima":
-        st = "Diterima"
-    elif st.lower() == "ditolak":
-        st = "Ditolak"
+    # 3) insert log aksi admin (mirip teknik asesmen & data_lokasi)
+    if ok:
+        try:
+            pg_insert_admin_action_log(
+                actor_id_relawan=actor_id_relawan,
+                actor_nama_relawan=actor_nama_relawan,
+                action="CHANGE_STATUS_LOGISTIK",
+                target_kind="permintaan_logistik",
+                target_table=table,
+                target_id=int(id_permintaan),
+                note=note,  # note optional saja
+                payload={
+                    "kind": "status_logistik",
+                    "id": int(id_permintaan),
+                    "old": old_status,
+                    "new": status_new,
+                },
+            )
+        except Exception as e:
+            # update jangan gagal hanya karena logging
+            print(f"[admin_action_log] insert failed for logistik_permintaan#{id_permintaan}: {e}")
 
-    if st not in allowed:
-        raise ValueError("Status_permintaan tidak valid")
+    return ok
 
-    try:
-        pid = int(id_permintaan)
-    except Exception as e:
-        raise ValueError("ID permintaan tidak valid") from e
 
-    sql = f"""
-        UPDATE {table}
-        SET status_permintaan = %s
-        WHERE id = %s
-    """
 
-    pg_execute(sql, (st, pid))
-    return True
 
 # ------------------------------------------------------------------------------
 # 13) ADMIN - Soft delete asesmen (is_active=false) + log aksi admin

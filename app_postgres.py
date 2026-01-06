@@ -672,7 +672,7 @@ def submit_permintaan():
 def api_update_permintaan_status():
     """Update status_permintaan pada logistik_permintaan.
     Hanya untuk relawan yang login dan is_admin=True.
-    Payload: {id: <int>, status: <str>}
+    Payload: {id: <int>, status: <str>, note?: <str>}
     """
     if not session.get("logged_in"):
         return jsonify({"success": False, "error": "Unauthorized"}), 401
@@ -685,11 +685,17 @@ def api_update_permintaan_status():
 
     payload = request.get_json(silent=True) or {}
     if not payload:
-        # fallback kalau dikirim sebagai form-urlencoded
         payload = request.form.to_dict() if request.form else {}
 
+    # fallback: kalau front-end ngirim id_permintaan / permintaan_id
     id_raw = payload.get("id")
-    status_new = (payload.get("status") or "").strip()
+    if id_raw is None:
+        id_raw = payload.get("id_permintaan")
+    if id_raw is None:
+        id_raw = payload.get("permintaan_id")
+
+    status_new = (payload.get("status") or payload.get("status_permintaan") or "").strip()
+    note = (payload.get("note") or "").strip() or None
 
     allowed = {"Draft", "Diproses", "Dikirim", "Diterima", "Ditolak"}
     if status_new not in allowed:
@@ -701,10 +707,21 @@ def api_update_permintaan_status():
         return jsonify({"success": False, "error": "ID tidak valid."}), 400
 
     try:
-        pg_update_logistik_permintaan_status(id_int, status_new)
+        ok = pg_update_logistik_permintaan_status(
+            id_int,
+            status_new,
+            actor_id_relawan=session.get("id_relawan"),
+            actor_nama_relawan=session.get("nama_relawan"),
+            note=note,
+        )
+
+        if not ok:
+            return jsonify({"success": False, "error": "Data permintaan tidak ditemukan."}), 404
+
         return jsonify({"success": True})
     except Exception as e:
         return jsonify({"success": False, "error": str(e)}), 500
+
 
 
 # ==============================================================================

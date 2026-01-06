@@ -491,6 +491,17 @@
                 >Titik Longsor</label
               >
             </div>
+              <div class="form-check">
+              <input
+                class="form-check-input"
+                type="checkbox"
+                id="toggleLokasiSumurBor"
+                checked
+              />
+              <label class="form-check-label" for="toggleLokasiSumurBor"
+                >Sumur Bor</label
+              >
+            </div>
             {#
             <div class="form-check">
               #} {#
@@ -2542,7 +2553,6 @@
               let asesmenWash = safeJsonParse({{ asesmen_wash | tojson | safe }}, []);
               let asesmenKondisi = safeJsonParse({{ asesmen_kondisi | tojson | safe }}, []);
               let permintaanLogistik = safeJsonParse({{ permintaan_logistik | tojson | safe }}, []);
-              console.log("asesmenKondisi: ", asesmenKondisi);
               const CURRENT_IS_ADMIN = {{ 'true' if is_admin else 'false' }};
 
               // Ref jenis lokasi untuk admin (dropdown)
@@ -2986,7 +2996,7 @@
               </div>
               <hr class="my-2"/>
               <div class="fw-bold mb-1">Jawaban</div>
-              ${jawabanHtml(r.jawaban, kind)}
+              ${jawabanKondisiHtml(r.jawaban, kind)}
               <hr class="my-2"/>
               <div><b>Lokasi Titik Banjir</b></div>
               <div id="${popupId}" style="height:200px; margin-top:5px;"></div>
@@ -3297,6 +3307,14 @@
   iconClass = 'fas fa-archway';
   iconColor = '#ffffff';
   bgColor = '#2563eb'; // biru (jembatan)
+} else if (
+  ['sumur bor','sumur','air mata sumur','well']
+    .some(k => String(jenis || '').toLowerCase().includes(k))
+) {
+  // Kalau FontAwesome kamu v6, bisa ganti jadi: 'fas fa-bridge' / 'fas fa-bridge-water'
+  iconClass = 'fas fa-faucet';
+  iconColor = '#ffffff';
+  bgColor = '#2563eb'; // biru (jembatan)
 }
                    else {
                       iconClass = 'fas fa-map-marker-alt';
@@ -3518,7 +3536,7 @@
         tbody.innerHTML = '';
 
         if (!rows.length) {
-          tbody.innerHTML = '<tr><td colspan="6" class="text-muted text-center">Belum ada permintaan (24 jam terakhir).</td></tr>';
+          tbody.innerHTML = '<tr><td colspan="6" class="text-muted text-center">Belum ada permintaan.</td></tr>';
           return;
         }
 
@@ -3659,7 +3677,7 @@
         }
 
         try {
-          const resp = await fetch('/api/admin_asesmen_list?hours=24');
+          const resp = await fetch('/api/admin_asesmen_list?hours=720');
           const result = await resp.json().catch(() => ({}));
           if (resp.ok && result && result.success) {
             ADMIN_ASESMEN_ROWS = Array.isArray(result.rows) ? result.rows : [];
@@ -3688,7 +3706,7 @@
         tbody.innerHTML = '';
 
         if (!rows.length) {
-          tbody.innerHTML = '<tr><td colspan="8" class="text-muted text-center">Belum ada data asesmen (24 jam terakhir).</td></tr>';
+          tbody.innerHTML = '<tr><td colspan="8" class="text-muted text-center">Belum ada data asesmen.</td></tr>';
           return;
         }
 
@@ -4197,6 +4215,7 @@
                   const showJembatanRusak = fs.showJembatanRusak !== false;
                   const showJalanPutus = fs.showJalanPutus !== false;
                   const showTitikLongsor = fs.showTitikLongsor !== false;
+                  const showSumurBor = fs.showSumurBor !== false;
                   const showLain = fs.showLain !== false;
                   // Hapus marker lama
                   markerLayerGroup.clearLayers();
@@ -4222,15 +4241,17 @@ const isStarlink = /starlink/i.test(jenis);
 const isJembatanRusak = /jembatan/i.test(jenis) && /rusak/i.test(jenis);
 const isJalanPutus = /jalan/i.test(jenis) && /putus/i.test(jenis);
 const isTitikLongsor = /longsor/i.test(jenis);
+const isSumurBor = /sumur/i.test(jenis) && /bor/i.test(jenis);
                           if (isPosko && !showPosko) return;
                           if (isGudang && !showGudang) return;
                           if (isStarlink && !showStarlink) return;
 if (isJembatanRusak && !showJembatanRusak) return;
 if (isJalanPutus && !showJalanPutus) return;
 if (isTitikLongsor && !showTitikLongsor) return;
+if (isSumurBor && !showSumurBor) return;
                           // sisanya dianggap "Lain"
 const isKnown =
-  isPosko || isGudang || isStarlink || isJembatanRusak || isJalanPutus || isTitikLongsor;
+  isPosko || isGudang || isStarlink || isJembatanRusak || isJalanPutus || isTitikLongsor || isSumurBor;
 
 if (!isKnown && !showLain) return;
 
@@ -4307,6 +4328,7 @@ if (!isKnown && !showLain) return;
               const ckLokJembatanRusak = document.getElementById('toggleLokasiJembatanRusak');
               const ckLokJalanPutus = document.getElementById('toggleLokasiJalanPutus');
               const ckLokTitikLongsor = document.getElementById('toggleLokasiTitikLongsor');
+              const ckLokSumurBor = document.getElementById('toggleLokasiSumurBor');
               const ckLokLain = document.getElementById('toggleLokasiLain');
 
               const ckRelawanLok = document.getElementById('toggleLokasiRelawan');
@@ -4396,6 +4418,7 @@ if (!isKnown && !showLain) return;
                       showJembatanRusak: ckLokJembatanRusak ? ckLokJembatanRusak.checked : true,
                       showJalanPutus: ckLokJalanPutus ? ckLokJalanPutus.checked : true,
                       showTitikLongsor: ckLokTitikLongsor ? ckLokTitikLongsor.checked : true,
+                      showSumurBor: ckLokSumurBor ? ckLokSumurBor.checked : true,
                       showLain: ckLokLain ? ckLokLain.checked : true,
                   };
               }
@@ -4441,9 +4464,9 @@ if (!isKnown && !showLain) return;
 
               // Event listeners
               // Lokasi (master + child)
-              if (ckLokAll) ckLokAll.addEventListener('change', () => syncGroupFromMaster(ckLokAll, elLokasiBody, [ckLokPosko, ckLokGudang, ckLokStarlink,ckLokJembatanRusak, ckLokJalanPutus, ckLokTitikLongsor, ckLokLain], applyLokasiFilter));
-              [ckLokPosko, ckLokGudang,ckLokStarlink,ckLokJembatanRusak, ckLokJalanPutus, ckLokTitikLongsor, ckLokLain].forEach(el => {
-                  if (el) el.addEventListener('change', () => syncMasterFromChildren(ckLokAll, elLokasiBody, [ckLokPosko, ckLokGudang,ckLokStarlink,ckLokJembatanRusak, ckLokJalanPutus, ckLokTitikLongsor, ckLokLain], applyLokasiFilter));
+              if (ckLokAll) ckLokAll.addEventListener('change', () => syncGroupFromMaster(ckLokAll, elLokasiBody, [ckLokPosko, ckLokGudang, ckLokStarlink,ckLokJembatanRusak, ckLokJalanPutus, ckLokTitikLongsor, ckLokSumurBor, ckLokLain], applyLokasiFilter));
+              [ckLokPosko, ckLokGudang,ckLokStarlink,ckLokJembatanRusak, ckLokJalanPutus, ckLokTitikLongsor, ckLokSumurBor, ckLokLain].forEach(el => {
+                  if (el) el.addEventListener('change', () => syncMasterFromChildren(ckLokAll, elLokasiBody, [ckLokPosko, ckLokGudang,ckLokStarlink,ckLokJembatanRusak, ckLokJalanPutus, ckLokTitikLongsor, ckLokSumurBor,  ckLokLain], applyLokasiFilter));
               });
 
               // Relawan
@@ -4464,7 +4487,7 @@ if (!isKnown && !showLain) return;
 
               // Initial sync + render
               syncGroupFromMaster(ckAsesmenAll, elAsesmenBody, [ckKes, ckPen, ckPsi, ckInf, ckWas, ckKond], applyAsesmenVisibility);
-              syncGroupFromMaster(ckLokAll, elLokasiBody, [ckLokPosko, ckLokGudang, ckLokStarlink,ckLokJembatanRusak, ckLokJalanPutus, ckLokTitikLongsor, ckLokLain], applyLokasiFilter);
+              syncGroupFromMaster(ckLokAll, elLokasiBody, [ckLokPosko, ckLokGudang, ckLokStarlink,ckLokJembatanRusak, ckLokJalanPutus, ckLokTitikLongsor, ckLokSumurBor, ckLokLain], applyLokasiFilter);
               syncGroupFromMaster(ckRelAll, elRelawanBody, [ckRelawanLok], applyRelawanVisibility);
               syncGroupFromMaster(ckPermintaan, elPermintaanBody, [ckPermDraft, ckPermDiproses, ckPermDikirim, ckPermDiterima, ckPermDitolak], applyPermintaanVisibility);
 
