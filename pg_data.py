@@ -491,6 +491,7 @@ _JENIS_PREFIX_MAP: Dict[str, str] = {
     "JEMBATAN RUSAK": "JR",
     "JALAN PUTUS": "JP",
     "TITIK LONGSOR": "TL",
+    "SUMUR BOR": "SB",
 }
 
 def _norm_kabkota(nama: Any) -> str:
