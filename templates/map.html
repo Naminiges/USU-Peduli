@@ -4241,7 +4241,7 @@ const isStarlink = /starlink/i.test(jenis);
 const isJembatanRusak = /jembatan/i.test(jenis) && /rusak/i.test(jenis);
 const isJalanPutus = /jalan/i.test(jenis) && /putus/i.test(jenis);
 const isTitikLongsor = /longsor/i.test(jenis);
-const isSumurBor = /sumurbor/i.test(jenis);
+const isSumurBor = /sumur/i.test(jenis) && /bor/i.test(jenis);
                           if (isPosko && !showPosko) return;
                           if (isGudang && !showGudang) return;
                           if (isStarlink && !showStarlink) return;
