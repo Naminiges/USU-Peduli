@@ -41,7 +41,6 @@
         box-shadow: 0 6px 20px rgba(0, 0, 0, 0.2);
       }
     </style>
-      <link rel="icon" type="image/svg+xml" href="{{ url_for('media_files', filename='aset_website/logo_usu.svg') }}">
   </head>
 
   <body>
@@ -184,9 +183,6 @@
       </div>
 
       <div class="d-grid gap-2">
-      <button class="btn btn-info feature-btn" data-bs-toggle="modal" data-bs-target="#inputLokasiModal">
-  <i class="fas fa-map-marker-alt"></i> Input Lokasi
-</button>
         <button
           class="btn btn-primary feature-btn"
           data-bs-toggle="modal"
@@ -217,52 +213,37 @@
         >
           <i class="fas fa-graduation-cap me-2"></i> Asesmen Pendidikan
         </button>
-        {#Tambah Untuk Asesmen Psikososial#}
-        <button
-          class="btn btn-success feature-btn"
-          data-bs-toggle="modal"
-          data-bs-target="#asesmenPsikososialModal"
-        >
-          <i class="fa-solid fa-hand-holding-heart me-2"></i> Asesmen
-          Psikososial
-        </button>
-        {#Tambah Untuk Asesmen Infrastruktur#}
-        <button
-          class="btn btn-success feature-btn"
-          data-bs-toggle="modal"
-          data-bs-target="#asesmenInfrastrukturModal"
-        >
-          <i class="fa-solid fa-screwdriver-wrench me-2"></i> Asesmen
-          Infrastruktur
-        </button>
-        {#Tambah Untuk Asesmen Wash#}
-        <button
-          class="btn btn-success feature-btn"
-          data-bs-toggle="modal"
-          data-bs-target="#asesmenWashModal"
-        >
-          <i class="fa-solid fa-droplet me-2"></i> Asesmen WASH
-        </button>
-        {#Tambah Untuk Asesmen Kondisi#}
-        <button
-          class="btn btn-success feature-btn"
-          data-bs-toggle="modal"
-          data-bs-target="#asesmenKondisiModal"
-        >
-          <i class="fa-solid fa-clipboard-list me-2"></i> Asesmen Kondisi
-        </button>
-        {% if is_admin %}
+        <!-- ================== FILTER ASESMEN (CHECKLIST) ================== -->
+        <div class="p-2 bg-light rounded-3 mb-3">
+          <div class="fw-bold mb-2">
+            <i class="fas fa-layer-group me-2"></i>Asesmen
+          </div>
 
-        <button
-          class="btn btn-warning feature-btn"
-          data-bs-toggle="modal"
-          data-bs-target="#permintaanAdminModal"
-        >
-          <i class="fas fa-gear"></i> Pengaturan Permintaan
-        </button>
+          <div class="form-check">
+            <input
+              class="form-check-input"
+              type="checkbox"
+              id="toggleAsesmenKesehatan"
+              checked
+            />
+            <label class="form-check-label" for="toggleAsesmenKesehatan">
+              Asesmen Kesehatan
+            </label>
+          </div>
 
-        {% endif %}
-
+          <div class="form-check">
+            <input
+              class="form-check-input"
+              type="checkbox"
+              id="toggleAsesmenPendidikan"
+              checked
+            />
+            <label class="form-check-label" for="toggleAsesmenPendidikan">
+              Asesmen Pendidikan
+            </label>
+          </div>
+        </div>
+        <!-- =============================================================== -->
         <form
           action="{{ url_for('logout') }}"
           method="post"
@@ -290,501 +271,185 @@
       </button>
       {% endif %}
 
-      <!-- ================== FILTER LAYER (CHECKLIST) ================== -->
-      <div class="p-2 bg-light rounded-3 mb-3" id="layerFilterPanel">
-        <div class="fw-bold mb-2">
-          <i class="fas fa-filter me-2"></i>Filtrasi Layer
-        </div>
-
-        <!-- Asesmen -->
-        <div class="mb-2">
-          <div class="d-flex align-items-center justify-content-between">
-            <div class="fw-bold">
-              <i class="fas fa-layer-group me-2"></i>Asesmen
-            </div>
-            <button
-              class="btn btn-sm btn-link text-decoration-none p-0"
-              type="button"
-              data-bs-toggle="collapse"
-              data-bs-target="#filterAsesmenBody"
-              aria-expanded="true"
-              aria-controls="filterAsesmenBody"
-            >
-              <i class="fas fa-chevron-down"></i>
-            </button>
-          </div>
-
-          <div class="form-check mt-1">
-            <input
-              class="form-check-input"
-              type="checkbox"
-              id="toggleAsesmenAll"
-              checked
-            />
-            <label class="form-check-label" for="toggleAsesmenAll"
-              >Asesmen</label
-            >
-          </div>
-
-          <div class="collapse show ms-3 mt-1" id="filterAsesmenBody">
-            <div class="form-check">
-              <input
-                class="form-check-input"
-                type="checkbox"
-                id="toggleAsesmenKesehatan"
-                checked
-              />
-              <label class="form-check-label" for="toggleAsesmenKesehatan"
-                >Asesmen Kesehatan</label
-              >
-            </div>
-            <div class="form-check">
-              <input
-                class="form-check-input"
-                type="checkbox"
-                id="toggleAsesmenPendidikan"
-                checked
-              />
-              <label class="form-check-label" for="toggleAsesmenPendidikan"
-                >Asesmen Pendidikan</label
-              >
-            </div>
-            <div class="form-check">
-              <input
-                class="form-check-input"
-                type="checkbox"
-                id="toggleAsesmenPsikososial"
-                checked
-              />
-              <label class="form-check-label" for="toggleAsesmenPsikososial"
-                >Asesmen Psikososial</label
-              >
-            </div>
-            <div class="form-check">
-              <input
-                class="form-check-input"
-                type="checkbox"
-                id="toggleAsesmenInfrastruktur"
-                checked
-              />
-              <label class="form-check-label" for="toggleAsesmenInfrastruktur"
-                >Asesmen Infrastruktur</label
-              >
-            </div>
-            <div class="form-check">
-              <input
-                class="form-check-input"
-                type="checkbox"
-                id="toggleAsesmenWash"
-                checked
-              />
-              <label class="form-check-label" for="toggleAsesmenWash"
-                >Asesmen Wash</label
-              >
-            </div>
-            <div class="form-check">
-              <input
-                class="form-check-input"
-                type="checkbox"
-                id="toggleAsesmenKondisi"
-                checked
-              />
-              <label class="form-check-label" for="toggleAsesmenKondisi"
-                >Asesmen Kondisi</label
-              >
-            </div>
-          </div>
-        </div>
-
-        <!-- Lokasi -->
-        <div class="mb-2">
-          <div class="d-flex align-items-center justify-content-between">
-            <div class="fw-bold">
-              <i class="fas fa-map-marker-alt me-2"></i>Lokasi
-            </div>
-            <button
-              class="btn btn-sm btn-link text-decoration-none p-0"
-              type="button"
-              data-bs-toggle="collapse"
-              data-bs-target="#filterLokasiBody"
-              aria-expanded="true"
-              aria-controls="filterLokasiBody"
-            >
-              <i class="fas fa-chevron-down"></i>
-            </button>
-          </div>
-
-          <div class="form-check mt-1">
-            <input
-              class="form-check-input"
-              type="checkbox"
-              id="toggleLokasiAll"
-              checked
-            />
-            <label class="form-check-label" for="toggleLokasiAll">Lokasi</label>
-          </div>
-
-          <div class="collapse show ms-3 mt-1" id="filterLokasiBody">
-            <div class="form-check">
-              <input
-                class="form-check-input"
-                type="checkbox"
-                id="toggleLokasiPosko"
-                checked
-              />
-              <label class="form-check-label" for="toggleLokasiPosko"
-                >Posko Pengungsian</label
-              >
-            </div>
-            <div class="form-check">
-              <input
-                class="form-check-input"
-                type="checkbox"
-                id="toggleLokasiGudang"
-                checked
-              />
-              <label class="form-check-label" for="toggleLokasiGudang"
-                >Gudang Logistik</label
-              >
-            </div>
-              <div class="form-check">
-              <input
-                class="form-check-input"
-                type="checkbox"
-                id="toggleLokasiStarlink"
-                checked
-              />
-              <label class="form-check-label" for="toggleLokasiStarlink"
-                >Starlink</label
-              >
-            </div>
-              <div class="form-check">
-              <input
-                class="form-check-input"
-                type="checkbox"
-                id="toggleLokasiJembatanRusak"
-                checked
-              />
-              <label class="form-check-label" for="toggleLokasiJembatanRusak"
-                >Jembatan Rusak</label
-              >
-            </div>
-              <div class="form-check">
-              <input
-                class="form-check-input"
-                type="checkbox"
-                id="toggleLokasiJalanPutus"
-                checked
-              />
-              <label class="form-check-label" for="toggleLokasiJalanPutus"
-                >Jalan Putus</label
-              >
-            </div>
-              <div class="form-check">
-              <input
-                class="form-check-input"
-                type="checkbox"
-                id="toggleLokasiTitikLongsor"
-                checked
-              />
-              <label class="form-check-label" for="toggleLokasiTitikLongsor"
-                >Titik Longsor</label
-              >
-            </div>
-              <div class="form-check">
-              <input
-                class="form-check-input"
-                type="checkbox"
-                id="toggleLokasiSumurBor"
-                checked
-              />
-              <label class="form-check-label" for="toggleLokasiSumurBor"
-                >Sumur Bor</label
-              >
-            </div>
-            {#
-            <div class="form-check">
-              #} {#
-              <input
-                class="form-check-input"
-                type="checkbox"
-                id="toggleLokasiLain"
-                checked
-              />#} {#
-              <label class="form-check-label" for="toggleLokasiLain"
-                >Lokasi</label
-              >#} {#
-            </div>
-            #}
-          </div>
-        </div>
-
-        <!-- Relawan -->
-        <div class="mb-2">
-          <div class="d-flex align-items-center justify-content-between">
-            <div class="fw-bold"><i class="fas fa-user me-2"></i>Relawan</div>
-            <button
-              class="btn btn-sm btn-link text-decoration-none p-0"
-              type="button"
-              data-bs-toggle="collapse"
-              data-bs-target="#filterRelawanBody"
-              aria-expanded="true"
-              aria-controls="filterRelawanBody"
-            >
-              <i class="fas fa-chevron-down"></i>
-            </button>
-          </div>
-
-          <div class="form-check mt-1">
-            <input
-              class="form-check-input"
-              type="checkbox"
-              id="toggleRelawanAll"
-              checked
-            />
-            <label class="form-check-label" for="toggleRelawanAll"
-              >Relawan</label
-            >
-          </div>
-
-          <div class="collapse show ms-3 mt-1" id="filterRelawanBody">
-            <div class="form-check">
-              <input
-                class="form-check-input"
-                type="checkbox"
-                id="toggleLokasiRelawan"
-                checked
-              />
-              <label class="form-check-label" for="toggleLokasiRelawan"
-                >Lokasi Relawan</label
-              >
-            </div>
-          </div>
-        </div>
-
-        <!-- Permintaan Logistik -->
-        <div>
-          <div class="d-flex align-items-center justify-content-between">
-            <div class="fw-bold">
-              <i class="fas fa-box-open me-2"></i>Permintaan Logistik
-            </div>
-            <button
-              class="btn btn-sm btn-link text-decoration-none p-0"
-              type="button"
-              data-bs-toggle="collapse"
-              data-bs-target="#filterPermintaanBody"
-              aria-expanded="true"
-              aria-controls="filterPermintaanBody"
-            >
-              <i class="fas fa-chevron-down"></i>
-            </button>
-          </div>
-
-          <div class="form-check mt-1">
-            <input
-              class="form-check-input"
-              type="checkbox"
-              id="togglePermintaanLogistik"
-              checked
-            />
-            <label class="form-check-label" for="togglePermintaanLogistik"
-              >Permintaan Logistik</label
-            >
-          </div>
-
-          <div class="collapse show ms-3 mt-1" id="filterPermintaanBody">
-            <div class="fw-bold mb-1" style="font-size: 0.85rem">
-              Titik Permintaan (Status)
-            </div>
-
-            <div class="form-check">
-              <input
-                class="form-check-input"
-                type="checkbox"
-                id="togglePermintaanDraft"
-                checked
-              />
-              <label class="form-check-label" for="togglePermintaanDraft">
-                <span
-                  style="
-                    display: inline-block;
-                    width: 10px;
-                    height: 10px;
-                    border-radius: 50%;
-                    background: #64748b;
-                    margin-right: 6px;
-                  "
-                ></span>
-                Draft
-              </label>
-            </div>
-            <div class="form-check">
-              <input
-                class="form-check-input"
-                type="checkbox"
-                id="togglePermintaanDiproses"
-                checked
-              />
-              <label class="form-check-label" for="togglePermintaanDiproses">
-                <span
-                  style="
-                    display: inline-block;
-                    width: 10px;
-                    height: 10px;
-                    border-radius: 50%;
-                    background: #f59e0b;
-                    margin-right: 6px;
-                  "
-                ></span>
-                Diproses
-              </label>
-            </div>
-            <div class="form-check">
-              <input
-                class="form-check-input"
-                type="checkbox"
-                id="togglePermintaanDikirim"
-                checked
-              />
-              <label class="form-check-label" for="togglePermintaanDikirim">
-                <span
-                  style="
-                    display: inline-block;
-                    width: 10px;
-                    height: 10px;
-                    border-radius: 50%;
-                    background: #3b82f6;
-                    margin-right: 6px;
-                  "
-                ></span>
-                Dikirim
-              </label>
-            </div>
-            <div class="form-check">
-              <input
-                class="form-check-input"
-                type="checkbox"
-                id="togglePermintaanDiterima"
-                checked
-              />
-              <label class="form-check-label" for="togglePermintaanDiterima">
-                <span
-                  style="
-                    display: inline-block;
-                    width: 10px;
-                    height: 10px;
-                    border-radius: 50%;
-                    background: #22c55e;
-                    margin-right: 6px;
-                  "
-                ></span>
-                Diterima
-              </label>
-            </div>
-            <div class="form-check">
-              <input
-                class="form-check-input"
-                type="checkbox"
-                id="togglePermintaanDitolak"
-                checked
-              />
-              <label class="form-check-label" for="togglePermintaanDitolak">
-                <span
-                  style="
-                    display: inline-block;
-                    width: 10px;
-                    height: 10px;
-                    border-radius: 50%;
-                    background: #ef4444;
-                    margin-right: 6px;
-                  "
-                ></span>
-                Ditolak
-              </label>
-            </div>
-            {#
-            <div class="form-check">
-              #} {#
-              <input
-                class="form-check-input"
-                type="checkbox"
-                id="togglePermintaanSelesai"
-                checked
-              />#} {#
-              <label class="form-check-label" for="togglePermintaanSelesai"
-                >#} {#
-                <span
-                  style="
-                    display: inline-block;
-                    width: 10px;
-                    height: 10px;
-                    border-radius: 50%;
-                    background: #10b981;
-                    margin-right: 6px;
-                  "
-                ></span
-                >#} {# Selesai#} {# </label
-              >#} {#
-            </div>
-            #}
-          </div>
-        </div>
-      </div>
-      <!-- =============================================================== -->
-
       <hr />
 
-      <h5>
-        <i class="fas fa-warehouse"></i> Stok Gudang Pusat (Posko Logistik USU)
-      </h5>
-      <div class="row row-cols-2 g-2 mb-3">
-        {% for stok in stok_gudang %} {% if stok.get('kode_gudang') == 'G-ME001'
-        and stok.get('nama_barang') %}
-        <div class="col">
-          <div
-            class="card data-card border-{{ 'danger' if stok.get('stok_akhir')|int <= 0 else 'success' }}"
-          >
-            <div class="card-body p-2">
-              <h6 class="card-title mb-0 small text-truncate">
-                {{ stok.get('nama_barang') }}
-              </h6>
-              <p class="card-text mb-0 fw-bold">
-                {% if stok.get('stok_akhir') >= 0 %} {{ stok.get('stok_akhir')
-                }} {% else %} Kurang {{ stok.get('stok_akhir') | abs }} {% endif
-                %}
-              </p>
+<div class="d-flex align-items-center mb-3 mt-4">
+    <div class="bg-primary text-white rounded-circle d-flex align-items-center justify-content-center me-2 shadow-sm" style="width: 32px; height: 32px;">
+        <i class="fas fa-truck-fast" style="font-size: 0.9rem;"></i>
+    </div>
+    <h5 class="mb-0 text-dark fw-bold">Pengiriman Logistik</h5>
+</div>
+
+<div class="accordion" id="accordionLogistik">
+    
+    {% for group in data_distribusi %}
+        {% set card_id = "logistik" ~ loop.index %}
+        
+        <div class="accordion-item border-0 shadow-sm mb-3" style="border-radius: 10px; overflow: hidden;">
+            
+            <h2 class="accordion-header" id="heading{{ card_id }}">
+                <button class="accordion-button collapsed bg-white py-3 px-3" type="button" data-bs-toggle="collapse" data-bs-target="#collapse{{ card_id }}" aria-expanded="false" style="box-shadow: none;">
+                    
+                    <div class="w-100">
+                        <div class="d-flex justify-content-between align-items-start">
+                            <div class="fw-bold text-dark" style="font-size: 1rem;">
+                                {{ group.header.nama }}
+                            </div>
+                            <span class="badge bg-light text-secondary border rounded-pill" style="font-weight: normal;">
+                                <i class="far fa-calendar me-1"></i> {{ group.header.tanggal }}
+                            </span>
+                        </div>
+
+                        <div class="text-muted small mt-1">
+                            <i class="fas fa-map-pin text-danger me-1"></i> {{ group.header.daerah }}
+                        </div>
+                    </div>
+
+                </button>
+            </h2>
+
+            <div id="collapse{{ card_id }}" class="accordion-collapse collapse" data-bs-parent="#accordionLogistik">
+                <div class="accordion-body bg-light p-0">
+                    
+                    <div class="table-responsive">
+                        <table class="table table-sm table-borderless mb-0">
+                            <thead class="text-secondary small border-bottom">
+                                <tr>
+                                    <th class="ps-4 py-2">Barang</th>
+                                    <th class="text-center py-2">Jml</th>
+                                    <th class="text-end pe-4 py-2">Status</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                {% for item in group.items %}
+                                <tr class="border-bottom border-light">
+                                    <td class="ps-4 align-middle">
+                                        <div class="fw-bold text-dark">{{ item.deskripsi }}</div>
+                                    </td>
+                                    <td class="text-center align-middle">
+                                        <span class="fw-bold text-primary">{{ item.jumlah }}</span>
+                                        <small class="text-muted">{{ item.satuan }}</small>
+                                    </td>
+                                    <td class="text-end pe-4 align-middle">
+                                        {% if item.status == 'Selesai' %}
+                                            <i class="fas fa-check-circle text-success" title="Selesai"></i>
+                                        {% else %}
+                                            <span class="badge bg-warning text-dark" style="font-size: 0.7rem;">{{ item.status }}</span>
+                                        {% endif %}
+                                    </td>
+                                </tr>
+                                {% endfor %}
+                            </tbody>
+                        </table>
+                    </div>
+                    
+                    <div class="p-2 text-center text-muted small fst-italic bg-white border-top">
+                        Total {{ group.items|length }} jenis barang dikirim.
+                    </div>
+
+                </div>
             </div>
-          </div>
         </div>
-        {% endif %} {% endfor %}
-      </div>
+    {% else %}
+        <div class="text-center py-5 text-muted bg-light rounded border border-dashed">
+            <i class="fas fa-box-open fa-2x mb-3 opacity-25"></i>
+            <p class="mb-0 small">Belum ada data pengiriman.</p>
+        </div>
+    {% endfor %}
+
+</div>
 
       <hr />
 
       <h5><i class="fas fa-chart-bar"></i> Data Bencana & Korban</h5>
-      <div class="bencana-carousel-container">
-        <div class="bencana-carousel-wrapper">
-          <div class="bencana-carousel-track" id="bencanaCarousel">
-            {% for rekap in rekap_kabkota %} {% if
-            (rekap.get('korban_meninggal') or 0) >= 0 or
-            (rekap.get('kk_terdampak') or 0) >= 0 %}
-            <div class="bencana-slide mt-2">
-              <div class="card data-card-kabupaten border-danger mb-2">
-                <div class="card-body p-2">
-                  <h6 class="card-title mb-1 fw-bold">
-                    {{ rekap.get('kabkota') }}
-                  </h6>
-                  <p class="card-text mb-0 small">
-                    <i class="fas fa-skull-crossbones text-danger"></i>
-                    Meninggal: {{ rekap.get('korban_meninggal') or 0 }} |
-                    <i class="fas fa-home text-warning"></i>
-                    KK Terdampak: {{ rekap.get('kk_terdampak') or 0 }}
-                  </p>
+      <div class="d-flex align-items-center mb-3 gap-2">
+        <div class="input-group" style="max-width: 250px">
+          <span class="input-group-text bg-white"
+            ><i class="fas fa-calendar-alt text-primary"></i
+          ></span>
+          <input
+            type="date"
+            id="filterTanggal"
+            class="form-control form-control-sm"
+          />
+        </div>
+        <button
+          class="btn btn-sm btn-outline-secondary"
+          onclick="resetFilter()"
+        >
+          <i class="fas fa-sync-alt"></i> Reset
+        </button>
+      </div>
+      <div class="bencana-scroll-container mt-2">
+    <div id="bencanaListTrack"> 
+        
+        {% for rekap in rekap_kabkota %}
+            {% if (rekap.get('korban_meninggal')|int > 0) or 
+                  (rekap.get('korban_hilang')|int > 0) or 
+                  (rekap.get('mengungsi')|int > 0) %}
+                
+                <div class="filter-item mb-3" 
+                     data-tanggal="{{ rekap.get('tanggal_iso') }}">
+                     
+                    <div class="card border-0 shadow-sm" style="border-left: 5px solid #dc3545; border-radius: 8px;">
+                        <div class="card-body p-3">
+                            
+                            <div class="d-flex justify-content-between align-items-start mb-3">
+                                <h6 class="fw-bold text-dark mb-0" style="line-height: 1.2;">
+                                    {{ rekap.get('kabkota') }}
+                                </h6>
+                                <span class="badge bg-light text-secondary border">
+                                    {{ rekap.get('tanggal') }}
+                                </span>
+                            </div>
+
+                            <div class="row g-2">
+                                <div class="col-4">
+                                    <div class="stat-box bg-red-soft">
+                                        <i class="fas fa-skull-crossbones mb-1 d-block" style="font-size: 14px;"></i>
+                                        <div class="fw-bold" style="font-size: 16px;">{{ rekap.get('korban_meninggal') }}</div>
+                                        <small style="font-size: 10px; text-transform: uppercase;">Meninggal</small>
+                                    </div>
+                                </div>
+                                
+                                <div class="col-4">
+                                    <div class="stat-box bg-orange-soft">
+                                        <i class="fas fa-search mb-1 d-block" style="font-size: 14px;"></i>
+                                        <div class="fw-bold" style="font-size: 16px;">{{ rekap.get('korban_hilang') }}</div>
+                                        <small style="font-size: 10px; text-transform: uppercase;">Hilang</small>
+                                    </div>
+                                </div>
+
+                                <div class="col-4">
+                                    <div class="stat-box bg-blue-soft">
+                                        <i class="fas fa-person-shelter mb-1 d-block" style="font-size: 14px;"></i>
+                                        <div class="fw-bold" style="font-size: 16px;">{{ rekap.get('mengungsi') }}</div>
+                                        <small style="font-size: 10px; text-transform: uppercase;">Pengungsi</small>
+                                    </div>
+                                </div>
+                            </div>
+
+                            <div class="mt-2 text-end">
+                                <small class="text-muted fst-italic" style="font-size: 0.75rem;">
+                                    Sumber: {{ rekap.get('sumber_info') }}
+                                </small>
+                            </div>
+
+                        </div>
+                    </div>
                 </div>
-              </div>
+            {% endif %}
+        {% endfor %}
+
+        <div id="noDataMessage" class="text-center w-100 py-4 text-muted" style="display: none;">
+            <div class="mb-2">
+                <i class="fas fa-folder-open fa-2x text-secondary opacity-50"></i>
             </div>
-            {% endif %} {% endfor %}
-          </div>
+            <small>Tidak ada pencatatan data pada tanggal ini.</small>
+        </div>
+
+    </div>
+</div>
         </div>
         <div class="bencana-pagination" id="bencanaPagination"></div>
       </div>
@@ -854,59 +519,25 @@
             <div class="modal-body">
               <div class="mb-3">
                 <label for="nama" class="form-label">Nama Relawan</label>
-                <div class="input-group dropdown" id="relawanDropdownWrap">
-                  <input
-                    class="form-control"
-                    id="nama"
-                    name="nama"
-                    list="relawanDatalist"
-                    placeholder="Ketik nama Anda..."
-                    autocomplete="off"
-                    required
-                  />
-                  <button
-                    class="btn btn-outline-secondary dropdown-toggle"
-                    type="button"
-                    id="relawanDropdownBtn"
-                    data-bs-toggle="dropdown"
-                    aria-expanded="false"
-                    title="Tampilkan daftar"
-                  ></button>
-                  <ul
-                    class="dropdown-menu dropdown-menu-end"
-                    id="relawanDropdownMenu"
-                    style="max-height: 260px; overflow: auto"
-                  ></ul>
-                </div>
-                <div class="form-text">
-                  Ketik untuk mencari, lalu pilih dari daftar.
-                </div>
-                <datalist id="relawanDatalist">
+                <select class="form-select" id="nama" name="nama" required>
+                  <option value="">Pilih Nama Anda</option>
                   {% for relawan in relawan_list %}
-                  <option value="{{ relawan.get('nama_relawan') }}"></option>
+                  <option value="{{ relawan.get('nama_relawan') }}">
+                    {{ relawan.get('nama_relawan') }}
+                  </option>
                   {% endfor %}
-                </datalist>
+                </select>
               </div>
               <div class="mb-3">
                 <label for="kode_akses" class="form-label">Kode Akses</label>
-                <div class="input-group">
-                  <input
-                    type="password"
-                    class="form-control"
-                    id="kode_akses"
-                    name="kode_akses"
-                    placeholder="Masukkan Kode Akses"
-                    required
-                  />
-                  <button
-                    class="btn btn-outline-secondary"
-                    type="button"
-                    id="toggleKodeAkses"
-                    title="Tampilkan/Sembunyikan"
-                  >
-                    <i class="fas fa-eye"></i>
-                  </button>
-                </div>
+                <input
+                  type="text"
+                  class="form-control"
+                  id="kode_akses"
+                  name="kode_akses"
+                  placeholder="Masukkan Kode Akses"
+                  required
+                />
               </div>
             </div>
             <div class="modal-footer">
@@ -931,7 +562,7 @@
       aria-labelledby="permintaanModalLabel"
       aria-hidden="true"
     >
-      <div class="modal-dialog modal-lg modal-dialog-centered">
+      <div class="modal-dialog">
         <div class="modal-content">
           <div class="modal-header bg-primary text-white">
             <h5 class="modal-title" id="permintaanModalLabel">
@@ -946,58 +577,7 @@
           </div>
           <form action="{{ url_for('submit_permintaan') }}" method="POST">
             <div class="modal-body">
-              <!-- Lokasi GPS Saat Ini (Permintaan Logistik) -->
-              <div class="mb-3 p-3 bg-light rounded">
-                <div
-                  class="d-flex justify-content-between align-items-center mb-2"
-                >
-                  <div class="fw-bold">
-                    <i class="fas fa-map-marker-alt"></i> Lokasi GPS Saat Ini:
-                  </div>
-                  <button
-                    type="button"
-                    id="refreshPermintaanLocationBtn"
-                    class="btn btn-success btn-sm shadow-sm"
-                    title="Refresh Lokasi"
-                    style="border-radius: 20px"
-                    onclick="getLocationForPermintaan()"
-                  >
-                    <i class="fas fa-sync-alt"></i>
-                  </button>
-                </div>
-
-                <div class="text-success fw-bold">
-                  <span id="permintaan-location-text">belum diambil</span>
-                </div>
-              </div>
-
-              <input
-                type="hidden"
-                id="permintaan_lat"
-                name="latitude"
-                required
-              />
-              <input
-                type="hidden"
-                id="permintaan_lon"
-                name="longitude"
-                required
-              />
-              <div class="mb-2 text-muted small">
-                <i class="fas fa-map me-1"></i>
-                Koreksi titik: geser pin atau klik peta sebelum submit.
-              </div>
-              <div
-                id="permintaanMiniMap"
-                style="
-                  height: 220px;
-                  border-radius: 12px;
-                  overflow: hidden;
-                  border: 1px solid #e5e7eb;
-                "
-              ></div>
-
-              <div class="mt-3 mb-3">
+              <div class="mb-3">
                 <label for="kode_posko" class="form-label"
                   ><i class="fas fa-campground"></i> Posko Tujuan</label
                 >
@@ -1007,17 +587,43 @@
                   name="kode_posko"
                   required
                 >
-                  <option value="" selected disabled>-- pilih posko --</option>
-                  {% for p in data_posko %}
-                  <option value="{{ p.kode }}">
-                    {{ p.kode }} - {{p.kabkota}} - {{ p.nama }}
+                  <option value="">Pilih Posko Tujuan</option>
+                  {% for posko in data_posko %}
+                  <option value="{{ posko.kode }}">
+                    {{ posko.nama }} ({{ posko.kode }})
                   </option>
                   {% endfor %}
                 </select>
               </div>
               <div class="mb-3">
+                <label for="kode_barang" class="form-label">Kode Barang</label>
+                <select
+                  class="form-select"
+                  id="kode_barang"
+                  name="kode_barang"
+                  required
+                >
+                  {% for barang in data_barang %}
+                  <option value="{{ barang }}">{{ barang }}</option>
+                  {% endfor %}
+                </select>
+              </div>
+              <div class="mb-3">
+                <label for="jumlah_diminta" class="form-label"
+                  >Jumlah Diminta</label
+                >
+                <input
+                  type="number"
+                  class="form-control"
+                  id="jumlah_diminta"
+                  name="jumlah_diminta"
+                  min="1"
+                  required
+                />
+              </div>
+              <div class="mb-3">
                 <label for="keterangan" class="form-label"
-                  >Masukkan Keterangan Barang & Jumlah</label
+                  >Keterangan Tambahan</label
                 >
                 <textarea
                   class="form-control"
@@ -1035,12 +641,7 @@
               >
                 Batal
               </button>
-              <button
-                type="submit"
-                class="btn btn-primary"
-                id="btn-submit-permintaan"
-                disabled
-              >
+              <button type="submit" class="btn btn-primary">
                 Kirim Permintaan
               </button>
             </div>
@@ -1048,183 +649,6 @@
         </div>
       </div>
     </div>
-
-    {% if is_admin %}
-    <div
-      class="modal fade"
-      id="permintaanAdminModal"
-      tabindex="-1"
-      aria-labelledby="permintaanAdminModalLabel"
-      aria-hidden="true"
-    >
-      <div
-        class="modal-dialog modal-xl modal-dialog-centered modal-dialog-scrollable"
-      >
-        <div class="modal-content">
-          <div class="modal-header bg-warning text-dark">
-            <h5 class="modal-title" id="permintaanAdminModalLabel">
-              <i class="fas fa-gear"></i> Pengaturan Status Permintaan Logistik
-            </h5>
-            <div class="d-flex gap-2 align-items-center">
-              <button
-                type="button"
-                class="btn btn-sm btn-light"
-                id="btnRefreshPermintaanAdmin"
-                title="Refresh Data"
-              >
-                <i class="fas fa-sync-alt"></i>
-              </button>
-              <button
-                type="button"
-                class="btn-close"
-                data-bs-dismiss="modal"
-                aria-label="Close"
-              ></button>
-            </div>
-          </div>
-          <div class="modal-body">
-            <div class="alert alert-info small mb-3">
-              <i class="fas fa-info-circle me-1"></i>
-              Hanya relawan admin yang bisa mengubah status. Perubahan akan
-              langsung tersimpan ke database.
-            </div>
-
-            <div class="table-responsive">
-              <table class="table table-sm table-bordered align-middle">
-                <thead class="table-light">
-                  <tr>
-                    <th style="width: 90px">ID</th>
-                    <th style="width: 240px">Posko</th>
-                    <th style="width: 170px">Waktu</th>
-                    <th>Keterangan</th>
-                    <th style="width: 150px">Status</th>
-                    <th style="width: 190px">Ubah Status</th>
-                  </tr>
-                </thead>
-                <tbody id="permintaanAdminTableBody">
-                  <tr>
-                    <td colspan="6" class="text-muted text-center">
-                      Memuat...
-                    </td>
-                  </tr>
-                </tbody>
-              </table>
-            </div>
-
-            <hr class="my-4" />
-
-            <div class="d-flex justify-content-between align-items-center mb-2">
-              <h6 class="fw-bold mb-0">
-                <i class="fas fa-clipboard-check me-1"></i> Kelola Asesmen (is_active)
-              </h6>
-              <button type="button" class="btn btn-sm btn-light" id="btnRefreshAsesmenAdmin" title="Refresh Data Asesmen">
-                <i class="fas fa-sync-alt"></i>
-              </button>
-            </div>
-            <div class="alert alert-warning small mb-3">
-              <i class="fas fa-exclamation-triangle me-1"></i>
-              Tombol <b>Nonaktifkan</b> akan mengubah <code>is_active</code> menjadi <code>false</code> (soft delete). Data yang dinonaktifkan tidak akan tampil lagi di peta.
-            </div>
-
-            <div class="table-responsive">
-              <table class="table table-sm table-bordered align-middle">
-                <thead class="table-light">
-                  <tr>
-                    <th style="width: 120px">Jenis</th>
-                    <th style="width: 90px">ID</th>
-                    <th style="width: 220px">Posko</th>
-                    <th style="width: 180px">Relawan</th>
-                    <th style="width: 170px">Waktu</th>
-                    <th style="width: 90px">Skor</th>
-                    <th style="width: 120px">Status</th>
-                    <th style="width: 140px">Aksi</th>
-                  </tr>
-                </thead>
-                <tbody id="asesmenAdminTableBody">
-                  <tr>
-                    <td colspan="8" class="text-muted text-center">Memuat...</td>
-                  </tr>
-                </tbody>
-              </table>
-            </div>
-
-
-            <hr class="my-4" />
-
-            <div class="d-flex justify-content-between align-items-center mb-2">
-              <h6 class="fw-bold mb-0">
-                <i class="fas fa-map-marker-alt me-1"></i> Kelola Data Lokasi
-              </h6>
-              <button type="button" class="btn btn-sm btn-light" id="btnRefreshLokasiAdmin" title="Refresh Data Lokasi">
-                <i class="fas fa-sync-alt"></i>
-              </button>
-            </div>
-
-            <div id="adminLokasiAlert" class="alert alert-info py-2 small d-none"></div>
-
-            <div class="table-responsive">
-              <table class="table table-sm table-striped table-bordered align-middle">
-                <thead class="table-light">
-                  <tr>
-                    <th style="width: 120px">ID</th>
-                    <th style="width: 180px">Kab/Kota</th>
-                    <th>Nama Lokasi</th>
-                    <th style="width: 200px">Jenis</th>
-                    <th style="width: 90px">Aktif</th>
-                    <th style="width: 170px">Aksi</th>
-                  </tr>
-                </thead>
-                <tbody id="adminLokasiTableBody">
-                  <tr>
-                    <td colspan="6" class="text-muted text-center">Memuat...</td>
-                  </tr>
-                </tbody>
-              </table>
-            </div>
-            <hr class="my-4" />
-
-            <div class="d-flex justify-content-between align-items-center mb-2">
-              <h6 class="fw-bold mb-0">
-                <i class="fas fa-list-alt me-1"></i> Log Admin
-              </h6>
-              <button type="button" class="btn btn-sm btn-light" id="btnRefreshAdminLogs" title="Refresh Log Admin">
-                <i class="fas fa-sync-alt"></i>
-              </button>
-            </div>
-
-            <div class="table-responsive">
-              <table class="table table-sm table-striped table-bordered align-middle">
-                <thead class="table-light">
-                  <tr>
-                    <th style="width: 170px">Waktu</th>
-                    <th style="width: 180px">Admin</th>
-                    <th style="width: 180px">Aksi</th>
-                    <th>Target</th>
-                    <th style="width: 260px">Catatan</th>
-                  </tr>
-                </thead>
-                <tbody id="adminLogTableBody">
-                  <tr>
-                    <td colspan="5" class="text-muted text-center">Memuat...</td>
-                  </tr>
-                </tbody>
-              </table>
-            </div>
-          </div>
-
-          <div class="modal-footer">
-            <button
-              type="button"
-              class="btn btn-secondary"
-              data-bs-dismiss="modal"
-            >
-              Tutup
-            </button>
-          </div>
-        </div>
-      </div>
-    </div>
-    {% endif %}
 
     <div
       class="modal fade"
@@ -1327,183 +751,6 @@
       </div>
     </div>
 
-{#    MODAL DATA INPUT LOKASI #}
-<div class="modal fade" id="inputLokasiModal" tabindex="-1" aria-labelledby="inputLokasiModalLabel" aria-hidden="true">
-  <div class="modal-dialog modal-lg modal-dialog-centered">
-    <div class="modal-content">
-      <div class="modal-header bg-info text-white">
-        <h5 class="modal-title" id="inputLokasiModalLabel">
-          <i class="fas fa-map-marker-alt"></i> Input Lokasi (data_lokasi)
-        </h5>
-        <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="Close"></button>
-      </div>
-
-      <form action="{{ url_for('submit_lokasi') }}" method="POST">
-        <div class="modal-body">
-
-          <!-- Lokasi GPS Saat Ini -->
-          <div class="mb-3 p-3 bg-light rounded">
-            <div class="d-flex justify-content-between align-items-center mb-2">
-              <div class="fw-bold">
-                <i class="fas fa-map-marker-alt"></i> Lokasi GPS Saat Ini:
-              </div>
-              <span id="lokasi-location-status" class="badge bg-secondary">Menunggu</span>
-            </div>
-            <div id="lokasi-location-text" class="small text-muted">Menunggu lokasi...</div>
-
-            <!-- hidden lat/lon (diisi otomatis oleh modul mini-map yg sudah ada) -->
-            <input type="hidden" id="lokasi_lat" name="latitude" required>
-            <input type="hidden" id="lokasi_lon" name="longitude" required>
-
-            <div class="mb-2 text-muted small">
-              <i class="fas fa-map me-1"></i>
-              Koreksi titik: geser pin atau klik peta sebelum submit.
-            </div>
-            <div id="inputLokasiMiniMap"
-                 style="height:220px;border-radius:12px;overflow:hidden;border:1px solid #e5e7eb;"></div>
-          </div>
-
-          <!-- Dropdown utama -->
-          <div class="row g-2">
-            <div class="col-md-4">
-              <label class="form-label"><i class="fas fa-tags"></i> Jenis Lokasi</label>
-              <select class="form-select" name="jenis_lokasi" required>
-                <option value="">-- pilih --</option>
-
-                {% if ref_jenis_lokasi and ref_jenis_lokasi|length > 0 %}
-                  {% for v in ref_jenis_lokasi %}
-                    <option value="{{ v }}">{{ v }}</option>
-                  {% endfor %}
-                {% else %}
-                  <!-- fallback kalau ref table kosong -->
-                  <option value="Posko Pengungsian">Posko Pengungsian</option>
-                  <option value="Gudang Logistik">Gudang Logistik</option>
-                {% endif %}
-              </select>
-            </div>
-
-            <div class="col-md-4">
-              <label class="form-label"><i class="fas fa-city"></i> Nama Kab/Kota</label>
-              <select class="form-select" name="nama_kabkota" required>
-                <option value="">-- pilih --</option>
-
-                {% if ref_kabkota and ref_kabkota|length > 0 %}
-                  {% for v in ref_kabkota %}
-                    <option value="{{ v }}">{{ v }}</option>
-                  {% endfor %}
-                {% else %}
-                  <!-- fallback minimal -->
-                  <option value="Kota Medan">Kota Medan</option>
-                  <option value="Kabupaten Tapanuli Tengah">Kabupaten Tapanuli Tengah</option>
-                {% endif %}
-              </select>
-
-              <div class="form-text">Auto ID: prefix + kode kab/kota + increment (di Python).</div>
-            </div>
-
-            <div class="col-md-4">
-              <label class="form-label"><i class="fas fa-location-arrow"></i> Nama Lokasi</label>
-              <input type="text" class="form-control" name="nama_lokasi" required
-                     placeholder="Contoh: Posko Utama / Gudang Induk">
-            </div>
-          </div>
-
-          <!-- Dropdown status/akses/kondisi -->
-          <div class="row g-2 mt-2">
-            <div class="col-md-4">
-              <label class="form-label">Status Lokasi</label>
-              <select class="form-select" name="status_lokasi">
-                {% if ref_status_lokasi and ref_status_lokasi|length > 0 %}
-                  {% for v in ref_status_lokasi %}
-                    <option value="{{ v }}" {% if v|lower == "aktif" %}selected{% endif %}>{{ v }}</option>
-                  {% endfor %}
-                {% else %}
-                  <option value="Aktif" selected>Aktif</option>
-                  <option value="Nonaktif">Nonaktif</option>
-                {% endif %}
-              </select>
-            </div>
-
-            <div class="col-md-4">
-              <label class="form-label">Tingkat Akses</label>
-              <select class="form-select" name="tingkat_akses">
-                {% if ref_tingkat_akses and ref_tingkat_akses|length > 0 %}
-                  {% for v in ref_tingkat_akses %}
-                    <option value="{{ v }}" {% if v|lower == "public" %}selected{% endif %}>{{ v }}</option>
-                  {% endfor %}
-                {% else %}
-                  <option value="Public" selected>Public</option>
-                  <option value="Internal">Internal</option>
-                {% endif %}
-              </select>
-            </div>
-
-            <div class="col-md-4">
-              <label class="form-label">Kondisi</label>
-              <select class="form-select" name="kondisi">
-                {% if ref_kondisi and ref_kondisi|length > 0 %}
-                  {% for v in ref_kondisi %}
-                    <option value="{{ v }}" {% if v|lower == "normal" %}selected{% endif %}>{{ v }}</option>
-                  {% endfor %}
-                {% else %}
-                  <option value="Normal" selected>Normal</option>
-                  <option value="Rusak Ringan">Rusak Ringan</option>
-                  <option value="Rusak Berat">Rusak Berat</option>
-                {% endif %}
-              </select>
-            </div>
-          </div>
-
-          <!-- alamat & admin -->
-          <div class="mt-3">
-            <label class="form-label"><i class="fas fa-road"></i> Alamat</label>
-            <input type="text" class="form-control" name="alamat" placeholder="Alamat singkat">
-          </div>
-
-          <div class="row g-2 mt-2">
-            <div class="col-md-6">
-              <label class="form-label">Kecamatan</label>
-              <input type="text" class="form-control" name="kecamatan">
-            </div>
-            <div class="col-md-6">
-              <label class="form-label">Desa/Kelurahan</label>
-              <input type="text" class="form-control" name="desa_kelurahan">
-            </div>
-          </div>
-
-          <div class="row g-2 mt-2">
-            <div class="col-md-6">
-              <label class="form-label">PIC</label>
-              <input type="text" class="form-control" name="pic">
-            </div>
-            <div class="col-md-6">
-              <label class="form-label">PIC HP</label>
-              <input type="text" class="form-control" name="pic_hp" placeholder="08xxxxxxxxxx">
-            </div>
-          </div>
-
-          <div class="mt-3">
-            <label class="form-label"><i class="fas fa-sticky-note"></i> Catatan</label>
-            <textarea class="form-control" name="catatan" rows="3"></textarea>
-          </div>
-
-          <!-- optional -->
-          <input type="hidden" name="lokasi_text" value="">
-          <input type="hidden" name="photo_path" value="">
-
-        </div>
-
-        <div class="modal-footer">
-          <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Batal</button>
-          <button type="submit" id="btn-submit-lokasi" class="btn btn-info" disabled>
-            <i class="fas fa-save"></i> Simpan Lokasi
-          </button>
-        </div>
-      </form>
-
-    </div>
-  </div>
-</div>
     <!-- ===================== MODAL ASESMEN KESEHATAN ===================== -->
     <div
       class="modal fade"
@@ -1517,7 +764,7 @@
           <form
             method="POST"
             action="{{ url_for('submit_asesmen_kesehatan') }}"
-           enctype="multipart/form-data">
+          >
             <div class="modal-header">
               <h5 class="modal-title" id="asesmenKesehatanLabel">
                 Asesmen Kesehatan
@@ -1577,29 +824,10 @@
                   <option value="" selected disabled>-- pilih posko --</option>
                   {% for p in data_posko %}
                   <option value="{{ p.kode }}">
-                    {{ p.kode }} - {{p.kabkota}} - {{ p.nama }}
+                    {{ p.kode }} - {{ p.nama }}
                   </option>
                   {% endfor %}
                 </select>
-              </div>
-              <div class="mb-3">
-                <label class="form-label">Radius Buffer (km)</label>
-                <div class="input-group">
-                  <input
-                    type="number"
-                    class="form-control"
-                    id="kesehatan_radius"
-                    name="radius"
-                    min="0.1"
-                    step="0.1"
-                    value="2"
-                  />
-                  <span class="input-group-text">km</span>
-                </div>
-                <div class="form-text">
-                  Default 2 km. Nilai ini menentukan buffer pada peta setelah
-                  asesmen disubmit.
-                </div>
               </div>
 
               <div class="mb-2">
@@ -1636,15 +864,7 @@
                   rows="3"
                 ></textarea>
               </div>
-             <div class="mb-3">
-              <label class="form-label">Foto (opsional, maks 2)</label>
-              <input class="form-control" type="file" name="photos" accept=".jpg,.jpeg,.png,.webp" multiple />
-              <div class="form-text">Maksimal 2 foto. Format: JPG/JPEG/PNG/WEBP.</div>
             </div>
-            </div>
-
-
-
 
             <div class="modal-footer">
               <button
@@ -1681,7 +901,7 @@
           <form
             method="POST"
             action="{{ url_for('submit_asesmen_pendidikan') }}"
-           enctype="multipart/form-data">
+          >
             <div class="modal-header">
               <h5 class="modal-title" id="asesmenPendidikanLabel">
                 Asesmen Pendidikan
@@ -1742,29 +962,10 @@
                   <option value="" selected disabled>-- pilih posko --</option>
                   {% for p in data_posko %}
                   <option value="{{ p.kode }}">
-                    {{ p.kode }} - {{p.kabkota}} - {{ p.nama }}
+                    {{ p.kode }} - {{ p.nama }}
                   </option>
                   {% endfor %}
                 </select>
-              </div>
-              <div class="mb-3">
-                <label class="form-label">Radius Buffer (km)</label>
-                <div class="input-group">
-                  <input
-                    type="number"
-                    class="form-control"
-                    id="pendidikan_radius"
-                    name="radius"
-                    min="0.1"
-                    step="0.1"
-                    value="2"
-                  />
-                  <span class="input-group-text">km</span>
-                </div>
-                <div class="form-text">
-                  Default 2 km. Nilai ini menentukan buffer pada peta setelah
-                  asesmen disubmit.
-                </div>
               </div>
 
               <!-- 10 pertanyaan skala 1-5 -->
@@ -1801,15 +1002,7 @@
                   rows="3"
                 ></textarea>
               </div>
-            <div class="mb-3">
-              <label class="form-label">Foto (opsional, maks 2)</label>
-              <input class="form-control" type="file" name="photos" accept=".jpg,.jpeg,.png,.webp" multiple />
-              <div class="form-text">Maksimal 2 foto. Format: JPG/JPEG/PNG/WEBP.</div>
             </div>
-            </div>
-
-
-
 
             <div class="modal-footer">
               <button
@@ -1833,730 +1026,15 @@
       </div>
     </div>
 
-    <!-- ===================== MODAL ASESMEN PSIKOSOSIAL ===================== -->
-    <div
-      class="modal fade"
-      id="asesmenPsikososialModal"
-      tabindex="-1"
-      aria-labelledby="asesmenPsikososialLabel"
-      aria-hidden="true"
-    >
-      <div class="modal-dialog modal-lg modal-dialog-centered">
-        <div class="modal-content">
-          <form
-            method="POST"
-            action="{{ url_for('submit_asesmen_psikososial') }}"
-           enctype="multipart/form-data">
-            <div class="modal-header">
-              <h5 class="modal-title" id="asesmenPsikososialLabel">
-                Asesmen Psikososial
-              </h5>
-              <button
-                type="button"
-                class="btn-close"
-                data-bs-dismiss="modal"
-                aria-label="Close"
-              ></button>
-            </div>
-
-            <div class="modal-body">
-              <!-- Lokasi GPS Saat Ini (Asesmen Psikososial) -->
-              <div class="mb-3 p-3 bg-light rounded">
-                <div
-                  class="d-flex justify-content-between align-items-center mb-2"
-                >
-                  <div class="fw-bold">
-                    <i class="fas fa-map-marker-alt"></i> Lokasi GPS Saat Ini:
-                  </div>
-                  <button
-                    type="button"
-                    id="refreshPsikososialLocationBtn"
-                    class="btn btn-success btn-sm shadow-sm"
-                    title="Refresh Lokasi"
-                    style="border-radius: 20px"
-                    onclick="getLocationForAsesmen('psikososial')"
-                  >
-                    <i class="fas fa-sync-alt"></i>
-                  </button>
-                </div>
-
-                <div class="text-success fw-bold">
-                  <span id="psikososial-location-text">belum diambil</span>
-                </div>
-              </div>
-
-              <input type="hidden" id="psikososial_lat" name="latitude" />
-              <input type="hidden" id="psikososial_lon" name="longitude" />
-              <div class="mb-2 text-muted small">
-                <i class="fas fa-map me-1"></i>
-                Koreksi titik: geser pin atau klik peta sebelum submit.
-              </div>
-              <div
-                id="psikososialMiniMap"
-                style="
-                  height: 220px;
-                  border-radius: 12px;
-                  overflow: hidden;
-                  border: 1px solid #e5e7eb;
-                "
-              ></div>
-
-              <div class="mb-3">
-                <label class="form-label">Pilih Posko</label>
-                <select class="form-select" name="kode_posko" required>
-                  <option value="" selected disabled>-- pilih posko --</option>
-                  {% for p in data_posko %}
-                  <option value="{{ p.kode }}">
-                    {{ p.kode }} - {{p.kabkota}} - {{ p.nama }}
-                  </option>
-                  {% endfor %}
-                </select>
-              </div>
-              <div class="mb-3">
-                <label class="form-label">Radius Buffer (km)</label>
-                <div class="input-group">
-                  <input
-                    type="number"
-                    class="form-control"
-                    id="psikososial_radius"
-                    name="radius"
-                    min="0.1"
-                    step="0.1"
-                    value="2"
-                  />
-                  <span class="input-group-text">km</span>
-                </div>
-                <div class="form-text">
-                  Default 2 km. Nilai ini menentukan buffer pada peta setelah
-                  asesmen disubmit.
-                </div>
-              </div>
-
-              <!-- 10 pertanyaan skala 1-5 -->
-              {% set psikososial_questions = [ "1. Warga mendapatkan informasi
-              resmi yang jelas dan konsisten?", "2. Tingkat stres/kecemasan
-              warga saat ini terkendali?", "3. Anak-anak memiliki
-              aktivitas/ruang aman yang membantu mengurangi stres?", "4.
-              Kelompok rentan (lansia/disabilitas/ibu hamil) teridentifikasi dan
-              didampingi?", "5. Rasa aman di lokasi pengungsian/posko terjaga
-              (minim konflik/keributan)?", "6. Tanda stres berat/trauma (panik,
-              insomnia berat, agresif) terpantau dan tertangani?", "7. Ada
-              dukungan psikososial (PFA/konseling/rujukan layanan) yang bisa
-              diakses?", "8. Dukungan komunitas/tokoh masyarakat aktif membantu
-              pemulihan?", "9. Ada mekanisme pengaduan/perlindungan
-              (kekerasan/kerentanan) yang berjalan?", "10. Kegiatan pemulihan
-              rutin (dukungan emosi, edukasi coping, aktivitas komunitas)
-              terlaksana?", ] %} {% for i in range(1,11) %}
-              <div class="mb-3">
-                <label class="form-label"
-                  >{{ psikososial_questions[i-1] }}</label
-                >
-                <select class="form-select" name="p{{ i }}" required>
-                  <option value="1">1 - Sangat Baik</option>
-                  <option value="2">2 - Baik</option>
-                  <option value="3" selected>3 - Cukup</option>
-                  <option value="4">4 - Kurang</option>
-                  <option value="5">5 - Sangat Kurang</option>
-                </select>
-              </div>
-              {% endfor %}
-
-              <div class="mb-3">
-                <label class="form-label">Catatan (opsional)</label>
-                <textarea
-                  class="form-control"
-                  name="catatan"
-                  rows="3"
-                ></textarea>
-              </div>
-            <div class="mb-3">
-              <label class="form-label">Foto (opsional, maks 2)</label>
-              <input class="form-control" type="file" name="photos" accept=".jpg,.jpeg,.png,.webp" multiple />
-              <div class="form-text">Maksimal 2 foto. Format: JPG/JPEG/PNG/WEBP.</div>
-            </div>
-            </div>
-
-
-
-
-            <div class="modal-footer">
-              <button
-                type="button"
-                class="btn btn-secondary"
-                data-bs-dismiss="modal"
-              >
-                Batal
-              </button>
-              <button
-                type="submit"
-                class="btn btn-success"
-                id="btn-submit-psikososial"
-                disabled
-              >
-                Submit
-              </button>
-            </div>
-          </form>
-        </div>
-      </div>
-    </div>
-
-    <!-- ===================== MODAL ASESMEN INFRASTRUKTUR ===================== -->
-    <div
-      class="modal fade"
-      id="asesmenInfrastrukturModal"
-      tabindex="-1"
-      aria-labelledby="asesmenInfrastrukturLabel"
-      aria-hidden="true"
-    >
-      <div class="modal-dialog modal-lg modal-dialog-centered">
-        <div class="modal-content">
-          <form
-            method="POST"
-            action="{{ url_for('submit_asesmen_infrastruktur') }}"
-           enctype="multipart/form-data">
-            <div class="modal-header">
-              <h5 class="modal-title" id="asesmenInfrastrukturLabel">
-                Asesmen Infrastruktur
-              </h5>
-              <button
-                type="button"
-                class="btn-close"
-                data-bs-dismiss="modal"
-                aria-label="Close"
-              ></button>
-            </div>
-
-            <div class="modal-body">
-              <!-- Lokasi GPS Saat Ini (Asesmen Infrastruktur) -->
-              <div class="mb-3 p-3 bg-light rounded">
-                <div
-                  class="d-flex justify-content-between align-items-center mb-2"
-                >
-                  <div class="fw-bold">
-                    <i class="fas fa-map-marker-alt"></i> Lokasi GPS Saat Ini:
-                  </div>
-                  <button
-                    type="button"
-                    id="refreshInfrastrukturLocationBtn"
-                    class="btn btn-success btn-sm shadow-sm"
-                    title="Refresh Lokasi"
-                    style="border-radius: 20px"
-                    onclick="getLocationForAsesmen('infrastruktur')"
-                  >
-                    <i class="fas fa-sync-alt"></i>
-                  </button>
-                </div>
-
-                <div class="text-success fw-bold">
-                  <span id="infrastruktur-location-text">belum diambil</span>
-                </div>
-              </div>
-
-              <input type="hidden" id="infrastruktur_lat" name="latitude" />
-              <input type="hidden" id="infrastruktur_lon" name="longitude" />
-              <div class="mb-2 text-muted small">
-                <i class="fas fa-map me-1"></i>
-                Koreksi titik: geser pin atau klik peta sebelum submit.
-              </div>
-              <div
-                id="infrastrukturMiniMap"
-                style="
-                  height: 220px;
-                  border-radius: 12px;
-                  overflow: hidden;
-                  border: 1px solid #e5e7eb;
-                "
-              ></div>
-
-              <div class="mb-3">
-                <label class="form-label">Pilih Posko</label>
-                <select class="form-select" name="kode_posko" required>
-                  <option value="" selected disabled>-- pilih posko --</option>
-                  {% for p in data_posko %}
-                  <option value="{{ p.kode }}">
-                    {{ p.kode }} - {{p.kabkota}} - {{ p.nama }}
-                  </option>
-                  {% endfor %}
-                </select>
-              </div>
-              <div class="mb-3">
-                <label class="form-label">Radius Buffer (km)</label>
-                <div class="input-group">
-                  <input
-                    type="number"
-                    class="form-control"
-                    id="infrastruktur_radius"
-                    name="radius"
-                    min="0.1"
-                    step="0.1"
-                    value="2"
-                  />
-                  <span class="input-group-text">km</span>
-                </div>
-                <div class="form-text">
-                  Default 2 km. Nilai ini menentukan buffer pada peta setelah
-                  asesmen disubmit.
-                </div>
-              </div>
-
-              <!-- 10 pertanyaan skala 1-5 -->
-              {% set infrastruktur_questions = [ "1. Akses jalan utama menuju
-              lokasi/posko dapat dilalui kendaraan?", "2. Kondisi
-              jembatan/titian/jalur penghubung utama aman digunakan?", "3.
-              Jaringan listrik (PLN/genset) tersedia dan mencukupi untuk layanan
-              dasar?", "4. Jaringan komunikasi (seluler/internet/radio) tersedia
-              dan berfungsi?", "5. Akses transportasi untuk distribusi logistik
-              memadai (jalan/armada tersedia)?", "6. Kondisi bangunan/rumah
-              warga dominan masih layak huni?", "7. Kondisi tempat
-              pengungsian/posko aman dari risiko (atap, struktur, lingkungan)?",
-              "8. Drainase/saluran air berfungsi dan tidak tersumbat parah?",
-              "9. Penerangan dan keamanan lingkungan malam hari memadai?", "10.
-              Ada risiko bahaya lanjutan (longsor, reruntuhan, kabel listrik,
-              dll) yang mengganggu aktivitas?", ] %} {% for i in range(1,11) %}
-              <div class="mb-3">
-                <label class="form-label"
-                  >{{ infrastruktur_questions[i-1] }}</label
-                >
-                <select class="form-select" name="p{{ i }}" required>
-                  <option value="1">1 - Sangat Baik</option>
-                  <option value="2">2 - Baik</option>
-                  <option value="3" selected>3 - Cukup</option>
-                  <option value="4">4 - Kurang</option>
-                  <option value="5">5 - Sangat Kurang</option>
-                </select>
-              </div>
-              {% endfor %}
-
-              <div class="mb-3">
-                <label class="form-label">Catatan (opsional)</label>
-                <textarea
-                  class="form-control"
-                  name="catatan"
-                  rows="3"
-                ></textarea>
-              </div>
-            <div class="mb-3">
-              <label class="form-label">Foto (opsional, maks 2)</label>
-              <input class="form-control" type="file" name="photos" accept=".jpg,.jpeg,.png,.webp" multiple />
-              <div class="form-text">Maksimal 2 foto. Format: JPG/JPEG/PNG/WEBP.</div>
-            </div>
-            </div>
-
-
-
-
-            <div class="modal-footer">
-              <button
-                type="button"
-                class="btn btn-secondary"
-                data-bs-dismiss="modal"
-              >
-                Batal
-              </button>
-              <button
-                type="submit"
-                class="btn btn-success"
-                id="btn-submit-infrastruktur"
-                disabled
-              >
-                Submit
-              </button>
-            </div>
-          </form>
-        </div>
-      </div>
-    </div>
-
-    <!-- ===================== MODAL ASESMEN WASH ===================== -->
-    <div
-      class="modal fade"
-      id="asesmenWashModal"
-      tabindex="-1"
-      aria-labelledby="asesmenWashLabel"
-      aria-hidden="true"
-    >
-      <div class="modal-dialog modal-lg modal-dialog-centered">
-        <div class="modal-content">
-          <form method="POST" action="{{ url_for('submit_asesmen_wash') }}" enctype="multipart/form-data">
-            <div class="modal-header">
-              <h5 class="modal-title" id="asesmenWashLabel">Asesmen Wash</h5>
-              <button
-                type="button"
-                class="btn-close"
-                data-bs-dismiss="modal"
-                aria-label="Close"
-              ></button>
-            </div>
-
-            <div class="modal-body">
-              <!-- Lokasi GPS Saat Ini (Asesmen Wash) -->
-              <div class="mb-3 p-3 bg-light rounded">
-                <div
-                  class="d-flex justify-content-between align-items-center mb-2"
-                >
-                  <div class="fw-bold">
-                    <i class="fas fa-map-marker-alt"></i> Lokasi GPS Saat Ini:
-                  </div>
-                  <button
-                    type="button"
-                    id="refreshWashLocationBtn"
-                    class="btn btn-success btn-sm shadow-sm"
-                    title="Refresh Lokasi"
-                    style="border-radius: 20px"
-                    onclick="getLocationForAsesmen('wash')"
-                  >
-                    <i class="fas fa-sync-alt"></i>
-                  </button>
-                </div>
-
-                <div class="text-success fw-bold">
-                  <span id="wash-location-text">belum diambil</span>
-                </div>
-              </div>
-
-              <input type="hidden" id="wash_lat" name="latitude" />
-              <input type="hidden" id="wash_lon" name="longitude" />
-              <div class="mb-2 text-muted small">
-                <i class="fas fa-map me-1"></i>
-                Koreksi titik: geser pin atau klik peta sebelum submit.
-              </div>
-              <div
-                id="washMiniMap"
-                style="
-                  height: 220px;
-                  border-radius: 12px;
-                  overflow: hidden;
-                  border: 1px solid #e5e7eb;
-                "
-              ></div>
-
-              <div class="mb-3">
-                <label class="form-label">Pilih Posko</label>
-                <select class="form-select" name="kode_posko" required>
-                  <option value="" selected disabled>-- pilih posko --</option>
-                  {% for p in data_posko %}
-                  <option value="{{ p.kode }}">
-                    {{ p.kode }} - {{p.kabkota}} - {{ p.nama }}
-                  </option>
-                  {% endfor %}
-                </select>
-              </div>
-              <div class="mb-3">
-                <label class="form-label">Radius Buffer (km)</label>
-                <div class="input-group">
-                  <input
-                    type="number"
-                    class="form-control"
-                    id="wash_radius"
-                    name="radius"
-                    min="0.1"
-                    step="0.1"
-                    value="2"
-                  />
-                  <span class="input-group-text">km</span>
-                </div>
-                <div class="form-text">
-                  Default 2 km. Nilai ini menentukan buffer pada peta setelah
-                  asesmen disubmit.
-                </div>
-              </div>
-
-              <!-- 10 pertanyaan skala 1-5 -->
-              {% set wash_questions = [ "1. Ketersediaan air bersih untuk minum
-              dan memasak mencukupi?", "2. Kualitas air yang digunakan layak
-              (tidak keruh/berbau) atau diolah (klorin/filtrasi)?", "3. Titik
-              distribusi air mudah diakses dan antrian terkendali?", "4.
-              Toilet/jamban yang layak tersedia dan berfungsi?", "5. Kebersihan
-              toilet/jamban terjaga (pembersihan rutin)?", "6. Sarana cuci
-              tangan dengan sabun tersedia di titik strategis?", "7.
-              Ketersediaan sabun/perlengkapan kebersihan (hygiene kit)
-              mencukupi?", "8. Fasilitas mandi/cuci (MCK) memadai dan aman
-              (privasi/penerangan)?", "9. Pengelolaan sampah berjalan baik
-              (pengumpulan & pembuangan)?", "10. Ada keluhan penyakit terkait
-              WASH (diare/penyakit kulit) dalam beberapa hari terakhir?", ] %}
-              {% for i in range(1,11) %}
-              <div class="mb-3">
-                <label class="form-label">{{ wash_questions[i-1] }}</label>
-                <select class="form-select" name="p{{ i }}" required>
-                  <option value="1">1 - Sangat Baik</option>
-                  <option value="2">2 - Baik</option>
-                  <option value="3" selected>3 - Cukup</option>
-                  <option value="4">4 - Kurang</option>
-                  <option value="5">5 - Sangat Kurang</option>
-                </select>
-              </div>
-              {% endfor %}
-
-              <div class="mb-3">
-                <label class="form-label">Catatan (opsional)</label>
-                <textarea
-                  class="form-control"
-                  name="catatan"
-                  rows="3"
-                ></textarea>
-              </div>
-            <div class="mb-3">
-              <label class="form-label">Foto (opsional, maks 2)</label>
-              <input class="form-control" type="file" name="photos" accept=".jpg,.jpeg,.png,.webp" multiple />
-              <div class="form-text">Maksimal 2 foto. Format: JPG/JPEG/PNG/WEBP.</div>
-            </div>
-            </div>
-
-
-            <div class="modal-footer">
-              <button
-                type="button"
-                class="btn btn-secondary"
-                data-bs-dismiss="modal"
-              >
-                Batal
-              </button>
-              <button
-                type="submit"
-                class="btn btn-success"
-                id="btn-submit-wash"
-                disabled
-              >
-                Submit
-              </button>
-            </div>
-          </form>
-        </div>
-      </div>
-    </div>
-
-    <!-- ===================== MODAL ASESMEN KODISI ===================== -->
-    <div
-      class="modal fade"
-      id="asesmenKondisiModal"
-      tabindex="-1"
-      aria-labelledby="asesmenKondisiLabel"
-      aria-hidden="true"
-    >
-      <div class="modal-dialog modal-lg modal-dialog-centered">
-        <div class="modal-content">
-          <form method="POST" action="{{ url_for('submit_asesmen_kondisi') }}" enctype="multipart/form-data">
-            <div class="modal-header">
-              <h5 class="modal-title" id="asesmenKondisiLabel">
-                Asesmen Kondisi
-              </h5>
-              <button
-                type="button"
-                class="btn-close"
-                data-bs-dismiss="modal"
-                aria-label="Close"
-              ></button>
-            </div>
-
-            <div class="modal-body">
-              <!-- Lokasi GPS Saat Ini (Asesmen Wash) -->
-              <div class="mb-3 p-3 bg-light rounded">
-                <div
-                  class="d-flex justify-content-between align-items-center mb-2"
-                >
-                  <div class="fw-bold">
-                    <i class="fas fa-map-marker-alt"></i> Lokasi GPS Saat Ini:
-                  </div>
-                  <button
-                    type="button"
-                    id="refreshKondisiLocationBtn"
-                    class="btn btn-success btn-sm shadow-sm"
-                    title="Refresh Lokasi"
-                    style="border-radius: 20px"
-                    onclick="getLocationForAsesmen('kondisi')"
-                  >
-                    <i class="fas fa-sync-alt"></i>
-                  </button>
-                </div>
-
-                <div class="text-success fw-bold">
-                  <span id="wash-location-text">belum diambil</span>
-                </div>
-              </div>
-
-              <input type="hidden" id="kondisi_lat" name="latitude" />
-              <input type="hidden" id="kondisi_lon" name="longitude" />
-              <div class="mb-2 text-muted small">
-                <i class="fas fa-map me-1"></i>
-                Koreksi titik: geser pin atau klik peta sebelum submit.
-              </div>
-              <div
-                id="kondisiMiniMap"
-                style="
-                  height: 220px;
-                  border-radius: 12px;
-                  overflow: hidden;
-                  border: 1px solid #e5e7eb;
-                "
-              ></div>
-
-              <div class="mb-3">
-                <label class="form-label">Pilih Posko</label>
-                <select class="form-select" name="kode_posko" required>
-                  <option value="" selected disabled>-- pilih posko --</option>
-                  {% for p in data_posko %}
-                  <option value="{{ p.kode }}">
-                    {{ p.kode }} - {{p.kabkota}} - {{ p.nama }}
-                  </option>
-                  {% endfor %}
-                </select>
-              </div>
-              <div class="mb-3">
-                <label class="form-label">Radius Buffer (km)</label>
-                <div class="input-group">
-                  <input
-                    type="number"
-                    class="form-control"
-                    id="kondisi_radius"
-                    name="radius"
-                    min="0.1"
-                    step="0.1"
-                    value="2"
-                  />
-                  <span class="input-group-text">km</span>
-                </div>
-                <div class="form-text">
-                  Default 2 km. Nilai ini menentukan buffer pada peta setelah
-                  asesmen disubmit.
-                </div>
-              </div>
-
-              <div class="mb-3">
-                <label class="form-label">Lokasi Desa/Kecamatan</label>
-                <input
-                  type="text"
-                  class="form-control"
-                  id="kondisi_lokasi"
-                  name="lokasi"
-                  placeholder="Masukkan Desa/Kecamatan"
-                  required
-                />
-              </div>
-
-              <div class="mb-2 text-muted small">
-                <i class="fas fa-map me-1"></i>
-                Koreksi titik: geser pin atau klik peta sebelum submit.
-              </div>
-              <div
-                id="kondisiBanjirMiniMap"
-                style="
-                  height: 220px;
-                  border-radius: 12px;
-                  overflow: hidden;
-                  border: 1px solid #e5e7eb;
-                "
-              ></div>
-
-              <div class="mt-3">
-                <label class="form-label fw-bold"
-                  >Daftar Titik Koordinat Lokasi Banjir</label
-                >
-                <div id="kondisi-points-list" class="vstack gap-2"></div>
-              </div>
-
-              {% set kondisi_angka = [ "Total Alamat Pengungsian", "Total Jumlah
-              Pengungsi (Jiwa)", "Jumlah Warga yang Bertahan di Rumah (Jiwa)",
-              "Jumlah Korban Meninggal Dunia (Jiwa)", "Total Alamat Dapur Umum",
-              "Jumlah Kebutuhan Layanan Air Bersih", "Sekolah Rusak", "Sekolah
-              Layak Digunakan", "Guru Tersedia" ] %}
-
-              <!-- ===================== DATA Kondisi ===================== -->
-              <div class="mt-4">
-                <h6 class="fw-bold mb-3">
-                  <i class="fas fa-list-numeric"></i> Data Kondisi
-                </h6>
-
-                {% for i in range(kondisi_angka|length) %}
-                <div class="mb-3">
-                  <label class="form-label">
-                    {{ i+1 }}. {{ kondisi_angka[i] }}
-                  </label>
-
-                  <input
-                    type="number"
-                    class="form-control"
-                    name="k{{ i+1 }}"
-                    min="0"
-                    step="1"
-                    value="0"
-                    placeholder="Masukkan angka"
-                  />
-                </div>
-                {% endfor %}
-              </div>
-
-              <div class="mb-3">
-                <label class="form-label">Catatan (opsional)</label>
-                <textarea
-                  class="form-control"
-                  name="catatan"
-                  rows="3"
-                ></textarea>
-              </div>
-            <div class="mb-3">
-              <label class="form-label">Foto (opsional, maks 2)</label>
-              <input class="form-control" type="file" name="photos" accept=".jpg,.jpeg,.png,.webp" multiple />
-              <div class="form-text">Maksimal 2 foto. Format: JPG/JPEG/PNG/WEBP.</div>
-            </div>
-            </div>
-
-
-
-
-            <div class="modal-footer">
-              <button
-                type="button"
-                class="btn btn-secondary"
-                data-bs-dismiss="modal"
-              >
-                Batal
-              </button>
-              <button
-                type="submit"
-                class="btn btn-success"
-                id="btn-submit-kondisi"
-                disabled
-              >
-                Submit
-              </button>
-            </div>
-          </form>
-        </div>
-      </div>
-    </div>
-
     <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/js/bootstrap.bundle.min.js"></script>
     <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
-    <script src="{{ url_for('static', filename='js/gallery.js') }}"></script>
     <script>
               // Data Lokasi dari Flask
-              function safeJsonParse(raw, fallback) {
-                  try {
-                      if (raw === null || raw === undefined) return fallback;
-                      if (typeof raw === 'object') return raw;
-                      const s = String(raw);
-                      if (!s || s.trim() === "") return fallback;
-                      return JSON.parse(s);
-                  } catch (e) {
-                      console.warn("JSON parse gagal:", e, raw);
-                      return fallback;
-                  }
-              }
+              let dataLokasi = {{ data_lokasi | safe }};
+              let relawanLokasi = {{ relawan_lokasi | safe }};
+              let asesmenKesehatan = {{ asesmen_kesehatan | safe }};
+      let asesmenPendidikan = {{ asesmen_pendidikan | safe }};
 
-              let dataLokasi = safeJsonParse({{ data_lokasi | tojson | safe }}, []);
-              let relawanLokasi = safeJsonParse({{ relawan_lokasi | tojson | safe }}, []);
-              let asesmenKesehatan = safeJsonParse({{ asesmen_kesehatan | tojson | safe }}, []);
-              let asesmenPendidikan = safeJsonParse({{ asesmen_pendidikan | tojson | safe }}, []);
-              let asesmenPsikososial = safeJsonParse({{ asesmen_psikososial | tojson | safe }}, []);
-              let asesmenInfrastruktur = safeJsonParse({{ asesmen_infrastruktur | tojson | safe }}, []);
-              let asesmenWash = safeJsonParse({{ asesmen_wash | tojson | safe }}, []);
-              let asesmenKondisi = safeJsonParse({{ asesmen_kondisi | tojson | safe }}, []);
-              let permintaanLogistik = safeJsonParse({{ permintaan_logistik | tojson | safe }}, []);
-              const CURRENT_IS_ADMIN = {{ 'true' if is_admin else 'false' }};
-
-              // Ref jenis lokasi untuk admin (dropdown)
-              const REF_JENIS_LOKASI = safeJsonParse({{ ref_jenis_lokasi | tojson | safe }}, []);
 
               // Inisialisasi Peta
               var map = L.map('map').setView([2.3693, 99.0763], 9); // Koordinat tengah Sumatera Utara
@@ -2568,83 +1046,38 @@
 
               map.createPane('asesmenPane');
               map.getPane('asesmenPane').style.zIndex = 450;
-
-              map.createPane('permintaanPane');
-              map.getPane('permintaanPane').style.zIndex = 500;
               // ============================================================
 
-              let statusData = safeJsonParse({{ status_map | tojson | safe }}, {});
+              let statusData = JSON.parse('{{ status_map | safe }}');
 
               // Layer group untuk marker lokasi (agar bisa dihapus saat refresh)
               let markerLayerGroup = L.layerGroup().addTo(map);
               let relawanLayerGroup = L.layerGroup().addTo(map);
-              let permintaanLayerGroup = L.layerGroup().addTo(map);
               // ================== LAYER ASESMEN (BUFFER 2KM) ==================
       let asesmenKesehatanLayer = L.layerGroup().addTo(map);
       let asesmenPendidikanLayer = L.layerGroup().addTo(map);
-      let asesmenPsikososialLayer = L.layerGroup().addTo(map);
-      let asesmenInfrastrukturLayer = L.layerGroup().addTo(map);
-      let asesmenWashLayer = L.layerGroup().addTo(map);
-      let asesmenKondisiLayer = L.layerGroup().addTo(map);
 
 
       // Map pertanyaan p1..px (untuk popup buffer)
       const ASESMEN_QUESTIONS = {
         kesehatan: {{ kesehatan_questions | tojson | safe }},
         pendidikan: {{ pendidikan_questions | tojson | safe }},
-        psikososial: {{ psikososial_questions | tojson | safe }},
-        infrastruktur: {{ infrastruktur_questions | tojson | safe }},
-        wash: {{ wash_questions | tojson | safe }},
-        kondisi: {{ kondisi_angka | tojson | safe }},
       };
 
       function escapeHtml(s){
         return String(s ?? "").replace(/[&<>"']/g, m => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[m]));
       }
 
-      function _parseTsToEpochUtc(ts){
-        if (!ts) return null;
-        const s = String(ts).trim();
-
-        // Ambil bagian tanggal + jam saja, abaikan offset (+0700 / Z / +07:00)
-        // Contoh: "2025-12-19 01:57:33.518 +0700" -> parse "2025-12-19 01:57:33.518" sebagai UTC
-        const m = s.match(/^(\d{4})-(\d{2})-(\d{2})[ T](\d{2}):(\d{2}):(\d{2})(?:\.(\d{1,6}))?/);
-        if (m) {
-          const Y  = parseInt(m[1], 10);
-          const Mo = parseInt(m[2], 10) - 1;
-          const Da = parseInt(m[3], 10);
-          const H  = parseInt(m[4], 10);
-          const Mi = parseInt(m[5], 10);
-          const Se = parseInt(m[6], 10);
-
-          // ms (ambil 3 digit pertama, pad dengan nol jika perlu)
-          const frac = String(m[7] || "0");
-          const ms = parseInt((frac + "000").slice(0, 3), 10);
-
-          // epoch UTC (offset diabaikan)
-          return Date.UTC(Y, Mo, Da, H, Mi, Se, ms);
-        }
-
-        // Fallback (kalau format tidak match), coba Date()
-        const d = new Date(s);
-        if (isNaN(d.getTime())) return null;
-        return d.getTime();
-      }
-
-      function _formatEpochUtcToWIB(epochUtc){
-        // Konversi sederhana: UTC + 7 jam (WIB)
-        const wibEpoch = epochUtc + (7 * 60 * 60 * 1000);
-        const d = new Date(wibEpoch);
-
-        const pad = (n) => String(n).padStart(2, "0");
-        return `${d.getUTCFullYear()}-${pad(d.getUTCMonth() + 1)}-${pad(d.getUTCDate())} ${pad(d.getUTCHours())}:${pad(d.getUTCMinutes())}:${pad(d.getUTCSeconds())} WIB`;
-      }
-
       function formatWIB(ts){
         if (!ts) return "-";
-        const epochUtc = _parseTsToEpochUtc(ts);
-        if (epochUtc === null) return escapeHtml(ts);
-        return _formatEpochUtcToWIB(epochUtc);
+        const d = new Date(ts);
+        if (isNaN(d)) return escapeHtml(ts);
+        const out = new Intl.DateTimeFormat("id-ID", {
+          timeZone: "Asia/Jakarta",
+          year:"numeric", month:"2-digit", day:"2-digit",
+          hour:"2-digit", minute:"2-digit", second:"2-digit"
+        }).format(d);
+        return out.replace(",", "") + " WIB";
       }
 
       function statusColor(status){
@@ -2702,93 +1135,15 @@
           const lon = parseFloat(r.longitude);
           if (!isFinite(lat) || !isFinite(lon)) return;
 
-          // is_active: skip item yang sudah dinonaktifkan (soft delete)
-          if (r.is_active === false) return;
-          if (typeof r.is_active === "string" && r.is_active.toLowerCase() === "false") return;
-
-
           const col = statusColor(r.status);
-          const catatanTextRaw = (r.catatan && String(r.catatan).trim()) ? String(r.catatan) : '-';
-
-          const catatanHtml = escapeHtml(catatanTextRaw).replace(/\r?\n/g, "<br>");
-
-
-          // Buffer radius (meters) — default 2km, override dari kolom 'radius' (km) jika ada
-          let radiusMeters = 2000;
-          const rk = parseFloat(r.radius);
-          if (isFinite(rk) && rk > 0) radiusMeters = rk * 1000;
-
-          let photoPath = r.photo_path ? JSON.parse(r.photo_path) : [];
-
-          let photoPathHtml = photoPath.length
-            ? `
-              <div class="simple-gallery"
-                  data-images='${JSON.stringify(
-                    photoPath.map(p => _normalizePhotoUrl("media/" + p))
-                  )}'
-                  style="cursor:pointer;">
-                <img src="${_normalizePhotoUrl('media/' + photoPath[0])}"
-                    style="width:78px;height:78px;object-fit:cover;
-                            border-radius:10px;border:1px solid #e5e7eb;">
-              </div>
-            `
-            : `
-              <div style="width:78px;height:78px;border-radius:10px;
-                          border:1px solid #e5e7eb;display:flex;
-                          align-items:center;justify-content:center;
-                          background:#f8fafc;">
-                <i class="fas fa-image" style="opacity:.45;"></i>
-              </div>
-            `;
 
           const popup = `
             <div style="min-width:260px;">
-              <div style="display:flex;gap:10px;align-items:flex-start;">
-                <div>
-                  ${photoPathHtml}
-                </div>
-                <div style="margin-bottom:5px;">
-                     <div style="font-weight:700;line-height:1.1;">
-                      <span class="text-primary">${escapeHtml(jenisLabel)}</span>
-                    </div>
-
-                    <div style="margin-top:6px;">
-                      <small class="text-muted">ID Relawan:</small>
-                      <small><b>${escapeHtml(r.id_relawan)}</b></small>
-                    </div>
-
-                    <div style="margin-top:2px;">
-                      <small class="text-muted">Nama Relawan:</small>
-                      <small><b>${escapeHtml(r.nama_relawan)}</b></small>
-                    </div>
-
-                    <div style="margin-top:2px;">
-                      <small class="text-muted">Skor:</small>
-                      <small><b>${escapeHtml(r.skor)}</b></small>
-                    </div>
-
-                    <div style="margin-top:2px;">
-                      <small class="text-muted">Status:</small>
-                      <small>
-                        <b style="color:${col};font-weight:700;">
-                          ${escapeHtml(r.status)}
-                        </b>
-                      </small>
-                    </div>
-
-                    <div style="margin-top:6px;">
-                      <small class="text-muted">Waktu:</small>
-                      <small><b>${formatWIB(r.waktu)}</b></small>
-                    </div>
-
-                    <div style="margin-top:6px;">
-                      <small class="text-muted">Catatan:</small><br>
-                      <small>${catatanHtml}</small>
-                    </div>
- 
-                </div>
-              </div>
-
+              <div class="fw-bold mb-1">${escapeHtml(jenisLabel)}</div>
+              <div><b>ID Relawan:</b> ${escapeHtml(r.id_relawan)}</div>
+              <div><b>Skor:</b> ${escapeHtml(r.skor)}</div>
+              <div><b>Status:</b> <span style="color:${col};font-weight:700;">${escapeHtml(r.status)}</span></div>
+              <div><b>Waktu:</b> ${formatWIB(r.waktu)}</div>
               <hr class="my-2"/>
               <div class="fw-bold mb-1">Jawaban</div>
               ${jawabanHtml(r.jawaban, kind)}
@@ -2797,7 +1152,7 @@
 
           const circle = L.circle([lat, lon], {
             pane: 'asesmenPane',
-            radius: radiusMeters,
+            radius: 2000,
             color: col,
             weight: 2,
             fill: true,
@@ -2818,283 +1173,18 @@
 
           layer.addLayer(circle);
           layer.addLayer(dot);
-
-          [circle, dot].forEach(m => {
-            m.on('popupopen', function(e) {
-
-              // Gallery Jika Ada
-              var popupEl = e.popup && e.popup.getElement();
-              if (!popupEl) return;
-
-              popupEl.querySelectorAll('.simple-gallery').forEach(gallery => {
-                initSimpleGallery(gallery);
-              });
-            });
-          });
         });
       }
-
-      function jawabanKondisiHtml(j, kind) {
-        if (!j) return "<div class='text-muted'>-</div>";
-
-        let obj = j;
-        if (typeof obj === "string") {
-          try { obj = JSON.parse(obj); } catch(e) {
-            return `<pre class="mb-0">${escapeHtml(obj)}</pre>`;
-          }
-        }
-
-        // Ambil daftar pertanyaan untuk kind tertentu (tetap boleh ada kalau dipakai di tempat lain)
-        const qList = (ASESMEN_QUESTIONS && ASESMEN_QUESTIONS[kind]) ? ASESMEN_QUESTIONS[kind] : [];
-
-        const kondisiAngka = [
-          "Total Alamat Pengungsian",
-          "Total Jumlah Pengungsi (Jiwa)",
-          "Jumlah Warga yang Bertahan di Rumah (Jiwa)",
-          "Jumlah Korban Meninggal Dunia (Jiwa)",
-          "Total Alamat Dapur Umum",
-          "Jumlah Kebutuhan Layanan Air Bersih",
-          "Sekolah Rusak",
-          "Sekolah Layak Digunakan",
-          "Guru Tersedia"
-        ];
-
-        const htmlKeys = ["p1","p3","p4","p5","p6","p7","p8","p9", 'p10', 'p11'];
-        let html = "<ul class='mb-0 ps-3'>";
-
-        htmlKeys.forEach(k => {
-          if (obj[k] === undefined) return;
-
-          let qText = "";
-
-          // p1 khusus
-          if (k === 'p1') {
-            qText = 'Nama Desa/Kecamatan';
-
-          // p3 ke atas → kondisi angka
-          } else if (/^p\d+$/.test(k)) {
-            const num = parseInt(k.replace('p', ''), 10);
-            const idx = num - 3; // p3 = index 0
-
-            if (idx >= 0 && idx < kondisiAngka.length) {
-              qText = kondisiAngka[idx];
-            }
-          }
-
-          const v = obj[k];
-
-          html += `
-            <li style="margin-bottom:6px;">
-              <div><b>${escapeHtml(k)}</b>${qText ? ` - ${escapeHtml(qText)}` : ""}</div>
-              <div>Jawaban: <b>${escapeHtml(v)}</b></div>
-            </li>
-          `;
-        });
-
-        html += "</ul>";
-
-        
-        html += "</ul>";
-        return html;
-      }
-
-
-      function renderAsesmenKondisiLayer(layer, rows, jenisLabel, kind) {
-        layer.clearLayers();
-
-        (rows || []).forEach(r => {
-          const lat = parseFloat(r.latitude);
-          const lon = parseFloat(r.longitude);
-          if (!isFinite(lat) || !isFinite(lon)) return;
-
-          // is_active: skip item yang sudah dinonaktifkan (soft delete)
-          if (r.is_active === false) return;
-          if (typeof r.is_active === "string" && r.is_active.toLowerCase() === "false") return;
-
-
-          const col = statusColor(r.status);
-          const catatanTextRaw = (r.catatan && String(r.catatan).trim()) ? String(r.catatan) : '-';
-          const catatanHtml = escapeHtml(catatanTextRaw).replace(/\r?\n/g, "<br>");
-
-          let radiusMeters = 2000;
-          const rk = parseFloat(r.radius);
-          if (isFinite(rk) && rk > 0) radiusMeters = rk * 1000;
-
-          let photoPath = r.photo_path ? JSON.parse(r.photo_path) : [];
-
-          let photoPathHtml = photoPath.length
-            ? `
-              <div class="simple-gallery"
-                  data-images='${JSON.stringify(
-                    photoPath.map(p => _normalizePhotoUrl("media/" + p))
-                  )}'
-                  style="cursor:pointer;">
-                <img src="${_normalizePhotoUrl('media/' + photoPath[0])}"
-                    style="width:78px;height:78px;object-fit:cover;
-                            border-radius:10px;border:1px solid #e5e7eb;">
-              </div>
-            `
-            : `
-              <div style="width:78px;height:78px;border-radius:10px;
-                          border:1px solid #e5e7eb;display:flex;
-                          align-items:center;justify-content:center;
-                          background:#f8fafc;">
-                <i class="fas fa-image" style="opacity:.45;"></i>
-              </div>
-            `;
-
-          // Buat popup unik per relawan
-          const popupId = `popupKondisiMap${r.id_relawan}`;
-
-          // HTML popup
-          const popupContent = `
-            <div style="min-width:260px;">
-              <div style="display:flex;gap:10px;align-items:flex-start;">
-                <div>
-                  ${photoPathHtml}
-                </div>
-                <div style="margin-bottom:5px;">
-                  <div style="font-weight:700;line-height:1.1;">
-                    <span class="text-primary">${escapeHtml(jenisLabel)}</span>
-                  </div>
-
-                  <div style="margin-top:6px;">
-                    <small class="text-muted">ID Relawan:</small>
-                    <small><b>${escapeHtml(r.id_relawan)}</b></small>
-                  </div>
-
-                  <div style="margin-top:2px;">
-                    <small class="text-muted">Nama Relawan:</small>
-                    <small><b>${escapeHtml(r.nama_relawan)}</b></small>
-                  </div>
-
-                  <div style="margin-top:2px;">
-                    <small class="text-muted">Skor:</small>
-                    <small><b>${escapeHtml(r.skor)}</b></small>
-                  </div>
-
-                  <div style="margin-top:2px;">
-                    <small class="text-muted">Status:</small>
-                    <small>
-                      <b style="color:${col};font-weight:700;">
-                        ${escapeHtml(r.status)}
-                      </b>
-                    </small>
-                  </div>
-
-                  <div style="margin-top:6px;">
-                    <small class="text-muted">Waktu:</small>
-                    <small><b>${formatWIB(r.waktu)}</b></small>
-                  </div>
-
-                  <div style="margin-top:6px;">
-                    <small class="text-muted">Catatan:</small><br>
-                    <small>${catatanHtml}</small>
-                  </div>
-
-                </div>
-              </div>
-              <hr class="my-2"/>
-              <div class="fw-bold mb-1">Jawaban</div>
-              ${jawabanKondisiHtml(r.jawaban, kind)}
-              <hr class="my-2"/>
-              <div><b>Lokasi Titik Banjir</b></div>
-              <div id="${popupId}" style="height:200px; margin-top:5px;"></div>
-            </div>
-          `;
-
-          // Circle & dot
-          const circle = L.circle([lat, lon], {
-            pane: 'asesmenPane',
-            radius: radiusMeters,
-            color: '#555555',
-            weight: 2,
-            fill: true,
-            fillColor: '#555555',
-            fillOpacity: 0.25,
-            bubblingMouseEvents: false
-          }).bindPopup(popupContent);
-
-          const dot = L.circleMarker([lat, lon], {
-            pane: 'asesmenPane',
-            radius: 5,
-            color: '#555555',
-            weight: 2,
-            fillColor: '#555555',
-            fillOpacity: 0.95,
-            bubblingMouseEvents: false
-          }).bindPopup(popupContent);
-
-          // Tambahkan ke layer
-          layer.addLayer(circle);
-          layer.addLayer(dot);
-
-          // Render map di popup saat dibuka
-          [circle, dot].forEach(m => {
-            m.on('popupopen', function(e) {
-              const mapDiv = document.getElementById(popupId);
-              if (!mapDiv) return;
-
-              // Reset map jika sudah ada
-              if (mapDiv._leaflet_map) {
-                mapDiv._leaflet_map.remove();
-              }
-
-              // Gallery Jika Ada
-              var popupEl = e.popup && e.popup.getElement();
-              if (!popupEl) return;
-
-              popupEl.querySelectorAll('.simple-gallery').forEach(gallery => {
-                initSimpleGallery(gallery);
-              });
-
-              const popupMap = L.map(mapDiv).setView([0,0], 5);
-              mapDiv._leaflet_map = popupMap;
-
-              L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
-                attribution: '© OpenStreetMap contributors'
-              }).addTo(popupMap);
-
-              // Plot titik p2
-              let j = r.jawaban;
-              if (typeof j === "string") {
-                try { j = JSON.parse(j); } catch(e) { console.error(e); j = {}; }
-              }
-              if (j.p2) {
-                const bounds = [];
-                Object.values(j.p2).forEach(pt => {
-                  if (Array.isArray(pt) && pt.length === 2) {
-                    L.marker(pt).addTo(popupMap);
-                    bounds.push(pt);
-                  }
-                });
-                if (bounds.length) popupMap.fitBounds(bounds, {padding:[10,10]});
-              }
-            });
-          });
-        });
-      }
-
-
 
       function renderAsesmenBuffers(){
         renderAsesmenLayer(asesmenKesehatanLayer, asesmenKesehatan, "Asesmen Kesehatan", "kesehatan");
         renderAsesmenLayer(asesmenPendidikanLayer, asesmenPendidikan, "Asesmen Pendidikan", "pendidikan");
-        renderAsesmenLayer(asesmenPsikososialLayer,asesmenPsikososial, "Asesmen Psikososial", "psikososial");
-        renderAsesmenLayer(asesmenInfrastrukturLayer,asesmenInfrastruktur,"Asesmen Infrastruktur", "infrastruktur");
-        renderAsesmenLayer(asesmenWashLayer, asesmenWash, "Asesmen Wash", "wash");
-        renderAsesmenKondisiLayer(asesmenKondisiLayer, asesmenKondisi, "Asesmen Kondisi", "kondisi");
       }
       renderAsesmenBuffers();
 
       // Toggle checkbox
-      const ckAsesmenAll = document.getElementById("toggleAsesmenAll");
       const ckKes = document.getElementById("toggleAsesmenKesehatan");
       const ckPen = document.getElementById("toggleAsesmenPendidikan");
-      const ckInf = document.getElementById("toggleAsesmenInfrastruktur");
-      const ckPsi = document.getElementById("toggleAsesmenPsikososial");
-      const ckWas = document.getElementById("toggleAsesmenWash");
-      const ckKond = document.getElementById("toggleAsesmenKondisi");
 
       function setLayerVisible(layer, visible){
         if (visible) {
@@ -3104,24 +1194,8 @@
         }
       }
 
-      function applyAsesmenVisibility(){
-        const master = ckAsesmenAll ? ckAsesmenAll.checked : true;
-        const showKes = ckKes ? ckKes.checked : true;
-        const showPen = ckPen ? ckPen.checked : true;
-        const showInf = ckInf ? ckInf.checked : true;
-        const showPsi = ckPsi ? ckPsi.checked : true;
-        const showWas = ckWas ? ckWas.checked : true;
-        const showKond = ckKond ? ckKond.checked : true;
-
-        setLayerVisible(asesmenKesehatanLayer, master && showKes);
-        setLayerVisible(asesmenPendidikanLayer, master && showPen);
-        setLayerVisible(asesmenInfrastrukturLayer, master && showInf);
-        setLayerVisible(asesmenPsikososialLayer, master && showPsi);
-        setLayerVisible(asesmenWashLayer, master && showWas);
-        setLayerVisible(asesmenKondisiLayer, master && showKond);
-      }
-
-      // (visibility asesmen akan di-handle oleh blok sinkronisasi filter di bawah)
+      if (ckKes) ckKes.addEventListener("change", ()=> setLayerVisible(asesmenKesehatanLayer, ckKes.checked));
+      if (ckPen) ckPen.addEventListener("change", ()=> setLayerVisible(asesmenPendidikanLayer, ckPen.checked));
       // ================================================================
 
 
@@ -3275,48 +1349,11 @@
                       iconClass = 'fas fa-warehouse';
                       iconColor = '#ffffff';
                       bgColor = '#10b981'; // Hijau
-                  } else if (String(jenis || '').toLowerCase().includes('starlink')) {
-                      iconClass = 'fas fa-satellite-dish';
+                  } else if (jenis.includes('Rusak') || jenis.includes('Putus') || jenis.includes('Longsor')) {
+                      iconClass = 'fas fa-exclamation-triangle';
                       iconColor = '#ffffff';
-                      bgColor = '#8b5cf6'; // ungu
-                  // =====================
-                  // INFRA / BENCANA
-                      // =====================
-                  } else if (
-                    ['jalan putus','akses putus','jalan terputus','jalan tertutup','road closed','road block']
-                    .some(k => String(jenis || '').toLowerCase().includes(k))
-                    ) {
-        // Kalau FontAwesome kamu v6, bisa ganti jadi: 'fas fa-road-barrier' atau 'fa-solid fa-road-barrier'
-  iconClass = 'fas fa-road';
-  iconColor = '#ffffff';
-  bgColor = '#ef4444'; // merah (akses putus)
-} else if (
-  ['longsor','titik longsor','landslide','rockslide','tanah longsor']
-    .some(k => String(jenis || '').toLowerCase().includes(k))
-) {
-  // Kalau FontAwesome kamu v6, bisa ganti jadi: 'fas fa-hill-rockslide' / 'fas fa-landslide'
-  iconClass = 'fas fa-mountain';
-  iconColor = '#ffffff';
-  bgColor = '#f97316'; // oranye (longsor)
-
-} else if (
-  ['jembatan rusak','jembatan putus','bridge damaged','bridge']
-    .some(k => String(jenis || '').toLowerCase().includes(k))
-) {
-  // Kalau FontAwesome kamu v6, bisa ganti jadi: 'fas fa-bridge' / 'fas fa-bridge-water'
-  iconClass = 'fas fa-archway';
-  iconColor = '#ffffff';
-  bgColor = '#2563eb'; // biru (jembatan)
-} else if (
-  ['sumur bor','sumur','air mata sumur','well']
-    .some(k => String(jenis || '').toLowerCase().includes(k))
-) {
-  // Kalau FontAwesome kamu v6, bisa ganti jadi: 'fas fa-bridge' / 'fas fa-bridge-water'
-  iconClass = 'fas fa-faucet';
-  iconColor = '#ffffff';
-  bgColor = '#2563eb'; // biru (jembatan)
-}
-                   else {
+                      bgColor = '#f59e0b'; // Orange
+                  } else {
                       iconClass = 'fas fa-map-marker-alt';
                       iconColor = '#ffffff';
                       bgColor = '#3b82f6'; // Biru
@@ -3372,10 +1409,28 @@
       }
 
       function _formatWaktuGMT7(v) {
+        if (!v) return '-';
         try {
-          if (!v) return '-';
-          const out = formatWIB(v);
-          return out || String(v);
+          const d = new Date(v);
+          if (isNaN(d.getTime())) return String(v);
+
+          const fmt = new Intl.DateTimeFormat('id-ID', {
+            timeZone: 'Asia/Jakarta',
+            year: 'numeric',
+            month: '2-digit',
+            day: '2-digit',
+            hour: '2-digit',
+            minute: '2-digit',
+            second: '2-digit',
+            hour12: false
+          });
+
+          const parts = fmt.formatToParts(d).reduce((acc, p) => {
+            acc[p.type] = p.value;
+            return acc;
+          }, {});
+
+          return `${parts.year}-${parts.month}-${parts.day} ${parts.hour}:${parts.minute}:${parts.second} WIB`;
         } catch (e) {
           return String(v);
         }
@@ -3390,871 +1445,52 @@
         return '/' + s;
       }
 
-
-      function _permintaanStatusKey(status){
-        const s = String(status || '').toLowerCase();
-        if (s.includes('draft')) return 'draft';
-        if (s.includes('diproses')) return 'diproses';
-        if (s.includes('dikirim')) return 'dikirim';
-        if (s.includes('diterima')) return 'diterima';
-        if (s.includes('ditolak')) return 'ditolak';
-        {#if (s.includes('selesai')) return 'selesai';#}
-        return 'draft';
-      }
-
-      function permintaanStatusColor(status){
-        const k = _permintaanStatusKey(status);
-        if (k === 'diproses') return '#f59e0b';
-        if (k === 'dikirim') return '#3b82f6';
-        if (k === 'diterima') return '#22c55e';
-        if (k === 'ditolak') return '#ef4444';
-        {#if (k === 'selesai') return '#10b981';#}
-        return '#64748b'; // draft
-      }
-
-      function getPermintaanIcon(status) {
-        const bg = permintaanStatusColor(status);
-        const iconHtml = `
-          <div style="
-            width: 40px;
-            height: 40px;
-            background-color: ${bg};
-            border-radius: 50% 50% 50% 0;
-            transform: rotate(-45deg);
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            border: 2px solid white;
-            box-shadow: 0 2px 10px rgba(0,0,0,0.3);
-          ">
-            <i class="fas fa-box-open" style="
-              color: white;
-              font-size: 18px;
-              transform: rotate(45deg);
-            "></i>
-          </div>
-        `;
-
-        return L.divIcon({
-          html: iconHtml,
-          className: 'custom-marker-icon',
-          iconSize: [40, 40],
-          iconAnchor: [20, 40],
-          popupAnchor: [0, -40]
-        });
-      }
-
-      function _poskoNameByKode(kode) {
-  try {
-    const k = String(kode || '').trim();
-    if (!k) return '-';
-
-    const found = (dataLokasi || []).find(d => String(d.kode_lokasi || d.kode || '').trim() === k);
-    if (!found) return k;
-
-    const kab = String(found.kabupaten_kota || found.kabkota || '').trim();
-    const nama = String(found.nama_lokasi || found.nama || '').trim();
-
-    const kabN = kab.toLowerCase();
-    const namaN = nama.toLowerCase();
-
-    // Jika nama kosong -> tampilkan kab saja (jangan bikin "kab - kab")
-    if (kab && !nama) return kab;
-
-    // Jika nama ada tapi sama persis dengan kab -> tampilkan kab saja
-    if (kab && nama && namaN === kabN) return kab;
-
-    // Jika nama sudah mengandung kab (mis. "Medan - Posko A") -> pakai nama saja biar tidak double
-    if (kab && nama && namaN.includes(kabN)) return nama;
-
-    // Normal case
-    if (kab && nama) return `${kab} - ${nama}`;
-    if (nama) return nama;
-
-    return k;
-  } catch (e) {
-    return kode || '-';
-  }
-}
-
-      function renderPermintaanMarkers(rows) {
-        permintaanLayerGroup.clearLayers();
-        (rows || []).forEach(r => {
-          const lat = parseFloat(r.latitude);
-          const lon = parseFloat(r.longitude);
-          if (!isFinite(lat) || !isFinite(lon)) return;
-
-          // is_active: skip item yang sudah dinonaktifkan (soft delete)
-          if (r.is_active === false) return;
-          if (typeof r.is_active === "string" && r.is_active.toLowerCase() === "false") return;
-
-
-          const waktuText = _formatWaktuGMT7(r.tanggal || r.waktu || r.timestamp);
-          const status = r.status_permintaan || r.status || 'Draft';
-          const kodePosko = r.kode_posko || '-';
-          const namaPosko = _poskoNameByKode(kodePosko);
-          const idRelawan = r.id_relawan || '-';
-          const namaRelawan = r.nama_relawan;
-
-          const ket = (r.keterangan || '-');
-          const ketHtml = escapeHtml(ket).replace(/\n/g, '<br>');
-
-          L.marker([lat, lon], { icon: getPermintaanIcon(status), pane: 'permintaanPane' })
-            .addTo(permintaanLayerGroup)
-            .bindPopup(
-              `<div style="min-width:260px;">
-                 <div class="fw-bold mb-1">Permintaan Logistik</div>
-                 <div><b>Posko:</b> ${escapeHtml(namaPosko)} <span class="text-muted">(${escapeHtml(kodePosko)})</span></div>
-                 <div><b>Status:</b> ${escapeHtml(status)}</div>
-                 <div><b>Relawan:</b> ${escapeHtml(idRelawan)} - ${escapeHtml(namaRelawan)}</div>
-                 <div><b>Waktu:</b> ${escapeHtml(waktuText)}</div>
-                 <hr class="my-2"/>
-                 <div class="fw-bold mb-1">Keterangan</div>
-                 <div style="white-space:normal;">${ketHtml}</div>
-               </div>`
-            );
-        });
-      }
-
-
-      // =============================================================================
-      // ADMIN: PENGATURAN STATUS PERMINTAAN LOGISTIK (khusus is_admin)
-      // =============================================================================
-      const PERMINTAAN_STATUS_OPTIONS = ["Draft", "Diproses", "Dikirim", "Diterima", "Ditolak"];
-
-      function _renderPermintaanStatusBadge(status) {
-        const bg = permintaanStatusColor(status);
-        const label = status || 'Draft';
-        return `<span class="badge" style="background:${bg};">${escapeHtml(label)}</span>`;
-      }
-
-      function renderPermintaanAdminTable() {
-        const tbody = document.getElementById('permintaanAdminTableBody');
-        if (!tbody) return;
-
-        const rows = Array.isArray(permintaanLogistik) ? permintaanLogistik : [];
-        tbody.innerHTML = '';
-
-        if (!rows.length) {
-          tbody.innerHTML = '<tr><td colspan="6" class="text-muted text-center">Belum ada permintaan.</td></tr>';
-          return;
-        }
-
-        rows.forEach(r => {
-          const id = r.id;
-          const kodePosko = r.kode_posko || '-';
-          const namaPosko = _poskoNameByKode(kodePosko);
-          const waktuText = _formatWaktuGMT7(r.waktu || r.tanggal || r.timestamp);
-          const status = r.status_permintaan || r.status || 'Draft';
-          const ket = String(r.keterangan || '').trim();
-          const ketShort = ket.length > 120 ? (ket.slice(0, 120) + '…') : (ket || '-');
-
-          const selId = `permintaanStatusSelect_${id}`;
-          const btnId = `permintaanStatusBtn_${id}`;
-
-          const optionsHtml = PERMINTAAN_STATUS_OPTIONS.map(s => {
-            const selected = (_permintaanStatusKey(s) === _permintaanStatusKey(status)) ? ' selected' : '';
-            return `<option value="${escapeHtml(s)}"${selected}>${escapeHtml(s)}</option>`;
-          }).join('');
-
-          tbody.insertAdjacentHTML('beforeend', `
-            <tr>
-              <td><code>${escapeHtml(id)}</code></td>
-              <td>
-                <div class="fw-bold">${escapeHtml(namaPosko)}</div>
-                <div class="text-muted small">${escapeHtml(kodePosko)}</div>
-              </td>
-              <td class="small">${escapeHtml(waktuText)}</td>
-              <td class="small" style="white-space:normal;">${escapeHtml(ketShort)}</td>
-              <td>${_renderPermintaanStatusBadge(status)}</td>
-              <td>
-                <div class="d-flex gap-2">
-                  <select class="form-select form-select-sm" id="${escapeHtml(selId)}">
-                    ${optionsHtml}
-                  </select>
-                  <button class="btn btn-sm btn-primary" id="${escapeHtml(btnId)}" type="button"
-                          onclick="adminUpdatePermintaanStatus('${escapeHtml(id)}')">Simpan</button>
-                </div>
-              </td>
-            </tr>
-          `);
-        });
-      }
-
-      async function adminUpdatePermintaanStatus(id) {
-        if (!CURRENT_IS_ADMIN) {
-          showNotification('Anda bukan admin.', 'danger', true);
-          return;
-        }
-
-        const sel = document.getElementById(`permintaanStatusSelect_${id}`);
-        const btn = document.getElementById(`permintaanStatusBtn_${id}`);
-        if (!sel || !btn) return;
-
-        const newStatus = String(sel.value || '').trim();
-        if (!newStatus) return;
-
-        sel.disabled = true;
-        btn.disabled = true;
-
-        const oldBtnHtml = btn.innerHTML;
-        btn.innerHTML = '<i class="fas fa-spinner fa-spin"></i>';
-
-        try {
-          const resp = await fetch('/api/update_permintaan_status', {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ id: id, status: newStatus })
-          });
-
-          const result = await resp.json().catch(() => ({}));
-          if (resp.ok && result && result.success) {
-            // Update local data
-            const item = (permintaanLogistik || []).find(x => String(x.id) === String(id));
-            if (item) item.status_permintaan = newStatus;
-
-            // Refresh marker permintaan (warna/icon)
-            applyPermintaanVisibility();
-
-            // Refresh tabel admin
-            renderPermintaanAdminTable();
-            loadAdminAsesmen();
-            loadAdminLokasi();
-            loadAdminLogs();
-
-            showNotification('Status permintaan berhasil diperbarui.', 'success', true);
-          } else {
-            showNotification('Gagal update status: ' + (result.error || 'Unknown error'), 'danger', true);
-          }
-        } catch (e) {
-          console.error(e);
-          showNotification('Error saat update status.', 'danger', true);
-        } finally {
-          sel.disabled = false;
-          btn.disabled = false;
-          btn.innerHTML = oldBtnHtml;
-        }
-      }
-
-
-      // =============================================================================
-      // ADMIN: Kelola Asesmen (is_active) + Log Admin
-      // =============================================================================
-      const ASESMEN_KIND_LABELS = {
-        kesehatan: 'Kesehatan',
-        pendidikan: 'Pendidikan',
-        psikososial: 'Psikososial',
-        infrastruktur: 'Infrastruktur',
-        wash: 'WASH',
-        kondisi: 'Kondisi'
-      };
-
-      let ADMIN_ASESMEN_ROWS = [];
-
-      function _asesmenKindLabel(kind) {
-        const k = String(kind || '').trim().toLowerCase();
-        return ASESMEN_KIND_LABELS[k] || (k || '-');
-      }
-
-      function _isActiveValue(v) {
-        if (v === false) return false;
-        if (typeof v === 'string' && v.toLowerCase() === 'false') return false;
-        return true;
-      }
-
-      async function loadAdminAsesmen() {
-        const tbody = document.getElementById('asesmenAdminTableBody');
-        if (tbody) {
-          tbody.innerHTML = '<tr><td colspan="8" class="text-muted text-center">Memuat...</td></tr>';
-        }
-
-        if (!CURRENT_IS_ADMIN) {
-          if (tbody) {
-            tbody.innerHTML = '<tr><td colspan="8" class="text-muted text-center">Bukan admin.</td></tr>';
-          }
-          ADMIN_ASESMEN_ROWS = [];
-          return;
-        }
-
-        try {
-          const resp = await fetch('/api/admin_asesmen_list?hours=720');
-          const result = await resp.json().catch(() => ({}));
-          if (resp.ok && result && result.success) {
-            ADMIN_ASESMEN_ROWS = Array.isArray(result.rows) ? result.rows : [];
-            renderAsesmenAdminTable();
-          } else {
-            const err = (result && result.error) ? result.error : 'Unknown error';
-            if (tbody) {
-              tbody.innerHTML = `<tr><td colspan="8" class="text-muted text-center">Gagal memuat asesmen: ${escapeHtml(err)}</td></tr>`;
-            }
-            ADMIN_ASESMEN_ROWS = [];
-          }
-        } catch (e) {
-          console.error(e);
-          if (tbody) {
-            tbody.innerHTML = '<tr><td colspan="8" class="text-muted text-center">Error memuat data asesmen.</td></tr>';
-          }
-          ADMIN_ASESMEN_ROWS = [];
-        }
-      }
-
-      function renderAsesmenAdminTable() {
-        const tbody = document.getElementById('asesmenAdminTableBody');
-        if (!tbody) return;
-
-        const rows = ADMIN_ASESMEN_ROWS || [];
-        tbody.innerHTML = '';
-
-        if (!rows.length) {
-          tbody.innerHTML = '<tr><td colspan="8" class="text-muted text-center">Belum ada data asesmen.</td></tr>';
-          return;
-        }
-
-        rows.forEach(row => {
-          const kind = String(row.kind || '').trim().toLowerCase();
-          const id = row.id ?? '-';
-          const kodePosko = row.kode_posko || '-';
-          const namaPosko = _poskoNameByKode(kodePosko);
-          const relawanText = `${row.id_relawan || '-'} - ${row.nama_relawan || '-'}`;
-          const waktuText = formatWIB(row.waktu);
-          const skor = (row.skor ?? '-');
-          const status = (row.status ?? '-');
-
-          const active = _isActiveValue(row.is_active);
-          const activeBadge = active
-            ? '<span class="badge bg-success">Aktif</span>'
-            : '<span class="badge bg-secondary">Nonaktif</span>';
-
-          const btnHtml = active
-            ? `<button type="button" class="btn btn-sm btn-danger"
-                       onclick="adminSetAsesmenActive('${escapeHtml(kind)}','${escapeHtml(id)}',false)">
-                 Nonaktifkan
-               </button>`
-            : `<button type="button" class="btn btn-sm btn-success"
-                       onclick="adminSetAsesmenActive('${escapeHtml(kind)}','${escapeHtml(id)}',true)">
-                 Aktifkan
-               </button>`;
-
-          tbody.insertAdjacentHTML('beforeend', `
-            <tr>
-              <td>
-                <div class="d-flex align-items-center gap-2">
-                  <span class="badge bg-secondary">${escapeHtml(_asesmenKindLabel(kind))}</span>
-                  ${activeBadge}
-                </div>
-              </td>
-              <td><code>${escapeHtml(id)}</code></td>
-              <td>
-                <div class="fw-bold">${escapeHtml(namaPosko)}</div>
-                <div class="text-muted small">${escapeHtml(kodePosko)}</div>
-              </td>
-              <td class="small">${escapeHtml(relawanText)}</td>
-              <td class="small">${escapeHtml(waktuText)}</td>
-              <td class="small">${escapeHtml(skor)}</td>
-              <td class="small">${escapeHtml(status)}</td>
-              <td>${btnHtml}</td>
-            </tr>
-          `);
-        });
-      }
-
-      async function adminSetAsesmenActive(kind, id, isActive) {
-        if (!CURRENT_IS_ADMIN) {
-          showNotification('Anda bukan admin.', 'danger', true);
-          return;
-        }
-
-        const k = String(kind || '').trim().toLowerCase();
-        const sid = String(id || '').trim();
-        if (!k || !sid) return;
-
-        const label = _asesmenKindLabel(k);
-        const verb = isActive ? 'aktifkan' : 'nonaktifkan';
-        const ok = confirm(`Anda yakin ingin ${verb} asesmen ${label} (ID: ${sid})?`);
-        if (!ok) return;
-
-        try {
-          const resp = await fetch('/api/set_asesmen_active', {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ kind: k, id: sid, is_active: !!isActive })
-          });
-
-          const result = await resp.json().catch(() => ({}));
-          if (resp.ok && result && result.success) {
-            // Refresh panel admin (aktif + nonaktif)
-            await loadAdminAsesmen();
-            await loadAdminLogs();
-
-            // Refresh data map (hanya yang aktif) via tombol refresh yang sudah ada
-            const btnRefresh = document.getElementById('btnRefreshPermintaanAdmin');
-            if (btnRefresh) btnRefresh.click();
-
-            showNotification('Berhasil memperbarui is_active asesmen.', 'success', true);
-          } else {
-            showNotification('Gagal: ' + (result.error || 'Unknown error'), 'danger', true);
-          }
-        } catch (e) {
-          console.error(e);
-          showNotification('Error saat update is_active asesmen.', 'danger', true);
-        }
-      }
-
-      function renderAdminLogs(logs) {
-        const tbody = document.getElementById('adminLogTableBody');
-        if (!tbody) return;
-
-        const rows = Array.isArray(logs) ? logs : [];
-        tbody.innerHTML = '';
-
-        if (!rows.length) {
-          tbody.innerHTML = '<tr><td colspan="5" class="text-muted text-center">Belum ada log.</td></tr>';
-          return;
-        }
-
-        rows.forEach(l => {
-          const waktu = formatWIB(l.waktu);
-          const adminText = `${l.actor_id_relawan || '-'} - ${l.actor_nama_relawan || '-'}`;
-          const aksi = (l.action || '-');
-          const target = `${l.target_kind || '-'} #${(l.target_ref || l.target_id || '-')}`;
-          const note = (l.note && String(l.note).trim()) ? String(l.note) : '-';
-
-          tbody.insertAdjacentHTML('beforeend', `
-            <tr>
-              <td class="small">${escapeHtml(waktu)}</td>
-              <td class="small">${escapeHtml(adminText)}</td>
-              <td class="small">${escapeHtml(aksi)}</td>
-              <td class="small">${escapeHtml(target)}</td>
-              <td class="small" style="white-space:normal;">${escapeHtml(note)}</td>
-            </tr>
-          `);
-        });
-      }
-
-
-
-      // ============================================================================
-      // ADMIN: KELOLA DATA LOKASI (is_active + jenis_lokasi)
-      // ============================================================================
-      const adminLokasiTableBody = document.getElementById('adminLokasiTableBody');
-      const adminLokasiAlert = document.getElementById('adminLokasiAlert');
-      const btnRefreshLokasiAdmin = document.getElementById('btnRefreshLokasiAdmin');
-
-      function _normalizeBool(val) {
-        if (val === true) return true;
-        if (val === false) return false;
-        if (typeof val === 'string') {
-          const v = val.trim().toLowerCase();
-          if (v === 'true' || v === '1' || v === 'yes' || v === 'y' || v === 'on') return true;
-          if (v === 'false' || v === '0' || v === 'no' || v === 'n' || v === 'off') return false;
-        }
-        return Boolean(val);
-      }
-
-      function _showAdminLokasiAlert(msg, type) {
-        if (!adminLokasiAlert) return;
-        const t = (type || 'info').toLowerCase();
-        adminLokasiAlert.classList.remove('d-none', 'alert-info', 'alert-success', 'alert-warning', 'alert-danger');
-        if (t === 'success') adminLokasiAlert.classList.add('alert-success');
-        else if (t === 'warning') adminLokasiAlert.classList.add('alert-warning');
-        else if (t === 'danger' || t === 'error') adminLokasiAlert.classList.add('alert-danger');
-        else adminLokasiAlert.classList.add('alert-info');
-        adminLokasiAlert.textContent = String(msg || '');
-      }
-
-      function _buildJenisOptions(currentValue) {
-        const cur = (currentValue || '').trim();
-        const refs = Array.isArray(REF_JENIS_LOKASI) ? REF_JENIS_LOKASI : [];
-
-        // Uniq + keep order
-        const seen = {};
-        const list = [];
-        refs.forEach(v => {
-          const s = String(v || '').trim();
-          if (!s) return;
-          if (!seen[s]) {
-            seen[s] = true;
-            list.push(s);
-          }
-        });
-
-        if (cur && !seen[cur]) {
-          list.unshift(cur);
-        }
-
-        let html = '';
-        list.forEach(v => {
-          const sel = (v === cur) ? ' selected' : '';
-          html += `<option value="${escapeHtml(v)}"${sel}>${escapeHtml(v)}</option>`;
-        });
-        return html;
-      }
-
-      function renderAdminLokasiTable(rows) {
-        if (!adminLokasiTableBody) return;
-
-        if (!rows || !rows.length) {
-          adminLokasiTableBody.innerHTML = `<tr><td colspan="6" class="text-muted text-center">Tidak ada data.</td></tr>`;
-          return;
-        }
-
-        let html = '';
-        rows.forEach(r => {
-          const idLok = String(r.id_lokasi || '').trim();
-          const kab = String(r.nama_kabkota || r.kabupaten_kota || '').trim();
-          const nama = String(r.nama_lokasi || '').trim();
-          const jenis = String(r.jenis_lokasi || '').trim();
-          const isAct = _normalizeBool(r.is_active);
-
-          const badge = isAct
-            ? '<span class="badge bg-success">Ya</span>'
-            : '<span class="badge bg-secondary">Tidak</span>';
-
-          const btnText = isAct ? 'Nonaktifkan' : 'Aktifkan';
-          const btnClass = isAct ? 'btn-outline-danger' : 'btn-outline-success';
-
-          html += `
-            <tr>
-              <td><code>${escapeHtml(idLok || '-')}</code></td>
-              <td>${escapeHtml(kab || '-')}</td>
-              <td>${escapeHtml(nama || '-')}</td>
-              <td>
-                <select class="form-select form-select-sm admin-jenis-select" data-id="${escapeHtml(idLok)}">
-                  ${_buildJenisOptions(jenis)}
-                </select>
-              </td>
-              <td class="text-center">${badge}</td>
-              <td class="text-center">
-                <button type="button" class="btn btn-sm ${btnClass} admin-lokasi-toggle" data-id="${escapeHtml(idLok)}" data-active="${isAct ? '1' : '0'}">
-                  ${btnText}
-                </button>
-              </td>
-            </tr>
-          `;
-        });
-
-        adminLokasiTableBody.innerHTML = html;
-
-        // Bind toggle buttons
-        (adminLokasiTableBody.querySelectorAll('.admin-lokasi-toggle') || []).forEach(btn => {
-          btn.addEventListener('click', async () => {
-            const idLok = btn.getAttribute('data-id') || '';
-            const curAct = (btn.getAttribute('data-active') || '0') === '1';
-            const nextAct = !curAct;
-            await adminSetLokasiActive(idLok, nextAct);
-          });
-        });
-
-        // Bind jenis select
-        (adminLokasiTableBody.querySelectorAll('.admin-jenis-select') || []).forEach(sel => {
-          sel.addEventListener('change', async () => {
-            const idLok = sel.getAttribute('data-id') || '';
-            const newJenis = sel.value;
-            await adminUpdateLokasiJenis(idLok, newJenis);
-          });
-        });
-      }
-
-      async function loadAdminLokasi() {
-        if (!CURRENT_IS_ADMIN) return;
-        if (!adminLokasiTableBody) return;
-
-        try {
-          adminLokasiTableBody.innerHTML = `<tr><td colspan="6" class="text-muted text-center">Memuat...</td></tr>`;
-          const res = await fetch('/api/admin_lokasi_list?limit=2000', { method: 'GET', credentials: 'same-origin' });
-          const data = await res.json();
-          if (!data || !data.success) {
-            _showAdminLokasiAlert((data && data.error) ? data.error : 'Gagal memuat data lokasi.', 'danger');
-            renderAdminLokasiTable([]);
-            return;
-          }
-          _showAdminLokasiAlert('Data lokasi dimuat.', 'success');
-          renderAdminLokasiTable(data.rows || []);
-        } catch (e) {
-          console.error(e);
-          _showAdminLokasiAlert('Terjadi error saat memuat data lokasi.', 'danger');
-          renderAdminLokasiTable([]);
-        }
-      }
-
-      async function adminSetLokasiActive(idLokasi, isActive) {
-        if (!CURRENT_IS_ADMIN) return;
-        const idLok = String(idLokasi || '').trim();
-        if (!idLok) return;
-
-        try {
-          _showAdminLokasiAlert('Menyimpan perubahan...', 'info');
-          const res = await fetch('/api/set_lokasi_active', {
-            method: 'POST',
-            credentials: 'same-origin',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ id_lokasi: idLok, is_active: Boolean(isActive) })
-          });
-          const data = await res.json();
-          if (!data || !data.success) {
-            _showAdminLokasiAlert((data && data.error) ? data.error : 'Gagal menyimpan.', 'danger');
-            return;
-          }
-
-          _showAdminLokasiAlert('Berhasil disimpan.', 'success');
-
-          // Refresh map + panel admin
-          try { await refreshMap(); } catch (e) {}
-          await loadAdminLokasi();
-          try { loadAdminLogs(); } catch (e) {}
-        } catch (e) {
-          console.error(e);
-          _showAdminLokasiAlert('Terjadi error saat menyimpan.', 'danger');
-        }
-      }
-
-      async function adminUpdateLokasiJenis(idLokasi, jenisLokasi) {
-        if (!CURRENT_IS_ADMIN) return;
-        const idLok = String(idLokasi || '').trim();
-        const j = String(jenisLokasi || '').trim();
-        if (!idLok || !j) return;
-
-        try {
-          _showAdminLokasiAlert('Menyimpan perubahan jenis...', 'info');
-          const res = await fetch('/api/update_lokasi_jenis', {
-            method: 'POST',
-            credentials: 'same-origin',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ id_lokasi: idLok, jenis_lokasi: j })
-          });
-          const data = await res.json();
-          if (!data || !data.success) {
-            _showAdminLokasiAlert((data && data.error) ? data.error : 'Gagal update jenis.', 'danger');
-            return;
-          }
-
-          _showAdminLokasiAlert('Jenis lokasi berhasil diupdate.', 'success');
-
-          // Refresh map + panel admin
-          try { await refreshMap(); } catch (e) {}
-          await loadAdminLokasi();
-          try { loadAdminLogs(); } catch (e) {}
-        } catch (e) {
-          console.error(e);
-          _showAdminLokasiAlert('Terjadi error saat update jenis.', 'danger');
-        }
-      }
-
-      if (btnRefreshLokasiAdmin) {
-        btnRefreshLokasiAdmin.addEventListener('click', () => {
-          loadAdminLokasi();
-        });
-      }
-      async function loadAdminLogs() {
-        const tbody = document.getElementById('adminLogTableBody');
-        if (!tbody) return;
-
-        tbody.innerHTML = '<tr><td colspan="5" class="text-muted text-center">Memuat...</td></tr>';
-
-        if (!CURRENT_IS_ADMIN) {
-          tbody.innerHTML = '<tr><td colspan="5" class="text-muted text-center">Bukan admin.</td></tr>';
-          return;
-        }
-
-        try {
-          const resp = await fetch('/api/admin_action_logs?limit=200');
-          const result = await resp.json().catch(() => ({}));
-          if (resp.ok && result && result.success) {
-            renderAdminLogs(result.logs || []);
-          } else {
-            tbody.innerHTML = `<tr><td colspan="5" class="text-muted text-center">Gagal memuat log: ${escapeHtml(result.error || 'Unknown error')}</td></tr>`;
-          }
-        } catch (e) {
-          console.error(e);
-          tbody.innerHTML = '<tr><td colspan="5" class="text-muted text-center">Error memuat log.</td></tr>';
-        }
-      }
-
-      // Hook modal admin (render table saat dibuka / refresh)
-      document.addEventListener('DOMContentLoaded', function() {
-        const modalEl = document.getElementById('permintaanAdminModal');
-        if (modalEl) {
-          modalEl.addEventListener('shown.bs.modal', function() {
-            renderPermintaanAdminTable();
-            loadAdminAsesmen();
-            loadAdminLokasi();
-            loadAdminLogs();
-          });
-        }
-
-        const btnRefresh = document.getElementById('btnRefreshPermintaanAdmin');
-        if (btnRefresh) {
-          btnRefresh.addEventListener('click', async function() {
-            try {
-              const response = await fetch('/api/refresh_map');
-              const result = await response.json();
-              if (result && result.success) {
-                permintaanLogistik = Array.isArray(result.permintaan_logistik)
-                  ? result.permintaan_logistik
-                  : (result.permintaan_logistik || []);
-
-                // Update data asesmen (jika tersedia dari refresh_map)
-                asesmenKesehatan = Array.isArray(result.asesmen_kesehatan)
-                  ? result.asesmen_kesehatan
-                  : (result.asesmen_kesehatan || []);
-                asesmenPendidikan = Array.isArray(result.asesmen_pendidikan)
-                  ? result.asesmen_pendidikan
-                  : (result.asesmen_pendidikan || []);
-                asesmenPsikososial = Array.isArray(result.asesmen_psikososial)
-                  ? result.asesmen_psikososial
-                  : (result.asesmen_psikososial || []);
-                asesmenInfrastruktur = Array.isArray(result.asesmen_infrastruktur)
-                  ? result.asesmen_infrastruktur
-                  : (result.asesmen_infrastruktur || []);
-                asesmenWash = Array.isArray(result.asesmen_wash)
-                  ? result.asesmen_wash
-                  : (result.asesmen_wash || []);
-                asesmenKondisi = Array.isArray(result.asesmen_kondisi)
-                  ? result.asesmen_kondisi
-                  : (result.asesmen_kondisi || []);
-
-                applyAsesmenVisibility();
-                applyPermintaanVisibility();
-                renderPermintaanAdminTable();
-                loadAdminAsesmen();
-                loadAdminLokasi();
-                loadAdminLogs();
-                showNotification('Data admin diperbarui.', 'success', true);
-              } else {
-                showNotification('Gagal refresh permintaan: ' + (result.error || 'Unknown error'), 'danger', true);
-              }
-            } catch (e) {
-              console.error(e);
-              showNotification('Error refresh permintaan.', 'danger', true);
-            }
-          });
-        }
-
-        const btnRefreshAsesmen = document.getElementById('btnRefreshAsesmenAdmin');
-        if (btnRefreshAsesmen && btnRefresh) {
-          btnRefreshAsesmen.addEventListener('click', function() {
-            btnRefresh.click();
-          });
-        }
-
-        const btnRefreshLogs = document.getElementById('btnRefreshAdminLogs');
-        if (btnRefreshLogs) {
-          btnRefreshLogs.addEventListener('click', function() {
-            loadAdminLogs();
-          });
-        }
-      });
-
-
-
       function renderRelawanMarkers(relawanData) {
         relawanLayerGroup.clearLayers();
-
         (relawanData || []).forEach(r => {
           const lat = parseFloat(r.latitude);
           const lon = parseFloat(r.longitude);
-          if (!isFinite(lat) || !isFinite(lon)) return;
+          if (!isNaN(lat) && !isNaN(lon)) {
+            const photoUrl = _normalizePhotoUrl(r.photo_path);
+            const waktuText = _formatWaktuGMT7(r.waktu);
+            const unitText = r.unit ? String(r.unit) : '';
+            const catatanText = r.catatan ? String(r.catatan) : '-';
 
-          const photoUrl = _normalizePhotoUrl(r.photo_path);
-          const waktuText = _formatWaktuGMT7(r.waktu);
+            const photoHtml = photoUrl
+              ? `<img src="${photoUrl}" alt="Foto Relawan" style="width:78px;height:78px;object-fit:cover;border-radius:10px;border:1px solid #e5e7eb;">`
+              : `<div style="width:78px;height:78px;border-radius:10px;border:1px solid #e5e7eb;display:flex;align-items:center;justify-content:center;background:#f8fafc;">
+                   <i class="fas fa-image" style="opacity:.45;"></i>
+                 </div>`;
 
-          const unitText = r.unit ? String(r.unit) : '';
-          const catatanTextRaw = (r.catatan && String(r.catatan).trim()) ? String(r.catatan) : '-';
-          const catatanHtml = escapeHtml(catatanTextRaw).replace(/\n/g, "<br>");
-
-          // === FORMAT TAMPILAN PERSIS SEPERTI YANG KAMU MAU ===
-          const photoHtml = photoUrl
-            ? `<img src="${escapeHtml(photoUrl)}" alt="Foto Relawan"
-                    style="width:78px;height:78px;object-fit:cover;border-radius:10px;border:1px solid #e5e7eb;">`
-            : `<div style="width:78px;height:78px;border-radius:10px;border:1px solid #e5e7eb;display:flex;align-items:center;justify-content:center;background:#f8fafc;">
-                 <i class="fas fa-image" style="opacity:.45;"></i>
-               </div>`;
-
-          L.marker([lat, lon], { icon: getRelawanIcon() })
-            .addTo(relawanLayerGroup)
-            .bindPopup(
-              `<div style="min-width:250px;">
-                 <div style="display:flex;gap:10px;align-items:flex-start;">
-                   ${photoHtml}
-                   <div style="flex:1;">
-                     <div style="font-weight:700;line-height:1.1;">
-                       ${escapeHtml(r.id_relawan || '-')} - ${escapeHtml(r.nama_relawan || r.nama || '-')}
-                     </div>
-
-                     ${unitText
-                       ? `<div style="margin-top:4px;">
-                            <small class="text-muted">Unit:</small>
-                            <small><b>${escapeHtml(unitText)}</b></small>
-                          </div>`
-                       : ''}
-
-                     <div style="margin-top:4px;">
-                       <small class="text-muted">Waktu:</small>
-                       <small><b>${escapeHtml(waktuText)}</b></small>
-                     </div>
-
-                     <div style="margin-top:6px;">
-                       <small class="text-muted">Catatan:</small><br>
-                       <small>${catatanHtml}</small>
+            L.marker([lat, lon], { icon: getRelawanIcon() })
+              .addTo(relawanLayerGroup)
+              .bindPopup(
+                `<div style="min-width:250px;">
+                   <div style="display:flex;gap:10px;align-items:flex-start;">
+                     ${photoHtml}
+                     <div style="flex:1;">
+                       <div style="font-weight:700;line-height:1.1;">${r.id_relawan || '-'} - ${r.nama_relawan || '-'}</div>
+                       ${unitText ? `<div style="margin-top:4px;"><small class="text-muted">Unit:</small> <small><b>${unitText}</b></small></div>` : ''}
+                       <div style="margin-top:4px;"><small class="text-muted">Waktu:</small> <small><b>${waktuText}</b></small></div>
+                       <div style="margin-top:6px;"><small class="text-muted">Catatan:</small><br><small>${catatanText}</small></div>
                      </div>
                    </div>
-                 </div>
-               </div>`,
-              { maxWidth: 380 }
-            );
+                 </div>`
+              );
+          }
         });
       }
 
-
               // 4. Fungsi untuk render marker lokasi ke peta
-              function renderMarkers(lokasiData, filterState) {
-                  const fs = filterState || {};
-                  const showPosko = fs.showPosko !== false;
-                  const showGudang = fs.showGudang !== false;
-                  const showStarlink = fs.showStarlink !== false;
-                  const showJembatanRusak = fs.showJembatanRusak !== false;
-                  const showJalanPutus = fs.showJalanPutus !== false;
-                  const showTitikLongsor = fs.showTitikLongsor !== false;
-                  const showSumurBor = fs.showSumurBor !== false;
-                  const showLain = fs.showLain !== false;
+              function renderMarkers(lokasiData) {
                   // Hapus marker lama
                   markerLayerGroup.clearLayers();
 
                   // Tambah marker baru
                   lokasiData.forEach(lokasi => {
-
-        // ADMIN_SKIP_INACTIVE_LOKASI: hanya tampilkan lokasi yang is_active = True
-        const _activeRaw = lokasi.is_active;
-        if (_activeRaw === false) return;
-        if (typeof _activeRaw === 'string') {
-          const _av = _activeRaw.trim().toLowerCase();
-          if (_av === 'false' || _av === '0' || _av === 'no' || _av === 'n') return;
-        }
                       const lat = parseFloat(lokasi.latitude);
                       const lon = parseFloat(lokasi.longitude);
                       if (!isNaN(lat) && !isNaN(lon)) {
-                          const jenis = String(lokasi.jenis_lokasi || '');
-                          const isPosko = /posko/i.test(jenis);
-                          const isGudang = /gudang/i.test(jenis);
-                          // kategori baru
-const isStarlink = /starlink/i.test(jenis);
-const isJembatanRusak = /jembatan/i.test(jenis) && /rusak/i.test(jenis);
-const isJalanPutus = /jalan/i.test(jenis) && /putus/i.test(jenis);
-const isTitikLongsor = /longsor/i.test(jenis);
-const isSumurBor = /sumur/i.test(jenis) && /bor/i.test(jenis);
-                          if (isPosko && !showPosko) return;
-                          if (isGudang && !showGudang) return;
-                          if (isStarlink && !showStarlink) return;
-if (isJembatanRusak && !showJembatanRusak) return;
-if (isJalanPutus && !showJalanPutus) return;
-if (isTitikLongsor && !showTitikLongsor) return;
-if (isSumurBor && !showSumurBor) return;
-                          // sisanya dianggap "Lain"
-const isKnown =
-  isPosko || isGudang || isStarlink || isJembatanRusak || isJalanPutus || isTitikLongsor || isSumurBor;
-
-if (!isKnown && !showLain) return;
-
                           let icon = getIcon(lokasi.jenis_lokasi);
 
                           const photoUrl = _normalizePhotoUrl(lokasi.photo_path);
@@ -4271,9 +1507,6 @@ if (!isKnown && !showLain) return;
                           const aksesText = lokasi.tingkat_akses || lokasi.akses || '-';
                           const kondisiText = lokasi.kondisi || lokasi.kondisi_umum || '-';
                           const catatanText = lokasi.catatan || '-';
-
-                          const kondisiHtml = escapeHtml(kondisiText).replace(/\r?\n/g, '<br>');
-                          const catatanHtml = escapeHtml(catatanText).replace(/\r?\n/g, '<br>');
 
                           L.marker([lat, lon], { icon: icon })
                               .addTo(markerLayerGroup)
@@ -4302,12 +1535,12 @@ if (!isKnown && !showLain) return;
                                                   <small class="text-muted"> | Akses:</small>
                                                   <small><b>${aksesText}</b></small>
                                                   <small class="text-muted"> | Kondisi:</small>
-                                                  <small><b>${kondisiHtml}</b></small>
+                                                  <small><b>${kondisiText}</b></small>
                                               </div>
 
                                               <div style="margin-top:6px;">
                                                   <small class="text-muted">Catatan:</small><br>
-                                                  <small>${catatanHtml}</small>
+                                                  <small>${catatanText}</small>
                                               </div>
                                           </div>
                                       </div>
@@ -4317,185 +1550,9 @@ if (!isKnown && !showLain) return;
                   });
               }
 
-
-
-              // ==============================================================================
-              // FILTER LAYER (CHECKLIST) - Lokasi, Relawan, Permintaan, Asesmen
-              // ==============================================================================
-              const ckLokPosko = document.getElementById('toggleLokasiPosko');
-              const ckLokGudang = document.getElementById('toggleLokasiGudang');
-              const ckLokStarlink = document.getElementById('toggleLokasiStarlink');
-              const ckLokJembatanRusak = document.getElementById('toggleLokasiJembatanRusak');
-              const ckLokJalanPutus = document.getElementById('toggleLokasiJalanPutus');
-              const ckLokTitikLongsor = document.getElementById('toggleLokasiTitikLongsor');
-              const ckLokSumurBor = document.getElementById('toggleLokasiSumurBor');
-              const ckLokLain = document.getElementById('toggleLokasiLain');
-
-              const ckRelawanLok = document.getElementById('toggleLokasiRelawan');
-
-              const ckPermintaan = document.getElementById('togglePermintaanLogistik');
-              const ckPermDraft = document.getElementById('togglePermintaanDraft');
-              const ckPermDiproses = document.getElementById('togglePermintaanDiproses');
-              const ckPermDikirim = document.getElementById('togglePermintaanDikirim');
-              const ckPermDiterima = document.getElementById('togglePermintaanDiterima');
-              const ckPermDitolak = document.getElementById('togglePermintaanDitolak');
-              {#const ckPermSelesai = document.getElementById('togglePermintaanSelesai');#}
-
-
-              // Master checkbox + collapse body elements (agar filter bisa di-hide/show dan parent mengikuti child)
-              const ckLokAll = document.getElementById('toggleLokasiAll');
-              const ckRelAll = document.getElementById('toggleRelawanAll');
-
-              const elAsesmenBody = document.getElementById('filterAsesmenBody');
-              const elLokasiBody = document.getElementById('filterLokasiBody');
-              const elRelawanBody = document.getElementById('filterRelawanBody');
-              const elPermintaanBody = document.getElementById('filterPermintaanBody');
-
-              let _isSyncingFilter = false;
-
-              function _setCollapseVisible(el, visible){
-                  if (!el) return;
-                  try {
-                      if (window.bootstrap && bootstrap.Collapse) {
-                          const inst = bootstrap.Collapse.getOrCreateInstance(el, { toggle: false });
-                          if (visible) inst.show(); else inst.hide();
-                      } else {
-                          el.style.display = visible ? '' : 'none';
-                      }
-                  } catch(e) {
-                      el.style.display = visible ? '' : 'none';
-                  }
-              }
-
-              function _setChildrenState(children, checked, disabled){
-                  (children || []).forEach(ch => {
-                      if (!ch) return;
-                      if (typeof checked === 'boolean') ch.checked = checked;
-                      if (typeof disabled === 'boolean') ch.disabled = disabled;
-                  });
-              }
-
-              function _anyChecked(children){
-                  return (children || []).some(ch => ch && ch.checked);
-              }
-
-              function syncGroupFromMaster(masterEl, bodyEl, children, onApply){
-                  if (_isSyncingFilter) return;
-                  _isSyncingFilter = true;
-
-                  const masterOn = masterEl ? !!masterEl.checked : true;
-                  if (!masterOn) {
-                      _setChildrenState(children, false, true);
-                      _setCollapseVisible(bodyEl, false);
-                  } else {
-                      _setChildrenState(children, undefined, false);
-                      if (!_anyChecked(children)) _setChildrenState(children, true, false);
-                      _setCollapseVisible(bodyEl, true);
-                  }
-
-                  _isSyncingFilter = false;
-                  if (onApply) onApply();
-              }
-
-              function syncMasterFromChildren(masterEl, bodyEl, children, onApply){
-                  if (_isSyncingFilter) return;
-                  _isSyncingFilter = true;
-
-                  const any = _anyChecked(children);
-                  if (masterEl) masterEl.checked = any;
-                  _setChildrenState(children, undefined, !any);
-                  _setCollapseVisible(bodyEl, any);
-
-                  _isSyncingFilter = false;
-                  if (onApply) onApply();
-              }
-
-              function getLokasiFilterState(){
-                  return {
-                      showPosko: ckLokPosko ? ckLokPosko.checked : true,
-                      showGudang: ckLokGudang ? ckLokGudang.checked : true,
-                      showStarlink: ckLokStarlink ? ckLokStarlink.checked : true,
-                      showJembatanRusak: ckLokJembatanRusak ? ckLokJembatanRusak.checked : true,
-                      showJalanPutus: ckLokJalanPutus ? ckLokJalanPutus.checked : true,
-                      showTitikLongsor: ckLokTitikLongsor ? ckLokTitikLongsor.checked : true,
-                      showSumurBor: ckLokSumurBor ? ckLokSumurBor.checked : true,
-                      showLain: ckLokLain ? ckLokLain.checked : true,
-                  };
-              }
-
-              function applyLokasiFilter(){
-                  const fs = getLokasiFilterState();
-                  renderMarkers(dataLokasi, fs);
-              }
-
-              function applyRelawanVisibility(){
-                  const visible = ckRelawanLok ? ckRelawanLok.checked : true;
-                  setLayerVisible(relawanLayerGroup, visible);
-              }
-
-              function _permintaanAllowedMap(){
-                  const m = {
-                      draft: ckPermDraft ? ckPermDraft.checked : true,
-                      diproses: ckPermDiproses ? ckPermDiproses.checked : true,
-                      dikirim: ckPermDikirim ? ckPermDikirim.checked : true,
-                      diterima: ckPermDiterima ? ckPermDiterima.checked : true,
-                      ditolak: ckPermDitolak ? ckPermDitolak.checked : true,
-                      {#selesai: ckPermSelesai ? ckPermSelesai.checked : true,#}
-                  };
-                  return m;
-              }
-
-              function applyPermintaanVisibility(){
-                  const master = ckPermintaan ? ckPermintaan.checked : true;
-                  if (!master) {
-                      setLayerVisible(permintaanLayerGroup, false);
-                      return;
-                  }
-
-                  const allowed = _permintaanAllowedMap();
-                  const filtered = (permintaanLogistik || []).filter(r => {
-                      const k = _permintaanStatusKey(r.status_permintaan || r.status || 'Draft');
-                      return allowed[k] !== false;
-                  });
-
-                  renderPermintaanMarkers(filtered);
-                  setLayerVisible(permintaanLayerGroup, true);
-              }
-
-              // Event listeners
-              // Lokasi (master + child)
-              if (ckLokAll) ckLokAll.addEventListener('change', () => syncGroupFromMaster(ckLokAll, elLokasiBody, [ckLokPosko, ckLokGudang, ckLokStarlink,ckLokJembatanRusak, ckLokJalanPutus, ckLokTitikLongsor, ckLokSumurBor, ckLokLain], applyLokasiFilter));
-              [ckLokPosko, ckLokGudang,ckLokStarlink,ckLokJembatanRusak, ckLokJalanPutus, ckLokTitikLongsor, ckLokSumurBor, ckLokLain].forEach(el => {
-                  if (el) el.addEventListener('change', () => syncMasterFromChildren(ckLokAll, elLokasiBody, [ckLokPosko, ckLokGudang,ckLokStarlink,ckLokJembatanRusak, ckLokJalanPutus, ckLokTitikLongsor, ckLokSumurBor,  ckLokLain], applyLokasiFilter));
-              });
-
-              // Relawan
-              if (ckRelAll) ckRelAll.addEventListener('change', () => syncGroupFromMaster(ckRelAll, elRelawanBody, [ckRelawanLok], applyRelawanVisibility));
-              if (ckRelawanLok) ckRelawanLok.addEventListener('change', () => syncMasterFromChildren(ckRelAll, elRelawanBody, [ckRelawanLok], applyRelawanVisibility));
-
-              // Permintaan (master + status)
-              if (ckPermintaan) ckPermintaan.addEventListener('change', () => syncGroupFromMaster(ckPermintaan, elPermintaanBody, [ckPermDraft, ckPermDiproses, ckPermDikirim, ckPermDiterima, ckPermDitolak], applyPermintaanVisibility));
-              [ckPermDraft, ckPermDiproses, ckPermDikirim, ckPermDiterima, ckPermDitolak].forEach(el => {
-                  if (el) el.addEventListener('change', () => syncMasterFromChildren(ckPermintaan, elPermintaanBody, [ckPermDraft, ckPermDiproses, ckPermDikirim, ckPermDiterima, ckPermDitolak], applyPermintaanVisibility));
-              });
-
-              // Asesmen (master + child)
-              if (ckAsesmenAll) ckAsesmenAll.addEventListener('change', () => syncGroupFromMaster(ckAsesmenAll, elAsesmenBody, [ckKes, ckPen, ckPsi, ckInf, ckWas, ckKond], applyAsesmenVisibility));
-              [ckKes, ckPen, ckPsi, ckInf, ckWas, ckKond].forEach(el => {
-                  if (el) el.addEventListener('change', () => syncMasterFromChildren(ckAsesmenAll, elAsesmenBody, [ckKes, ckPen, ckPsi, ckInf, ckWas, ckKond], applyAsesmenVisibility));
-              });
-
-              // Initial sync + render
-              syncGroupFromMaster(ckAsesmenAll, elAsesmenBody, [ckKes, ckPen, ckPsi, ckInf, ckWas, ckKond], applyAsesmenVisibility);
-              syncGroupFromMaster(ckLokAll, elLokasiBody, [ckLokPosko, ckLokGudang, ckLokStarlink,ckLokJembatanRusak, ckLokJalanPutus, ckLokTitikLongsor, ckLokSumurBor, ckLokLain], applyLokasiFilter);
-              syncGroupFromMaster(ckRelAll, elRelawanBody, [ckRelawanLok], applyRelawanVisibility);
-              syncGroupFromMaster(ckPermintaan, elPermintaanBody, [ckPermDraft, ckPermDiproses, ckPermDikirim, ckPermDiterima, ckPermDitolak], applyPermintaanVisibility);
-
               // Render marker awal
-              applyLokasiFilter();
+              renderMarkers(dataLokasi);
               renderRelawanMarkers(relawanLokasi);
-              applyRelawanVisibility();
-              applyPermintaanVisibility();
               // ==============================================================================
               // FUNGSI REFRESH MAP
               // ==============================================================================
@@ -4590,23 +1647,14 @@ if (!isKnown && !showLain) return;
                               })
                               .catch(e => console.error("Error reloading GeoJSON:", e));
 
-                          // Update marker lokasi (mengikuti filter layer)
-                          applyLokasiFilter();
+                          // Update marker lokasi
+                          renderMarkers(dataLokasi);
                           renderRelawanMarkers(relawanLokasi);
-                          applyRelawanVisibility();
-
-                          permintaanLogistik = Array.isArray(result.permintaan_logistik) ? result.permintaan_logistik : (result.permintaan_logistik || []);
-                          applyPermintaanVisibility();
 
                       // Asemen buffers (kesehatan & pendidikan)
                           asesmenKesehatan = Array.isArray(result.asesmen_kesehatan) ? result.asesmen_kesehatan : (result.asesmen_kesehatan || []);
                           asesmenPendidikan = Array.isArray(result.asesmen_pendidikan) ? result.asesmen_pendidikan : (result.asesmen_pendidikan || []);
-                          asesmenPsikososial = Array.isArray(result.asesmen_psikososial) ? result.asesmen_psikososial : (result.asesmen_psikososial || []);
-                          asesmenInfrastruktur = Array.isArray(result.asesmen_infrastruktur) ? result.asesmen_infrastruktur : (result.asesmen_infrastruktur || []);
-                          asesmenWash = Array.isArray(result.asesmen_wash) ? result.asesmen_wash : (result.asesmen_wash || []);
-                          asesmenKondisi = Array.isArray(result.asesmen_kondisi) ? result.asesmen_kondisi : (result.asesmen_kondisi || []);
                           renderAsesmenBuffers();
-                          applyAsesmenVisibility();
                           // Tampilkan notifikasi sukses (centered)
                           showNotification('Map berhasil di-refresh!', 'success', true);
                       } else {
@@ -4996,79 +2044,6 @@ if (!isKnown && !showLain) return;
                       return false;
                   }
               });
-
-              // Carousel untuk Data Bencana & Korban
-              (function () {
-                  const carousel = document.getElementById('bencanaCarousel');
-                  const pagination = document.getElementById('bencanaPagination');
-
-                  if (!carousel || !pagination) return;
-
-                  const slides = carousel.querySelectorAll('.bencana-slide');
-                  const totalSlides = slides.length;
-
-                  if (totalSlides === 0) return;
-
-                  let currentIndex = 0;
-
-                  // --- LOGIKA PAGINATION DOTS ---
-                  for (let i = 0; i < totalSlides; i++) {
-                      const dot = document.createElement('button');
-                      dot.className = 'bencana-pagination-dot';
-                      if (i === 0) dot.classList.add('active');
-                      dot.setAttribute('aria-label', `Slide ${i + 1}`);
-                      dot.addEventListener('click', () => {
-                          goToSlide(i);
-                          stopAutoPlay(); // Reset timer saat user interaksi manual
-                          startAutoPlay();
-                      });
-                      pagination.appendChild(dot);
-                  }
-
-                  // --- FUNGSI PINDAH SLIDE UTAMA ---
-                  function goToSlide(index) {
-                      // Logika looping (infinite loop effect)
-                      if (index < 0) {
-                          index = totalSlides - 1; // Ke slide terakhir
-                      } else if (index >= totalSlides) {
-                          index = 0; // Ke slide pertama
-                      }
-
-                      currentIndex = index;
-                      carousel.style.transform = `translateX(-${index * 100}%)`;
-
-                      // Update active dot
-                      const dots = pagination.querySelectorAll('.bencana-pagination-dot');
-                      dots.forEach((dot, i) => {
-                          dot.classList.toggle('active', i === index);
-                      });
-                  }
-
-                  // --- AUTO PLAY ---
-                  let autoPlayInterval;
-                  function startAutoPlay() {
-                      stopAutoPlay();
-                      autoPlayInterval = setInterval(() => {
-                          const nextIndex = currentIndex + 1;
-                          goToSlide(nextIndex);
-                      }, 4000);
-                  }
-
-                  function stopAutoPlay() {
-                      if (autoPlayInterval) {
-                          clearInterval(autoPlayInterval);
-                      }
-                  }
-
-                  if (totalSlides > 1) {
-                      startAutoPlay();
-                      const container = carousel.closest('.bencana-carousel-container');
-                      if (container) {
-                          container.addEventListener('mouseenter', stopAutoPlay);
-                          container.addEventListener('mouseleave', startAutoPlay);
-                      }
-                  }
-              })();
     </script>
     <script>
       // Global loading overlay helpers
@@ -5152,40 +2127,6 @@ if (!isKnown && !showLain) return;
             }
           }
         });
-
-        // Sort datalist relawan A-Z (client-side)
-        const dl = document.getElementById("relawanDatalist");
-        if (dl) {
-          const opts = Array.from(dl.querySelectorAll("option"));
-          opts.sort((a, b) =>
-            (a.value || "").localeCompare(b.value || "", "id", {
-              sensitivity: "base",
-            })
-          );
-          dl.innerHTML = "";
-          opts.forEach((o) => dl.appendChild(o));
-        }
-
-        // Toggle show/hide kode akses (password)
-        const kodeAksesInput = document.getElementById("kode_akses");
-        const toggleKodeAksesBtn =
-          document.getElementById("toggleKodeAksesBtn");
-        if (kodeAksesInput && toggleKodeAksesBtn) {
-          toggleKodeAksesBtn.addEventListener("click", function () {
-            const isPassword =
-              (kodeAksesInput.getAttribute("type") || "password") ===
-              "password";
-            kodeAksesInput.setAttribute(
-              "type",
-              isPassword ? "text" : "password"
-            );
-            const icon = toggleKodeAksesBtn.querySelector("i");
-            if (icon) {
-              icon.classList.toggle("fa-eye", !isPassword);
-              icon.classList.toggle("fa-eye-slash", isPassword);
-            }
-          });
-        }
       });
     </script>
     <script>
@@ -5211,16 +2152,6 @@ if (!isKnown && !showLain) return;
         const DEFAULT_CENTER = [3.5952, 98.6722]; // Medan
 
         const cfg = {
-            lokasi: {
-        modalId: "inputLokasiModal",
-        mapId: "inputLokasiMiniMap",
-        latId: "lokasi_lat",
-        lonId: "lokasi_lon",
-        textId: "lokasi-location-text",
-        btnId: "btn-submit-lokasi",
-        statusId: "lokasi-location-status",
-        autoOnOpen: true,
-      },
           kesehatan: {
             modalId: "asesmenKesehatanModal",
             mapId: "kesehatanMiniMap",
@@ -5239,62 +2170,6 @@ if (!isKnown && !showLain) return;
             btnId: "btn-submit-pendidikan",
             statusId: "pendidikan-location-status",
           },
-          psikososial: {
-            modalId: "asesmenPsikososialModal",
-            mapId: "psikososialMiniMap",
-            latId: "psikososial_lat",
-            lonId: "psikososial_lon",
-            textId: "psikososial-location-text",
-            btnId: "btn-submit-psikososial",
-            statusId: "psikososial-location-status",
-          },
-          infrastruktur: {
-            modalId: "asesmenInfrastrukturModal",
-            mapId: "infrastrukturMiniMap",
-            latId: "infrastruktur_lat",
-            lonId: "infrastruktur_lon",
-            textId: "infrastruktur-location-text",
-            btnId: "btn-submit-infrastruktur",
-            statusId: "infrastruktur-location-status",
-          },
-          wash: {
-            modalId: "asesmenWashModal",
-            mapId: "washMiniMap",
-            latId: "wash_lat",
-            lonId: "wash_lon",
-            textId: "wash-location-text",
-            btnId: "btn-submit-wash",
-            statusId: "wash-location-status",
-          },
-          kondisi: {
-            modalId: "asesmenKondisiModal",
-            mapId: "kondisiMiniMap",
-            latId: "kondisi_lat",
-            lonId: "kondisi_lon",
-            textId: "kondisi-location-text",
-            btnId: "btn-submit-kondisi",
-            statusId: "kondisi-location-status",
-          },
-          kondisi_banjir: {
-            modalId: "asesmenKondisiModal",
-            mapId: "kondisiBanjirMiniMap",
-            latId: "kondisiBanjir_lat",
-            lonId: "kondisiBanjir_lon",
-            textId: "kondisi-location-text",
-            btnId: "btn-submit-kondisi",
-            statusId: "kondisi-location-status",
-            listId: "kondisi-points-list",
-            mode: "multiple",
-          },
-          permintaan: {
-            modalId: "permintaanModal",
-            mapId: "permintaanMiniMap",
-            latId: "permintaan_lat",
-            lonId: "permintaan_lon",
-            textId: "permintaan-location-text",
-            btnId: "btn-submit-permintaan",
-            statusId: "permintaan-location-status",
-          },
         };
 
         const state = {
@@ -5310,35 +2185,6 @@ if (!isKnown && !showLain) return;
             watchId: null,
             timeoutId: null,
           },
-          psikososial: {
-            map: null,
-            marker: null,
-            watchId: null,
-            timeoutId: null,
-          },
-          infrastruktur: {
-            map: null,
-            marker: null,
-            watchId: null,
-            timeoutId: null,
-          },
-          wash: { map: null, marker: null, watchId: null, timeoutId: null },
-          kondisi: { map: null, marker: null, watchId: null, timeoutId: null },
-          kondisi_banjir: {
-            map: null,
-            markers: {}, // multiple
-            points: {},
-            watchId: null,
-            timeoutId: null,
-          },
-          permintaan: {
-            map: null,
-            marker: null,
-            watchId: null,
-            timeoutId: null,
-          },
-            lokasi: { map: null, marker: null, watchId: null, timeoutId: null },
-
         };
 
         function _el(id) {
@@ -5359,13 +2205,6 @@ if (!isKnown && !showLain) return;
           } catch (e) {}
         }
 
-window.getLocationForLokasi = function () {
-  const kind = 'lokasi';
-  if (!cfg[kind]) return;
-  _initMap(kind);
-  _getBestLocation(kind);
-};
-
         function _initMap(kind) {
           const c = cfg[kind];
           const st = state[kind];
@@ -5381,34 +2220,7 @@ window.getLocationForLokasi = function () {
             attribution: "&copy; OpenStreetMap contributors",
           }).addTo(st.map);
 
-          // ================= MULTIPLE =================
-          // ===== MULTIPLE =====
-          if (c.mode === "multiple") {
-            st.markers = {};
-            st.points = {};
-
-            st.map.on("click", (e) => {
-              const key = nextKey(st.points);
-
-              const marker = L.marker(e.latlng, { draggable: true }).addTo(
-                st.map
-              );
-
-              st.markers[key] = marker;
-              st.points[key] = [e.latlng.lat, e.latlng.lng];
-
-              renderPointList(kind);
-
-              marker.on("dragend", (ev) => {
-                const pos = ev.target.getLatLng();
-                st.points[key] = [pos.lat, pos.lng];
-                renderPointList(kind);
-              });
-            });
-            return;
-          }
           // marker default (draggable)
-          //Single
           st.marker = L.marker(DEFAULT_CENTER, { draggable: true }).addTo(
             st.map
           );
@@ -5568,102 +2380,11 @@ window.getLocationForLokasi = function () {
           st.timeoutId = setTimeout(finish, maxWaitMs);
         }
 
-        //============= Start Multiple Points ====================//
-        function renderPointList(kind) {
-          const c = cfg[kind];
-          const st = state[kind];
-          const box = document.getElementById(c.listId);
-          if (!box) return;
-
-          box.innerHTML = "";
-
-          Object.entries(st.points).forEach(([key, val]) => {
-            const [lat, lng] = val;
-
-            const row = document.createElement("div");
-            row.className =
-              "d-flex align-items-center gap-2 p-2 border rounded bg-light";
-
-            row.innerHTML = `
-      <span class="badge bg-primary">${key}</span>
-      <input class="form-control form-control-sm" value="${lat.toFixed(
-        6
-      )}" readonly>
-      <input class="form-control form-control-sm" value="${lng.toFixed(
-        6
-      )}" readonly>
-      <button class="btn btn-danger btn-sm">
-        <i class="fas fa-trash"></i>
-      </button>
-    `;
-
-            row.querySelector("button").onclick = () => removePoint(kind, key);
-
-            box.appendChild(row);
-          });
-        }
-
-        function nextKey(points) {
-          return "b" + (Object.keys(points).length + 1);
-        }
-
-        function removePoint(kind, key) {
-          const st = state[kind];
-
-          if (st.markers[key]) {
-            st.map.removeLayer(st.markers[key]);
-            delete st.markers[key];
-          }
-
-          delete st.points[key];
-          renderPointList(kind);
-        }
-
-        //============= END Multiple Points ====================//
-
-        function syncBanjirPointsToForm(form) {
-          // hapus input lama
-          form.querySelectorAll(".banjir-point").forEach((e) => e.remove());
-
-          // buat input baru untuk setiap titik
-          Object.values(state.kondisi_banjir.points || {}).forEach((pt) => {
-            const lat = document.createElement("input");
-            lat.type = "hidden";
-            lat.name = "banjir_lat[]";
-            lat.value = pt[0];
-            lat.className = "banjir-point";
-
-            const lon = document.createElement("input");
-            lon.type = "hidden";
-            lon.name = "banjir_lon[]";
-            lon.value = pt[1];
-            lon.className = "banjir-point";
-
-            form.appendChild(lat);
-            form.appendChild(lon);
-          });
-        }
-        const formKondisi = document.querySelector("#asesmenKondisiModal form");
-
-        formKondisi.addEventListener("submit", function (e) {
-          e.preventDefault();
-          syncBanjirPointsToForm(formKondisi);
-          formKondisi.submit();
-        });
-
         // Public handler (dipakai tombol "Ambil Lokasi GPS")
         window.getLocationForAsesmen = function (jenis) {
           const kind = String(jenis || "").toLowerCase();
           if (!cfg[kind]) return;
 
-          _initMap(kind);
-          _getBestLocation(kind);
-        };
-
-        // Public handler (dipakai tombol permintaan)
-        window.getLocationForPermintaan = function () {
-          const kind = "permintaan";
-          if (!cfg[kind]) return;
           _initMap(kind);
           _getBestLocation(kind);
         };
@@ -5698,106 +2419,85 @@ window.getLocationForLokasi = function () {
           });
         });
       })();
-    </script>
 
-    <script>
-      document.addEventListener("DOMContentLoaded", function () {
-        // ===== Login Relawan: datalist (A-Z) + dropdown click =====
-        const dl = document.getElementById("relawanDatalist");
-        const namaInput = document.getElementById("nama");
-        const menu = document.getElementById("relawanDropdownMenu");
-        const dropdownWrap = document.getElementById("relawanDropdownWrap");
-        const dropdownBtn = document.getElementById("relawanDropdownBtn");
+      document.getElementById('filterTanggal').addEventListener('change', function() {
+        const selectedDate = this.value; // Format: YYYY-MM-DD
+        const slides = document.querySelectorAll('.filter-item');
+        let visibleCount = 0;
 
-        if (dl) {
-          const opts = Array.from(dl.querySelectorAll("option"))
-            .map((o) => (o.value || "").trim())
-            .filter(Boolean)
-            .sort((a, b) => a.localeCompare(b, "id", { sensitivity: "base" }));
+        slides.forEach(slide => {
+            // Ambil data tanggal dari atribut HTML
+            // Asumsi format di Excel/DB bisa jadi DD/MM/YYYY atau YYYY-MM-DD
+            // Kita ambil raw stringnya
+            let slideDateRaw = slide.getAttribute('data-tanggal'); 
+            
+            // Konversi sederhana jika format beda (opsional, sesuaikan dengan data sheetmu)
+            // Kalau di sheetmu sudah YYYY-MM-DD, logic ini lebih simpel:
+            
+            if (slideDateRaw === selectedDate) {
+                slide.style.display = 'block'; // Tampilkan
+                visibleCount++;
+            } else {
+                slide.style.display = 'none'; // Sembunyikan
+            }
+        });
 
-          // Rebuild datalist (sorted)
-          dl.innerHTML = "";
-          opts.forEach((v) => {
-            const o = document.createElement("option");
-            o.value = v;
-            dl.appendChild(o);
-          });
+        // Tampilkan pesan jika kosong
+        const noDataMsg = document.getElementById('noDataMessage');
+        if (visibleCount === 0) {
+            noDataMsg.style.display = 'block';
+        } else {
+            noDataMsg.style.display = 'none';
+        }
+    });
 
-          // Build dropdown menu for click selection (keeps typing support)
-          if (menu && namaInput) {
-            const renderMenu = (q) => {
-              const query = (q || "").toLowerCase();
-              const filtered = opts
-                .filter((v) => v.toLowerCase().includes(query))
-                .slice(0, 200);
+    function resetFilter() {
+        document.getElementById('filterTanggal').value = '';
+        const slides = document.querySelectorAll('.filter-item');
+        slides.forEach(slide => {
+            slide.style.display = 'block';
+        });
+        document.getElementById('noDataMessage').style.display = 'none';
+    }
 
-              menu.innerHTML = "";
-              if (filtered.length === 0) {
-                const li = document.createElement("li");
-                const span = document.createElement("span");
-                span.className = "dropdown-item-text";
-                span.textContent = "Tidak ada hasil";
-                li.appendChild(span);
-                menu.appendChild(li);
-                return;
-              }
+    document.addEventListener("DOMContentLoaded", function() {
+        
+        const filterInput = document.getElementById('filterTanggal');
+        const slides = document.querySelectorAll('.filter-item');
+        const noDataMsg = document.getElementById('noDataMessage');
 
-              filtered.forEach((v) => {
-                const li = document.createElement("li");
-                const btn = document.createElement("button");
-                btn.type = "button";
-                btn.className = "dropdown-item";
-                btn.textContent = v;
-                btn.addEventListener("click", () => {
-                  namaInput.value = v;
-                  namaInput.focus();
-                });
-                li.appendChild(btn);
-                menu.appendChild(li);
-              });
-            };
+        // Event saat tanggal diganti
+        filterInput.addEventListener('change', function() {
+            const selectedDate = this.value; // Hasilnya format: '2025-12-28'
+            let visibleCount = 0;
 
-            renderMenu("");
-
-            namaInput.addEventListener("input", () => {
-              renderMenu(namaInput.value);
+            slides.forEach(slide => {
+                // Ambil data tanggal dari HTML (yang sudah kita set jadi ISO juga)
+                const itemDate = slide.getAttribute('data-tanggal');
+                if (itemDate === selectedDate) {
+                    slide.style.display = 'block'; // Muncul
+                    visibleCount++;
+                } else {
+                    slide.style.display = 'none'; // Sembunyi
+                }
             });
 
-            // Refresh menu content when dropdown opened
-            if (dropdownWrap) {
-              dropdownWrap.addEventListener("show.bs.dropdown", () => {
-                renderMenu(namaInput.value);
-              });
+            // Tampilkan pesan jika tidak ada yang cocok
+            if (visibleCount === 0) {
+                noDataMsg.style.display = 'block';
+            } else {
+                noDataMsg.style.display = 'none';
             }
+        });
 
-            if (dropdownBtn) {
-              dropdownBtn.addEventListener("click", () => {
-                // Pastikan input fokus agar user bisa langsung mengetik
-                if (namaInput) namaInput.focus();
-              });
-            }
-          }
-        }
+        // Fungsi Reset (Opsional, pasang di tombol Reset)
+        window.resetFilter = function() {
+            filterInput.value = ''; // Kosongkan input
+            slides.forEach(slide => slide.style.display = 'block'); // Tampilkan semua
+            noDataMsg.style.display = 'none';
+        };
 
-        // ===== Toggle show/hide untuk Kode Akses =====
-        const kodeInput = document.getElementById("kode_akses");
-        const toggleBtn = document.getElementById("toggleKodeAkses");
-
-        if (kodeInput && toggleBtn) {
-          toggleBtn.addEventListener("click", () => {
-            const isPassword = kodeInput.getAttribute("type") === "password";
-            kodeInput.setAttribute("type", isPassword ? "text" : "password");
-
-            const icon = toggleBtn.querySelector("i");
-            if (icon) {
-              icon.classList.toggle("fa-eye", !isPassword);
-              icon.classList.toggle("fa-eye-slash", isPassword);
-            }
-          });
-        }
-      });
+    });
     </script>
-
-
   </body>
 </html>
