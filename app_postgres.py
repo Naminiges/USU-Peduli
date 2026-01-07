@@ -5,7 +5,7 @@ import os  # Untuk mendapatkan waktu saat ini dan Secret Key
 import math
 from pathlib import Path
 from dotenv import load_dotenv
-from media_upload import save_asesmen_photos, photos_to_photo_path_value
+from media_upload import save_asesmen_photos, photos_to_photo_path_value, save_lokasi_photo
 from zoneinfo import ZoneInfo
 
 load_dotenv()
@@ -44,6 +44,7 @@ try:
         pg_set_data_lokasi_active,
         pg_update_data_lokasi_jenis,
         pg_insert_data_lokasi,
+        pg_update_data_lokasi_photo_path,
         pg_get_ref_jenis_lokasi,
         pg_get_ref_kabkota,
         pg_get_ref_status_lokasi,
@@ -92,6 +93,7 @@ except Exception as _pg_err:
     pg_set_data_lokasi_active = None
     pg_update_data_lokasi_jenis = None
     pg_insert_data_lokasi = None
+    pg_update_data_lokasi_photo_path = None
     pg_get_ref_jenis_lokasi = None
     pg_get_ref_kabkota = None
     pg_get_ref_status_lokasi = None
@@ -1743,6 +1745,7 @@ def submit_lokasi():
     pic = (request.form.get("pic") or "").strip() or None
     pic_hp = (request.form.get("pic_hp") or "").strip() or None
     photo_path = (request.form.get("photo_path") or "").strip() or None
+    photo_file = request.files.get("photo_lokasi")
 
     if not jenis_lokasi or not nama_kabkota or not nama_lokasi:
         flash("Gagal simpan lokasi: Jenis Lokasi, Kab/Kota, dan Nama Lokasi wajib diisi.", "danger")
@@ -1751,6 +1754,7 @@ def submit_lokasi():
     try:
         new_id = pg_insert_data_lokasi(
             id_lokasi=id_lokasi,
+            id_relawan=session.get("id_relawan"),  # ✅ TAMBAH
             jenis_lokasi=jenis_lokasi,
             nama_kabkota=nama_kabkota,
             status_lokasi=status_lokasi,
@@ -1772,6 +1776,15 @@ def submit_lokasi():
         flash(f"Lokasi berhasil disimpan: {new_id}", "success")
     except Exception as e:
         flash(f"Gagal simpan lokasi: {e}", "danger")
+
+    # Upload foto lokasi (opsional) -> media/photo_lokasi/<ID_LOKASI>.<ext>
+    try:
+        if photo_file and getattr(photo_file, "filename", ""):
+            saved = save_lokasi_photo(photo_file, id_lokasi=new_id, media_root=MEDIA_DIR)
+            if saved and pg_update_data_lokasi_photo_path is not None:
+                pg_update_data_lokasi_photo_path(new_id, saved)
+    except Exception as e:
+        flash(f"Lokasi tersimpan, tapi upload foto gagal: {e}", "warning")
 
     return redirect(url_for("map_view"))
 

@@ -579,6 +579,7 @@ def pg_next_data_lokasi_id(jenis_lokasi: str, nama_kabkota: str) -> str:
 def pg_insert_data_lokasi(
     *,
     id_lokasi: Optional[str],
+    id_relawan: Optional[str] = None,  # ✅ TAMBAH
     jenis_lokasi: str,
     nama_kabkota: str,
     status_lokasi: str,
@@ -611,21 +612,39 @@ def pg_insert_data_lokasi(
         INSERT INTO {table}
         (waktu, id_lokasi, jenis_lokasi, nama_kabkota, status_lokasi, tingkat_akses, kondisi,
          nama_lokasi, alamat, kecamatan, desa_kelurahan,
-         latitude, longitude, lokasi_text, catatan, pic, pic_hp, photo_path)
+         latitude, longitude, lokasi_text, catatan, pic, pic_hp, photo_path, id_relawan)
         VALUES
         (COALESCE(%s, now()), %s, %s, %s, %s, %s, %s,
          %s, %s, %s, %s,
-         %s, %s, %s, %s, %s, %s, %s);
+         %s, %s, %s, %s, %s, %s, %s, %s);
     """
 
     pg_execute(sql, (
         w, final_id, jenis_lokasi, nama_kabkota, status_lokasi, tingkat_akses, kondisi,
         nama_lokasi, alamat, kecamatan, desa_kelurahan,
-        lat_f, lon_f, lokasi_text, catatan, pic, pic_hp, photo_path
+        lat_f, lon_f, lokasi_text, catatan, pic, pic_hp, photo_path, id_relawan
     ))
 
     return final_id
 
+def pg_update_data_lokasi_photo_path(
+    id_lokasi: str,
+    photo_path: Optional[str],
+) -> bool:
+    """Update photo_path untuk data_lokasi berdasarkan id_lokasi."""
+    table = _get_env("PG_DATA_LOKASI_TABLE", "public.data_lokasi")
+    sid = str(id_lokasi or "").strip()
+    if not sid:
+        raise ValueError("ID lokasi tidak valid")
+
+    sql = f"""
+        UPDATE {table}
+        SET photo_path = %s
+        WHERE id_lokasi = %s
+        RETURNING id_lokasi;
+    """
+    rows = pg_fetchall(sql, (photo_path, sid))
+    return bool(rows)
 
 
 # ------------------------------------------------------------------------------

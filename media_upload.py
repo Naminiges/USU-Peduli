@@ -57,6 +57,38 @@ def save_asesmen_photos(
 
     return saved_rel
 
+def save_lokasi_photo(
+    file,
+    id_lokasi: str,
+    media_root: str,
+) -> Optional[str]:
+    """Simpan 1 foto lokasi ke media/photo_lokasi/<ID_LOKASI>.jpg/png/...
+
+    Return: nilai untuk kolom photo_path, mis. "media/photo_lokasi/G-TT001.jpg"
+    """
+    if not file or not getattr(file, "filename", ""):
+        return None
+
+    sid = _slug(id_lokasi)
+
+    original = secure_filename(file.filename) or "foto.jpg"
+    ext = os.path.splitext(original)[1].lower()
+    if ext == ".jpeg":
+        ext = ".jpg"
+    if ext not in ALLOWED_EXT:
+        raise ValueError("Format foto harus JPG/JPEG/PNG/WEBP.")
+
+    out_dir = os.path.join(media_root, "photo_lokasi")
+    os.makedirs(out_dir, exist_ok=True)
+
+    filename = f"{sid}{ext}"
+    abs_path = os.path.join(out_dir, filename)
+    file.save(abs_path)
+
+    # Disimpan sebagai path relatif yang konsisten dipanggil dari front-end (prefix: media/)
+    rel_path = os.path.join("media", "photo_lokasi", filename).replace("\\", "/")
+    return rel_path
+
 def photos_to_photo_path_value(paths: List[str]) -> Optional[str]:
     """
     Simpan ke kolom photo_path.

@@ -1348,7 +1348,7 @@
         <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="Close"></button>
       </div>
 
-      <form action="{{ url_for('submit_lokasi') }}" method="POST">
+      <form action="{{ url_for('submit_lokasi') }}" method="POST" enctype="multipart/form-data">
         <div class="modal-body">
 
           <!-- Lokasi GPS Saat Ini -->
@@ -1502,6 +1502,13 @@
             <label class="form-label"><i class="fas fa-sticky-note"></i> Catatan</label>
             <textarea class="form-control" name="catatan" rows="3"></textarea>
           </div>
+<div class="mt-3">
+  <label class="form-label"><i class="fas fa-camera"></i> Foto Lokasi (opsional)</label>
+  <input type="file" class="form-control" name="photo_lokasi" accept="image/*">
+  <div class="form-text">
+    Format: JPG/PNG/WEBP. File disimpan sebagai <code>media/photo_lokasi/&lt;ID_LOKASI&gt;.*</code>
+  </div>
+</div>
 
           <!-- optional -->
           <input type="hidden" name="lokasi_text" value="">
