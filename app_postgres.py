@@ -14,7 +14,7 @@ load_dotenv()
 # PostgreSQL helper (utama)
 # ------------------------------------------------------------------------------
 try:
-    from pg_data_ import (
+    from pg_data import (
         pg_get_status_map,
         pg_get_data_lokasi,
         pg_get_relawan_list,
@@ -547,7 +547,7 @@ def map_view():
             ref_kondisi = []
 
     return render_template(
-        "map_.html",
+        "map.html",
         data_lokasi=json.dumps(data_lokasi),
         stok_gudang=stok_gudang,
         rekap_kabkota=list(latest_rekap.values()),
