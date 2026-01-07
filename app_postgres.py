@@ -5,6 +5,7 @@ import os  # Untuk mendapatkan waktu saat ini dan Secret Key
 import math
 from pathlib import Path
 from dotenv import load_dotenv
+from media_upload import save_asesmen_photos, photos_to_photo_path_value
 
 load_dotenv()
 
@@ -19,10 +20,34 @@ try:
         pg_insert_lokasi_relawan,
         pg_insert_asesmen_kesehatan,
         pg_insert_asesmen_pendidikan,
+        pg_insert_asesmen_infrastruktur,
+        pg_insert_asesmen_wash,
+        pg_insert_asesmen_kondisi,
+        pg_insert_asesmen_psikososial,
         pg_get_relawan_locations_last24h,
         pg_get_asesmen_kesehatan_last24h,
         pg_get_asesmen_pendidikan_last24h,
+        pg_get_asesmen_infrastruktur_last24h,
+        pg_get_asesmen_wash_last24h,
+        pg_get_asesmen_kondisi_last24h,
+        pg_get_asesmen_psikososial_last24h,
         ensure_kabkota_geojson_static,
+        pg_get_logistik_permintaan_last24h,
+        pg_insert_logistik_permintaan,
+        pg_update_logistik_permintaan_status,
+        pg_deactivate_asesmen,
+        pg_set_asesmen_active,
+        pg_get_admin_asesmen_list,
+        pg_get_admin_action_logs,
+        pg_get_admin_lokasi_list,
+        pg_set_data_lokasi_active,
+        pg_update_data_lokasi_jenis,
+        pg_insert_data_lokasi,
+        pg_get_ref_jenis_lokasi,
+        pg_get_ref_kabkota,
+        pg_get_ref_status_lokasi,
+        pg_get_ref_tingkat_akses,
+        pg_get_ref_kondisi,
         # opsional (kalau tabel ada)
         pg_get_stok_gudang,
         pg_get_master_logistik_codes,
@@ -38,16 +63,39 @@ except Exception as _pg_err:
     pg_insert_lokasi_relawan = None
     pg_insert_asesmen_kesehatan = None
     pg_insert_asesmen_pendidikan = None
+    pg_insert_asesmen_infrastruktur = None
+    pg_insert_asesmen_wash = None
+    pg_insert_asesmen_kondisi = None
+    pg_insert_asesmen_psikososial = None
     pg_get_relawan_locations_last24h = None
     pg_get_asesmen_kesehatan_last24h = None
     pg_get_asesmen_pendidikan_last24h = None
+    pg_get_asesmen_infrastruktur_last24h = None
+    pg_get_asesmen_wash_last24h = None
+    pg_get_asesmen_kondisi_last24h = None
+    pg_get_asesmen_psikososial_last24h = None
     ensure_kabkota_geojson_static = None
     pg_get_stok_gudang = None
     pg_get_master_logistik_codes = None
     pg_get_rekap_kabkota_latest = None
     pg_insert_permintaan_posko = None
     pg_next_id = None
-
+    pg_insert_logistik_permintaan = None
+    pg_get_logistik_permintaan_last24h = None
+    pg_update_logistik_permintaan_status = None
+    pg_deactivate_asesmen = None
+    pg_set_asesmen_active = None
+    pg_get_admin_asesmen_list = None
+    pg_get_admin_action_logs = None
+    pg_get_admin_lokasi_list = None
+    pg_set_data_lokasi_active = None
+    pg_update_data_lokasi_jenis = None
+    pg_insert_data_lokasi = None
+    pg_get_ref_jenis_lokasi = None
+    pg_get_ref_kabkota = None
+    pg_get_ref_status_lokasi = None
+    pg_get_ref_tingkat_akses = None
+    pg_get_ref_kondisi = None
 
 app = Flask(__name__)
 
@@ -107,11 +155,73 @@ def get_data_lokasi_any() -> list:
     return []
 
 
+def _is_active_row(row: dict) -> bool:
+    """Normalisasi flag is_active (True jika kolom belum ada/None).
+
+    - False / 'false' / '0' / 'no' dianggap nonaktif.
+    """
+    try:
+        v = row.get('is_active')
+    except Exception:
+        return True
+
+    if v is False:
+        return False
+    if isinstance(v, str) and v.strip().lower() in ('false', '0', 'no', 'n'):
+        return False
+    return True
+
+def get_ref_jenis_lokasi_any() -> list:
+    if _pg_enabled() and pg_get_ref_jenis_lokasi is not None:
+        try:
+            return pg_get_ref_jenis_lokasi() or []
+        except Exception as e:
+            print(f"[PG] get_ref_jenis_lokasi_any error: {e}")
+    return []
+
+def get_ref_kabkota_any() -> list:
+    if _pg_enabled() and pg_get_ref_kabkota is not None:
+        try:
+            return pg_get_ref_kabkota() or []
+        except Exception as e:
+            print(f"[PG] get_ref_kabkota_any error: {e}")
+    return []
+
+def get_ref_status_lokasi_any() -> list:
+    if _pg_enabled() and pg_get_ref_status_lokasi is not None:
+        try:
+            return pg_get_ref_status_lokasi() or []
+        except Exception as e:
+            print(f"[PG] get_ref_status_lokasi_any error: {e}")
+    return []
+
+def get_ref_tingkat_akses_any() -> list:
+    if _pg_enabled() and pg_get_ref_tingkat_akses is not None:
+        try:
+            return pg_get_ref_tingkat_akses() or []
+        except Exception as e:
+            print(f"[PG] get_ref_tingkat_akses_any error: {e}")
+    return []
+
+def get_ref_kondisi_any() -> list:
+    if _pg_enabled() and pg_get_ref_kondisi is not None:
+        try:
+            return pg_get_ref_kondisi() or []
+        except Exception as e:
+            print(f"[PG] get_ref_kondisi_any error: {e}")
+    return []
+
 def get_relawan_list_any() -> list:
     """Ambil daftar relawan dari Postgres untuk login."""
     if _pg_enabled() and pg_get_relawan_list is not None:
         try:
-            return pg_get_relawan_list() or []
+            lst = pg_get_relawan_list() or []
+            # Urutkan A-Z untuk dropdown login
+            try:
+                lst.sort(key=lambda x: (x.get("nama_relawan") or "").strip().lower())
+            except Exception:
+                pass
+            return lst
         except Exception as e:
             print(f"[PG] get_relawan_list_any error: {e}")
     return []
@@ -225,8 +335,6 @@ def log_permintaan_posko(data_permintaan, nama_relawan, id_relawan, nama_posko=N
         id_permintaan = sanitize_for_log(data_permintaan.get("id_permintaan", "UNKNOWN"))
         kode_posko = sanitize_for_log(data_permintaan.get("kode_posko", "UNKNOWN"))
         nama_posko_safe = sanitize_for_log(nama_posko) if nama_posko else kode_posko
-        kode_barang = sanitize_for_log(data_permintaan.get("kode_barang", "UNKNOWN"))
-        jumlah_diminta = sanitize_for_log(data_permintaan.get("jumlah_diminta", "0"))
         keterangan = sanitize_for_log(data_permintaan.get("keterangan", ""))
         status = sanitize_for_log(data_permintaan.get("status", "Draft"))
         tanggal = sanitize_for_log(data_permintaan.get("tanggal", ""))
@@ -237,8 +345,6 @@ def log_permintaan_posko(data_permintaan, nama_relawan, id_relawan, nama_posko=N
             f"ID: {id_permintaan} | "
             f"Peminta: {nama_relawan_safe} (ID: {id_relawan_safe}) | "
             f"Posko: {nama_posko_safe} ({kode_posko}) | "
-            f"Barang: {kode_barang} | "
-            f"Jumlah: {jumlah_diminta} | "
             f"Status: {status} | "
             f"Tanggal: {tanggal} | "
             f"Keterangan: {keterangan if keterangan else '(tidak ada)'}"
@@ -270,7 +376,7 @@ def api_refresh_map():
     """API endpoint untuk mendapatkan data map terbaru."""
     try:
         data_lokasi_raw = get_data_lokasi_any()
-        data_lokasi = [d for d in data_lokasi_raw if d.get("latitude") and d.get("longitude")]
+        data_lokasi = [d for d in data_lokasi_raw if d.get("latitude") and d.get("longitude") and _is_active_row(d)]
 
         status_map = get_status_map_any()
 
@@ -278,9 +384,18 @@ def api_refresh_map():
         relawan_lokasi = []
         if pg_get_relawan_locations_last24h:
             try:
-                relawan_lokasi = pg_get_relawan_locations_last24h(24)
+                relawan_lokasi = pg_get_relawan_locations_last24h(720)
             except Exception as e:
                 print(f"Warning: gagal ambil lokasi_relawan dari Postgres: {e}")
+
+        
+        # Permintaan logistik (Postgres) - marker di map (ambil last 24 jam)
+        permintaan_logistik = []
+        if pg_get_logistik_permintaan_last24h:
+            try:
+                permintaan_logistik = pg_get_logistik_permintaan_last24h(720) or []
+            except Exception as e:
+                print(f"Warning: gagal ambil logistik_permintaan dari Postgres: {e}")
 
         return jsonify(
             {
@@ -288,8 +403,14 @@ def api_refresh_map():
                 "data_lokasi": data_lokasi,
                 "status_map": status_map,
                 "relawan_lokasi": relawan_lokasi,
-                "asesmen_kesehatan": pg_get_asesmen_kesehatan_last24h(24) if pg_get_asesmen_kesehatan_last24h else [],
-                "asesmen_pendidikan": pg_get_asesmen_pendidikan_last24h(24) if pg_get_asesmen_pendidikan_last24h else []
+                "asesmen_kesehatan": pg_get_asesmen_kesehatan_last24h(720) if pg_get_asesmen_kesehatan_last24h else [],
+                "asesmen_pendidikan": pg_get_asesmen_pendidikan_last24h(720) if pg_get_asesmen_pendidikan_last24h else [],
+                "asesmen_psikososial": pg_get_asesmen_psikososial_last24h(720) if pg_get_asesmen_psikososial_last24h else [],
+                "asesmen_infrastruktur": pg_get_asesmen_infrastruktur_last24h(720) if pg_get_asesmen_infrastruktur_last24h else [],
+                "asesmen_wash": pg_get_asesmen_wash_last24h(720) if pg_get_asesmen_wash_last24h else [],
+                "asesmen_kondisi": pg_get_asesmen_kondisi_last24h(720) if pg_get_asesmen_kondisi_last24h else [],
+
+                "permintaan_logistik": permintaan_logistik
             }
         )
     except Exception as e:
@@ -305,7 +426,7 @@ def map_view():
     ensure_kabkota_geojson_ready()
 
     data_lokasi_raw = get_data_lokasi_any()
-    data_lokasi = [d for d in data_lokasi_raw if d.get("latitude") and d.get("longitude")]
+    data_lokasi = [d for d in data_lokasi_raw if d.get("latitude") and d.get("longitude") and _is_active_row(d)]
 
     # Opsional: stok gudang / master logistik / rekap (kalau ada tabelnya)
     stok_gudang = []
@@ -337,17 +458,35 @@ def map_view():
     data_posko_list = []
     for d in data_lokasi:
         if d.get("jenis_lokasi") == "Posko Pengungsian":
-            kode = d.get("kode_lokasi")
-            nama = d.get("nama_lokasi") or d.get("kabupaten_kota") or kode
-            data_posko_list.append({"kode": kode, "nama": nama})
+            kode = d.get("kode_lokasi") or d.get("id_lokasi") or ""
+            kab = d.get("nama_kabkota") or d.get("kabupaten_kota") or ""
+            nm = d.get("nama_lokasi") or ""
+            data_posko_list.append({"kode": kode, "nama": nm, "kabkota":kab})
+
+    # urutkan: Kab/Kota A-Z, lalu kode A-Z
+    data_posko_list.sort(
+        key=lambda x: (
+            (x.get("kabkota") or "").strip().lower(),
+            (x.get("kode") or "").strip().lower(),
+            (x.get("nama") or "").strip().lower(),
+        )
+    )
 
     # Lokasi relawan (Postgres) - marker di map (ambil last 24 jam)
     relawan_lokasi = []
     if pg_get_relawan_locations_last24h:
         try:
-            relawan_lokasi = pg_get_relawan_locations_last24h(24)
+            relawan_lokasi = pg_get_relawan_locations_last24h(720)
         except Exception as e:
             print(f"Warning: gagal ambil lokasi_relawan dari Postgres: {e}")
+
+    # Permintaan logistik (Postgres) - marker di map (ambil last 24 jam)
+    permintaan_logistik = []
+    if pg_get_logistik_permintaan_last24h:
+        try:
+            permintaan_logistik = pg_get_logistik_permintaan_last24h(720)
+        except Exception as e:
+            print(f"Warning: gagal ambil logistik_permintaan dari Postgres: {e}")
 
     data_barang = []
     if _pg_enabled() and pg_get_master_logistik_codes is not None:
@@ -355,6 +494,33 @@ def map_view():
             data_barang = pg_get_master_logistik_codes() or []
         except Exception as e:
             print(f"[PG] get_master_logistik_codes error: {e}")
+    # --- dropdown refs untuk INPUT LOKASI (data_lokasi) ---
+    ref_jenis_lokasi = []
+    ref_kabkota = []
+    ref_status_lokasi = []
+    ref_tingkat_akses = []
+    ref_kondisi = []
+    if _pg_enabled():
+        try:
+            ref_jenis_lokasi = (pg_get_ref_jenis_lokasi() or [])
+        except Exception:
+            ref_jenis_lokasi = []
+        try:
+            ref_kabkota = (pg_get_ref_kabkota() or [])
+        except Exception:
+            ref_kabkota = []
+        try:
+            ref_status_lokasi = (pg_get_ref_status_lokasi() or [])
+        except Exception:
+            ref_status_lokasi = []
+        try:
+            ref_tingkat_akses = (pg_get_ref_tingkat_akses() or [])
+        except Exception:
+            ref_tingkat_akses = []
+        try:
+            ref_kondisi = (pg_get_ref_kondisi() or [])
+        except Exception:
+            ref_kondisi = []
 
     return render_template(
         "map.html",
@@ -367,9 +533,21 @@ def map_view():
         data_barang=data_barang,
         logged_in=session.get("logged_in", False),
         nama_relawan=session.get("nama_relawan", ""),
+        is_admin=session.get("is_admin", False),
         status_map=json.dumps(status_map),
-        asesmen_kesehatan=json.dumps(pg_get_asesmen_kesehatan_last24h(24) if pg_get_asesmen_kesehatan_last24h else []),
-        asesmen_pendidikan=json.dumps(pg_get_asesmen_pendidikan_last24h(24) if pg_get_asesmen_pendidikan_last24h else [])
+        asesmen_kesehatan=json.dumps(pg_get_asesmen_kesehatan_last24h(720) if pg_get_asesmen_kesehatan_last24h else []),
+        asesmen_pendidikan=json.dumps(pg_get_asesmen_pendidikan_last24h(720) if pg_get_asesmen_pendidikan_last24h else []),
+        asesmen_psikososial=json.dumps(pg_get_asesmen_psikososial_last24h(720) if pg_get_asesmen_psikososial_last24h else []),
+        asesmen_infrastruktur=json.dumps(pg_get_asesmen_infrastruktur_last24h(720) if pg_get_asesmen_infrastruktur_last24h else []),
+        asesmen_wash=json.dumps(pg_get_asesmen_wash_last24h(720) if pg_get_asesmen_wash_last24h else []),
+        ref_jenis_lokasi=ref_jenis_lokasi,
+        ref_kabkota=ref_kabkota,
+        ref_status_lokasi=ref_status_lokasi,
+        ref_tingkat_akses=ref_tingkat_akses,
+        ref_kondisi=ref_kondisi,
+        asesmen_kondisi=json.dumps(pg_get_asesmen_kondisi_last24h(720) if pg_get_asesmen_kondisi_last24h else []),
+
+        permintaan_logistik=json.dumps(permintaan_logistik)
     )
 
 
@@ -413,6 +591,7 @@ def login():
     session["logged_in"] = True
     session["nama_relawan"] = matched["nama_relawan"]
     session["id_relawan"] = matched.get("id_relawan", "UNKNOWN")
+    session["is_admin"] = bool(matched.get("is_admin") or False)
     flash(f"Login berhasil! Selamat bertugas, {matched['nama_relawan']}.", "success")
     return redirect(url_for("map_view"))
 
@@ -422,25 +601,27 @@ def logout():
     session.pop("logged_in", None)
     session.pop("nama_relawan", None)
     session.pop("id_relawan", None)
+    session.pop("is_admin", None)
     flash("Logout Berhasil.", "success")
     return redirect(url_for("map_view"))
 
 
 # ==============================================================================
-# 2. LOGIKA PERMINTAAN POSKO
+# 2. LOGIKA PERMINTAAN LOGISTIK (logistik_permintaan)
 # ==============================================================================
 @app.route("/submit_permintaan", methods=["POST"])
 def submit_permintaan():
     if not session.get("logged_in"):
         return redirect(url_for("map_view"))
 
-    if not _pg_enabled() or pg_insert_permintaan_posko is None:
+    if not _pg_enabled() or pg_insert_logistik_permintaan is None:
         flash("Fitur permintaan belum aktif: tabel/pg_data belum siap.", "danger")
         return redirect(url_for("map_view"))
 
     kode_posko = request.form.get("kode_posko")
-    kode_barang = request.form.get("kode_barang")
-    jumlah_diminta = request.form.get("jumlah_diminta")
+    keterangan = request.form.get("keterangan", "")
+    latitude = request.form.get("latitude")
+    longitude = request.form.get("longitude")
 
     # Ambil nama posko untuk log yang lebih informatif
     nama_posko = None
@@ -451,19 +632,25 @@ def submit_permintaan():
             break
 
     data = {
-        "id_permintaan": get_next_id("PG_PERMINTAAN_POSKO_TABLE", "public.permintaan_posko", "id_permintaan", "R"),
+        # id untuk log saja (di DB pakai bigserial)
+        "id_permintaan": f"LP-{datetime.datetime.now().strftime('%Y%m%d%H%M%S')}",
         "tanggal": datetime.datetime.now().strftime("%d-%B-%y"),
         "kode_posko": kode_posko,
-        "kode_barang": kode_barang,
-        "jumlah_diminta": jumlah_diminta,
+        "keterangan": keterangan,
+        "status_permintaan": "Draft",
+        # kompatibel dengan logger lama
         "status": "Draft",
-        "keterangan": request.form.get("keterangan", ""),
+        "kode_barang": "-",
+        "jumlah_diminta": "-",
+        "id_relawan": session.get("id_relawan", session.get("nama_relawan")),
         "relawan": session.get("id_relawan", session.get("nama_relawan")),
         "photo_link": "",
+        "latitude": latitude,
+        "longitude": longitude,
     }
 
     try:
-        pg_insert_permintaan_posko(data)
+        pg_insert_logistik_permintaan(data)
     except Exception as e:
         flash(f"Gagal simpan permintaan: {e}", "danger")
         return redirect(url_for("map_view"))
@@ -475,6 +662,341 @@ def submit_permintaan():
 
     flash(f"Permintaan {nama_posko or kode_posko} berhasil dikirim!", "success")
     return redirect(url_for("map_view"))
+
+
+
+# ==============================================================================
+# 2b. ADMIN: UPDATE STATUS PERMINTAAN LOGISTIK (logistik_permintaan)
+# ==============================================================================
+@app.route("/api/update_permintaan_status", methods=["POST"])
+def api_update_permintaan_status():
+    """Update status_permintaan pada logistik_permintaan.
+    Hanya untuk relawan yang login dan is_admin=True.
+    Payload: {id: <int>, status: <str>, note?: <str>}
+    """
+    if not session.get("logged_in"):
+        return jsonify({"success": False, "error": "Unauthorized"}), 401
+
+    if not session.get("is_admin"):
+        return jsonify({"success": False, "error": "Forbidden"}), 403
+
+    if not _pg_enabled() or pg_update_logistik_permintaan_status is None:
+        return jsonify({"success": False, "error": "Fitur belum aktif (pg_data belum siap)."}), 500
+
+    payload = request.get_json(silent=True) or {}
+    if not payload:
+        payload = request.form.to_dict() if request.form else {}
+
+    # fallback: kalau front-end ngirim id_permintaan / permintaan_id
+    id_raw = payload.get("id")
+    if id_raw is None:
+        id_raw = payload.get("id_permintaan")
+    if id_raw is None:
+        id_raw = payload.get("permintaan_id")
+
+    status_new = (payload.get("status") or payload.get("status_permintaan") or "").strip()
+    note = (payload.get("note") or "").strip() or None
+
+    allowed = {"Draft", "Diproses", "Dikirim", "Diterima", "Ditolak"}
+    if status_new not in allowed:
+        return jsonify({"success": False, "error": "Status tidak valid."}), 400
+
+    try:
+        id_int = int(str(id_raw).strip())
+    except Exception:
+        return jsonify({"success": False, "error": "ID tidak valid."}), 400
+
+    try:
+        ok = pg_update_logistik_permintaan_status(
+            id_int,
+            status_new,
+            actor_id_relawan=session.get("id_relawan"),
+            actor_nama_relawan=session.get("nama_relawan"),
+            note=note,
+        )
+
+        if not ok:
+            return jsonify({"success": False, "error": "Data permintaan tidak ditemukan."}), 404
+
+        return jsonify({"success": True})
+    except Exception as e:
+        return jsonify({"success": False, "error": str(e)}), 500
+
+
+
+# ==============================================================================
+
+
+# ==============================================================================
+# ==============================================================================
+# 2c. ADMIN: SET ASESMEN is_active (toggle True/False)
+# ==============================================================================
+@app.route("/api/set_asesmen_active", methods=["POST"])
+def api_set_asesmen_active():
+    """Set is_active True/False pada asesmen tertentu.
+
+    Hanya untuk relawan yang login dan is_admin=True.
+    Payload: {kind: 'kesehatan|pendidikan|psikososial|infrastruktur|wash|kondisi', id: <int>, is_active: true/false, note?: <str>}
+    """
+    if not session.get("logged_in"):
+        return jsonify({"success": False, "error": "Unauthorized"}), 401
+
+    if not session.get("is_admin"):
+        return jsonify({"success": False, "error": "Forbidden"}), 403
+
+    if not _pg_enabled() or pg_set_asesmen_active is None:
+        return jsonify({"success": False, "error": "Fitur belum aktif (pg_data belum siap)."}), 500
+
+    payload = request.get_json(silent=True) or {}
+    if not payload:
+        payload = request.form.to_dict() if request.form else {}
+
+    kind = (payload.get("kind") or "").strip()
+    asesmen_id = payload.get("id")
+    is_active_raw = payload.get("is_active")
+    note = (payload.get("note") or "").strip() or None
+
+    if not kind or asesmen_id is None or is_active_raw is None:
+        return jsonify({"success": False, "error": "Payload tidak lengkap."}), 400
+
+    # Normalisasi bool
+    if isinstance(is_active_raw, str):
+        is_active_val = is_active_raw.strip().lower() in ("1", "true", "yes", "y", "on")
+    else:
+        is_active_val = bool(is_active_raw)
+
+    try:
+        ok = pg_set_asesmen_active(
+            kind=kind,
+            asesmen_id=asesmen_id,
+            is_active=is_active_val,
+            actor_id_relawan=session.get("id_relawan"),
+            actor_nama_relawan=session.get("nama_relawan"),
+            note=note,
+        )
+
+        if ok:
+            return jsonify({"success": True})
+        return jsonify({"success": False, "error": "Data tidak ditemukan."}), 404
+
+    except Exception as e:
+        return jsonify({"success": False, "error": str(e)}), 400
+
+
+# Backward compatible (dipakai patch sebelumnya)
+@app.route("/api/deactivate_asesmen", methods=["POST"])
+def api_deactivate_asesmen():
+    """Alias untuk set is_active=false."""
+    if not session.get("logged_in"):
+        return jsonify({"success": False, "error": "Unauthorized"}), 401
+
+    if not session.get("is_admin"):
+        return jsonify({"success": False, "error": "Forbidden"}), 403
+
+    if not _pg_enabled() or pg_set_asesmen_active is None:
+        return jsonify({"success": False, "error": "Fitur belum aktif (pg_data belum siap)."}), 500
+
+    payload = request.get_json(silent=True) or {}
+    if not payload:
+        payload = request.form.to_dict() if request.form else {}
+
+    kind = (payload.get("kind") or "").strip()
+    asesmen_id = payload.get("id")
+    note = (payload.get("note") or "").strip() or None
+
+    if not kind or asesmen_id is None:
+        return jsonify({"success": False, "error": "Payload tidak lengkap."}), 400
+
+    try:
+        ok = pg_set_asesmen_active(
+            kind=kind,
+            asesmen_id=asesmen_id,
+            is_active=False,
+            actor_id_relawan=session.get("id_relawan"),
+            actor_nama_relawan=session.get("nama_relawan"),
+            note=note,
+        )
+        if ok:
+            return jsonify({"success": True})
+        return jsonify({"success": False, "error": "Data tidak ditemukan."}), 404
+    except Exception as e:
+        return jsonify({"success": False, "error": str(e)}), 400
+
+
+# ==============================================================================
+# 2d. ADMIN: LIST ASESMEN (AKTIF + NONAKTIF) UNTUK PANEL ADMIN
+# ==============================================================================
+@app.route("/api/admin_asesmen_list", methods=["GET"])
+def api_admin_asesmen_list():
+    """Ambil daftar asesmen (aktif + nonaktif) untuk panel admin."""
+    if not session.get("logged_in"):
+        return jsonify({"success": False, "error": "Unauthorized"}), 401
+
+    if not session.get("is_admin"):
+        return jsonify({"success": False, "error": "Forbidden"}), 403
+
+    if not _pg_enabled() or pg_get_admin_asesmen_list is None:
+        return jsonify({"success": False, "error": "Fitur belum aktif (pg_data belum siap)."}), 500
+
+    hours_raw = request.args.get("hours", "24")
+    try:
+        hours = int(str(hours_raw).strip())
+    except Exception:
+        hours = 24
+
+    try:
+        rows = pg_get_admin_asesmen_list(hours=hours, limit_per_kind=200)
+        return jsonify({"success": True, "rows": rows})
+    except Exception as e:
+        return jsonify({"success": False, "error": str(e)}), 500
+
+
+# ==============================================================================
+
+# ==============================================================================
+# 2d. ADMIN: BACA LOG AKSI ADMIN
+# ==============================================================================
+@app.route("/api/admin_action_logs", methods=["GET"])
+def api_admin_action_logs():
+    """Ambil log aksi admin (untuk ditampilkan di modal admin)."""
+    if not session.get("logged_in"):
+        return jsonify({"success": False, "error": "Unauthorized"}), 401
+
+    if not session.get("is_admin"):
+        return jsonify({"success": False, "error": "Forbidden"}), 403
+
+    if not _pg_enabled() or pg_get_admin_action_logs is None:
+        return jsonify({"success": False, "error": "Fitur belum aktif (pg_data belum siap)."}), 500
+
+    limit_raw = request.args.get("limit", "200")
+    try:
+        limit = int(str(limit_raw).strip())
+    except Exception:
+        limit = 200
+
+    try:
+        logs = pg_get_admin_action_logs(limit)
+        return jsonify({"success": True, "logs": logs})
+    except Exception as e:
+        return jsonify({"success": False, "error": str(e)}), 500
+
+
+# ==============================================================================
+# 2e. ADMIN: DATA LOKASI (is_active + update jenis_lokasi)
+# ==============================================================================
+@app.route("/api/admin_lokasi_list", methods=["GET"])
+def api_admin_lokasi_list():
+    """Ambil daftar data_lokasi (aktif + nonaktif) untuk panel admin.
+
+    Query: limit (default 500)
+    """
+    if not session.get("logged_in"):
+        return jsonify({"success": False, "error": "Unauthorized"}), 401
+
+    if not session.get("is_admin"):
+        return jsonify({"success": False, "error": "Forbidden"}), 403
+
+    if not _pg_enabled() or pg_get_admin_lokasi_list is None:
+        return jsonify({"success": False, "error": "Fitur belum aktif (pg_data belum siap)."}), 500
+
+    limit_raw = request.args.get("limit", "500")
+    try:
+        limit = int(str(limit_raw).strip())
+    except Exception:
+        limit = 500
+
+    try:
+        rows = pg_get_admin_lokasi_list(limit=limit)
+        return jsonify({"success": True, "rows": rows})
+    except Exception as e:
+        return jsonify({"success": False, "error": str(e)}), 500
+
+
+@app.route("/api/set_lokasi_active", methods=["POST"])
+def api_set_lokasi_active():
+    """Set is_active True/False pada data_lokasi tertentu.
+
+    Payload: {id_lokasi: <str>, is_active: true/false, note?: <str>}
+    """
+    if not session.get("logged_in"):
+        return jsonify({"success": False, "error": "Unauthorized"}), 401
+
+    if not session.get("is_admin"):
+        return jsonify({"success": False, "error": "Forbidden"}), 403
+
+    if not _pg_enabled() or pg_set_data_lokasi_active is None:
+        return jsonify({"success": False, "error": "Fitur belum aktif (pg_data belum siap)."}), 500
+
+    payload = request.get_json(silent=True) or {}
+    if not payload:
+        payload = request.form.to_dict() if request.form else {}
+
+    id_lokasi = (payload.get("id_lokasi") or payload.get("id") or "").strip()
+    is_active_raw = payload.get("is_active")
+    note = (payload.get("note") or "").strip() or None
+
+    if not id_lokasi or is_active_raw is None:
+        return jsonify({"success": False, "error": "Payload tidak lengkap."}), 400
+
+    if isinstance(is_active_raw, str):
+        is_active_val = is_active_raw.strip().lower() in ("1", "true", "yes", "y", "on")
+    else:
+        is_active_val = bool(is_active_raw)
+
+    try:
+        ok = pg_set_data_lokasi_active(
+            id_lokasi=id_lokasi,
+            is_active=is_active_val,
+            actor_id_relawan=session.get("id_relawan"),
+            actor_nama_relawan=session.get("nama_relawan"),
+            note=note,
+        )
+        if ok:
+            return jsonify({"success": True})
+        return jsonify({"success": False, "error": "Data tidak ditemukan."}), 404
+    except Exception as e:
+        return jsonify({"success": False, "error": str(e)}), 400
+
+
+@app.route("/api/update_lokasi_jenis", methods=["POST"])
+def api_update_lokasi_jenis():
+    """Update jenis_lokasi pada data_lokasi.
+
+    Payload: {id_lokasi: <str>, jenis_lokasi: <str>, note?: <str>}
+    """
+    if not session.get("logged_in"):
+        return jsonify({"success": False, "error": "Unauthorized"}), 401
+
+    if not session.get("is_admin"):
+        return jsonify({"success": False, "error": "Forbidden"}), 403
+
+    if not _pg_enabled() or pg_update_data_lokasi_jenis is None:
+        return jsonify({"success": False, "error": "Fitur belum aktif (pg_data belum siap)."}), 500
+
+    payload = request.get_json(silent=True) or {}
+    if not payload:
+        payload = request.form.to_dict() if request.form else {}
+
+    id_lokasi = (payload.get("id_lokasi") or payload.get("id") or "").strip()
+    jenis_lokasi = (payload.get("jenis_lokasi") or "").strip()
+    note = (payload.get("note") or "").strip() or None
+
+    if not id_lokasi or not jenis_lokasi:
+        return jsonify({"success": False, "error": "Payload tidak lengkap."}), 400
+
+    try:
+        ok = pg_update_data_lokasi_jenis(
+            id_lokasi=id_lokasi,
+            jenis_lokasi=jenis_lokasi,
+            actor_id_relawan=session.get("id_relawan"),
+            actor_nama_relawan=session.get("nama_relawan"),
+            note=note,
+        )
+        if ok:
+            return jsonify({"success": True})
+        return jsonify({"success": False, "error": "Data tidak ditemukan."}), 404
+    except Exception as e:
+        return jsonify({"success": False, "error": str(e)}), 400
 
 
 # ==============================================================================
@@ -647,6 +1169,18 @@ def _ask_int_1_5(val, default: int = 1) -> int:
         return default
 
 
+
+def _get_asesmen_photo_path(asesmen_name: str):
+    """Simpan max 2 foto asesmen ke media/asesmen/ dan return nilai untuk kolom photo_path (JSON string array)."""
+    files = request.files.getlist("photos")
+    paths = save_asesmen_photos(
+        files,
+        asesmen_name=asesmen_name,
+        id_relawan=session.get("id_relawan", "UNKNOWN"),
+        media_root=MEDIA_DIR,
+    )
+    return photos_to_photo_path_value(paths)
+
 def _require_login():
     if not session.get("logged_in"):
         flash("Silahkan login terlebih dahulu!", "danger")
@@ -663,11 +1197,28 @@ def submit_asesmen_kesehatan():
         flash("Fitur asesmen belum aktif: DATABASE_URL/pg_data belum siap.", "danger")
         return redirect(url_for("map_view"))
 
+    # Upload foto (opsional, maksimal 2)
+    try:
+        photo_path = _get_asesmen_photo_path('kesehatan')
+    except Exception as e:
+        flash(f"Gagal upload foto asesmen kesehatan: {e}", "danger")
+        return redirect(url_for("map_view"))
+
+
     # Form data
     kode_posko = request.form.get("kode_posko") or None
     lat = request.form.get("latitude")
     lon = request.form.get("longitude")
     catatan = request.form.get("catatan") or None
+    radius_in = request.form.get("radius")
+    try:
+        radius = float(radius_in) if radius_in not in (None, "") else 2.0
+    except Exception:
+        radius = 2.0
+    if radius <= 0:
+        radius = 2.0
+    if radius > 50:
+        radius = 50.0
 
     p1 = _ask_int_1_5(request.form.get("p1"))
     p2 = _ask_int_1_5(request.form.get("p2"))
@@ -712,6 +1263,8 @@ def submit_asesmen_kesehatan():
             latitude=lat,
             longitude=lon,
             catatan=catatan,
+            photo_path=photo_path,
+            radius=radius,
         )
         flash(f"Asesmen Kesehatan tersimpan (Status: {status}, Skor: {skor_100:.1f}).", "success")
     except Exception as e:
@@ -729,10 +1282,27 @@ def submit_asesmen_pendidikan():
         flash("Fitur asesmen belum aktif: DATABASE_URL/pg_data belum siap.", "danger")
         return redirect(url_for("map_view"))
 
+    # Upload foto (opsional, maksimal 2)
+    try:
+        photo_path = _get_asesmen_photo_path('pendidikan')
+    except Exception as e:
+        flash(f"Gagal upload foto asesmen pendidikan: {e}", "danger")
+        return redirect(url_for("map_view"))
+
+
     kode_posko = request.form.get("kode_posko") or None
     lat = request.form.get("latitude")
     lon = request.form.get("longitude")
     catatan = request.form.get("catatan") or None
+    radius_in = request.form.get("radius")
+    try:
+        radius = float(radius_in) if radius_in not in (None, "") else 2.0
+    except Exception:
+        radius = 2.0
+    if radius <= 0:
+        radius = 2.0
+    if radius > 50:
+        radius = 50.0
 
     # 10 soal (skala 1-5)
     answers = {f"p{i}": _ask_int_1_5(request.form.get(f"p{i}")) for i in range(1, 11)}
@@ -772,6 +1342,8 @@ def submit_asesmen_pendidikan():
             latitude=lat,
             longitude=lon,
             catatan=catatan,
+            photo_path=photo_path,
+            radius=radius,
         )
         flash(f"Asesmen Pendidikan tersimpan (Status: {status}, Skor: {skor_100:.1f}).", "success")
     except Exception as e:
@@ -779,6 +1351,384 @@ def submit_asesmen_pendidikan():
 
     return redirect(url_for("map_view"))
 
+@app.route("/submit_asesmen_psikososial", methods=["POST"])
+def submit_asesmen_psikososial():
+    if not _require_login():
+        return redirect(url_for("map_view"))
+
+    if not _pg_enabled() or pg_insert_asesmen_psikososial is None:
+        flash("Fitur asesmen belum aktif: DATABASE_URL/pg_data belum siap.", "danger")
+        return redirect(url_for("map_view"))
+
+    # Upload foto (opsional, maksimal 2)
+    try:
+        photo_path = _get_asesmen_photo_path('psikososial')
+    except Exception as e:
+        flash(f"Gagal upload foto asesmen psikososial: {e}", "danger")
+        return redirect(url_for("map_view"))
+
+
+    kode_posko = request.form.get("kode_posko") or None
+    lat = request.form.get("latitude")
+    lon = request.form.get("longitude")
+    catatan = request.form.get("catatan") or None
+    radius_in = request.form.get("radius")
+    try:
+        radius = float(radius_in) if radius_in not in (None, "") else 2.0
+    except Exception:
+        radius = 2.0
+    if radius <= 0:
+        radius = 2.0
+    if radius > 50:
+        radius = 50.0
+
+    # 10 soal (skala 1-5)
+    answers = {f"p{i}": _ask_int_1_5(request.form.get(f"p{i}")) for i in range(1, 11)}
+
+    weights = {
+        "p1": 1.4,
+        "p2": 1.0,
+        "p3": 1.0,
+        "p4": 1.0,
+        "p5": 0.8,
+        "p6": 1.5,
+        "p7": 0.9,
+        "p8": 1.3,
+        "p9": 0.8,
+        "p10": 0.9,
+    }
+
+    weighted_sum = sum(answers[k] * weights[k] for k in answers)
+    max_sum = sum(5 * weights[k] for k in answers)
+
+    skor_100 = (weighted_sum / max_sum) * 100.0
+
+    if skor_100 >= 80:
+        status = "Kritis"
+    elif skor_100 >= 60:
+        status = "Waspada"
+    else:
+        status = "Aman"
+
+    try:
+        pg_insert_asesmen_psikososial(
+            id_relawan=session.get("id_relawan", "UNKNOWN"),
+            kode_posko=kode_posko,
+            jawaban=answers,
+            skor=float(skor_100),
+            status=status,
+            latitude=lat,
+            longitude=lon,
+            catatan=catatan,
+            photo_path=photo_path,
+            radius=radius,
+        )
+        flash(f"Asesmen Psikososial tersimpan (Status: {status}, Skor: {skor_100:.1f}).", "success")
+    except Exception as e:
+        flash(f"Gagal simpan asesmen psikososial: {e}", "danger")
+
+    return redirect(url_for("map_view"))
+
+@app.route("/submit_asesmen_infrastruktur", methods=["POST"])
+def submit_asesmen_infrastruktur():
+    if not _require_login():
+        return redirect(url_for("map_view"))
+
+    if not _pg_enabled() or pg_insert_asesmen_infrastruktur is None:
+        flash("Fitur asesmen belum aktif: DATABASE_URL/pg_data belum siap.", "danger")
+        return redirect(url_for("map_view"))
+
+    # Upload foto (opsional, maksimal 2)
+    try:
+        photo_path = _get_asesmen_photo_path('infrastruktur')
+    except Exception as e:
+        flash(f"Gagal upload foto asesmen infrastruktur: {e}", "danger")
+        return redirect(url_for("map_view"))
+
+
+    kode_posko = request.form.get("kode_posko") or None
+    lat = request.form.get("latitude")
+    lon = request.form.get("longitude")
+    catatan = request.form.get("catatan") or None
+    radius_in = request.form.get("radius")
+    try:
+        radius = float(radius_in) if radius_in not in (None, "") else 2.0
+    except Exception:
+        radius = 2.0
+    if radius <= 0:
+        radius = 2.0
+    if radius > 50:
+        radius = 50.0
+
+    # 10 soal (skala 1-5)
+    answers = {f"p{i}": _ask_int_1_5(request.form.get(f"p{i}")) for i in range(1, 11)}
+
+    weights = {
+        "p1": 1.4,
+        "p2": 1.0,
+        "p3": 1.0,
+        "p4": 1.0,
+        "p5": 0.8,
+        "p6": 1.5,
+        "p7": 0.9,
+        "p8": 1.3,
+        "p9": 0.8,
+        "p10": 0.9,
+    }
+
+    weighted_sum = sum(answers[k] * weights[k] for k in answers)
+    max_sum = sum(5 * weights[k] for k in answers)
+
+    skor_100 = (weighted_sum / max_sum) * 100.0
+
+    if skor_100 >= 80:
+        status = "Kritis"
+    elif skor_100 >= 60:
+        status = "Waspada"
+    else:
+        status = "Aman"
+
+    try:
+        pg_insert_asesmen_infrastruktur(
+            id_relawan=session.get("id_relawan", "UNKNOWN"),
+            kode_posko=kode_posko,
+            jawaban=answers,
+            skor=float(skor_100),
+            status=status,
+            latitude=lat,
+            longitude=lon,
+            catatan=catatan,
+            photo_path=photo_path,
+            radius=radius,
+        )
+        flash(f"Asesmen Infrastruktur tersimpan (Status: {status}, Skor: {skor_100:.1f}).", "success")
+    except Exception as e:
+        flash(f"Gagal simpan asesmen infrastruktur: {e}", "danger")
+
+    return redirect(url_for("map_view"))
+
+@app.route("/submit_asesmen_wash", methods=["POST"])
+def submit_asesmen_wash():
+    if not _require_login():
+        return redirect(url_for("map_view"))
+
+    if not _pg_enabled() or pg_insert_asesmen_wash is None:
+        flash("Fitur asesmen belum aktif: DATABASE_URL/pg_data belum siap.", "danger")
+        return redirect(url_for("map_view"))
+
+    # Upload foto (opsional, maksimal 2)
+    try:
+        photo_path = _get_asesmen_photo_path('wash')
+    except Exception as e:
+        flash(f"Gagal upload foto asesmen wash: {e}", "danger")
+        return redirect(url_for("map_view"))
+
+
+    kode_posko = request.form.get("kode_posko") or None
+    lat = request.form.get("latitude")
+    lon = request.form.get("longitude")
+    catatan = request.form.get("catatan") or None
+    radius_in = request.form.get("radius")
+    try:
+        radius = float(radius_in) if radius_in not in (None, "") else 2.0
+    except Exception:
+        radius = 2.0
+    if radius <= 0:
+        radius = 2.0
+    if radius > 50:
+        radius = 50.0
+
+    # 10 soal (skala 1-5)
+    answers = {f"p{i}": _ask_int_1_5(request.form.get(f"p{i}")) for i in range(1, 11)}
+
+    weights = {
+        "p1": 1.4,
+        "p2": 1.0,
+        "p3": 1.0,
+        "p4": 1.0,
+        "p5": 0.8,
+        "p6": 1.5,
+        "p7": 0.9,
+        "p8": 1.3,
+        "p9": 0.8,
+        "p10": 0.9,
+    }
+
+    weighted_sum = sum(answers[k] * weights[k] for k in answers)
+    max_sum = sum(5 * weights[k] for k in answers)
+
+    skor_100 = (weighted_sum / max_sum) * 100.0
+
+    if skor_100 >= 80:
+        status = "Kritis"
+    elif skor_100 >= 60:
+        status = "Waspada"
+    else:
+        status = "Aman"
+
+    try:
+        pg_insert_asesmen_wash(
+            id_relawan=session.get("id_relawan", "UNKNOWN"),
+            kode_posko=kode_posko,
+            jawaban=answers,
+            skor=float(skor_100),
+            status=status,
+            latitude=lat,
+            longitude=lon,
+            catatan=catatan,
+            photo_path=photo_path,
+            radius=radius,
+        )
+        flash(f"Asesmen Wash tersimpan (Status: {status}, Skor: {skor_100:.1f}).", "success")
+    except Exception as e:
+        flash(f"Gagal simpan asesmen wash: {e}", "danger")
+        print(e)
+
+    return redirect(url_for("map_view"))
+
+@app.route("/submit_asesmen_kondisi", methods=["POST"])
+def submit_asesmen_kondisi():
+    if not _require_login():
+        return redirect(url_for("map_view"))
+
+    try:
+        if not _pg_enabled() or pg_insert_asesmen_kondisi is None:
+            flash("Fitur asesmen belum aktif.", "danger")
+            return redirect(url_for("map_view"))
+
+        # Upload foto (opsional, maksimal 2)
+        try:
+            photo_path = _get_asesmen_photo_path('kondisi')
+        except Exception as e:
+            flash(f"Gagal upload foto asesmen kondisi: {e}", "danger")
+            return redirect(url_for("map_view"))
+
+
+        kode_posko = request.form.get("kode_posko")
+        lat = request.form.get("latitude")
+        lon = request.form.get("longitude")
+        catatan = request.form.get("catatan")
+        radius = float(request.form.get("radius", 2) or 2)
+
+        # ===== Kondisi Banjir =====
+        lokasi = request.form.get("lokasi")
+        lat_list = request.form.getlist("banjir_lat[]")
+        lon_list = request.form.getlist("banjir_lon[]")
+        p2 = {}
+        for i, (lat, lon) in enumerate(zip(lat_list, lon_list), start=1):
+            p2[f"b{i}"] = [float(lat), float(lon)]
+
+        payload = {
+            "p1": lokasi,
+            "p2": p2,
+            **{
+                f"p{i}": int(request.form.get(f"k{i-2}", 0))
+                for i in range(3, 12)
+            }
+        }
+
+
+        # ===== HITUNG SKOR (NANTI) =====
+        skor_100 = 0
+
+        if skor_100 >= 80:
+            status = "Kritis"
+        elif skor_100 >= 60:
+            status = "Waspada"
+        else:
+            status = "Aman"
+
+        # ===== SIMPAN =====
+        pg_insert_asesmen_kondisi(
+            id_relawan=session.get("id_relawan"),
+            kode_posko=kode_posko,
+            jawaban=payload,
+            skor=skor_100,
+            status=status,
+            latitude=lat,
+            longitude=lon,
+            catatan=catatan,
+            photo_path=photo_path,
+            radius=radius,
+        )
+
+        flash("Asesmen Kondisi berhasil disimpan", "success")
+        return redirect(url_for("map_view"))
+
+    except Exception as e:
+        import traceback
+        traceback.print_exc()  # ⬅️ WAJIB UNTUK DEBUG
+        flash(f"Error asesmen kondisi: {e}", "danger")
+        return redirect(url_for("map_view"))
+
+@app.route("/submit_lokasi", methods=["POST"])
+def submit_lokasi():
+    if not _require_login():
+        return redirect(url_for("map_view"))
+
+    if not _pg_enabled() or pg_insert_data_lokasi is None:
+        flash("Fitur input lokasi belum aktif: DATABASE_URL/pg_data belum siap.", "danger")
+        return redirect(url_for("map_view"))
+
+    # ID diset oleh sistem (relawan tidak perlu input)
+    id_lokasi = None
+
+    jenis_lokasi = (request.form.get("jenis_lokasi") or "").strip()
+    nama_kabkota = (request.form.get("nama_kabkota") or "").strip()
+    nama_lokasi = (request.form.get("nama_lokasi") or "").strip()
+
+    # defaults kalau kosong
+    status_lokasi = (request.form.get("status_lokasi") or "").strip() or "Aktif"
+    tingkat_akses = (request.form.get("tingkat_akses") or "").strip() or "Public"
+    kondisi = (request.form.get("kondisi") or "").strip() or "Normal"
+
+    alamat = (request.form.get("alamat") or "").strip() or None
+    kecamatan = (request.form.get("kecamatan") or "").strip() or None
+    desa_kelurahan = (request.form.get("desa_kelurahan") or "").strip() or None
+
+    latitude = (request.form.get("latitude") or "").strip()
+    longitude = (request.form.get("longitude") or "").strip()
+
+    if not latitude or not longitude:
+        flash("Gagal simpan lokasi: koordinat GPS belum didapat. Coba tunggu GPS OK / geser pin.", "danger")
+        return redirect(url_for("map_view"))
+
+    lokasi_text = (request.form.get("lokasi_text") or "").strip() or None
+    catatan = (request.form.get("catatan") or "").strip() or None
+
+    pic = (request.form.get("pic") or "").strip() or None
+    pic_hp = (request.form.get("pic_hp") or "").strip() or None
+    photo_path = (request.form.get("photo_path") or "").strip() or None
+
+    if not jenis_lokasi or not nama_kabkota or not nama_lokasi:
+        flash("Gagal simpan lokasi: Jenis Lokasi, Kab/Kota, dan Nama Lokasi wajib diisi.", "danger")
+        return redirect(url_for("map_view"))
+
+    try:
+        new_id = pg_insert_data_lokasi(
+            id_lokasi=id_lokasi,
+            jenis_lokasi=jenis_lokasi,
+            nama_kabkota=nama_kabkota,
+            status_lokasi=status_lokasi,
+            tingkat_akses=tingkat_akses,
+            kondisi=kondisi,
+            nama_lokasi=nama_lokasi,
+            alamat=alamat,
+            kecamatan=kecamatan,
+            desa_kelurahan=desa_kelurahan,
+            latitude=latitude,
+            longitude=longitude,
+            lokasi_text=lokasi_text,
+            catatan=catatan,
+            pic=pic,
+            pic_hp=pic_hp,
+            photo_path=photo_path,
+        )
+        flash(f"Lokasi berhasil disimpan: {new_id}", "success")
+    except Exception as e:
+        flash(f"Gagal simpan lokasi: {e}", "danger")
+
+    return redirect(url_for("map_view"))
 
 if __name__ == "__main__":
     app.run(debug=True)
