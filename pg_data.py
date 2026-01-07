@@ -1505,7 +1505,7 @@ def pg_insert_logistik_permintaan(data: Dict[str, Any]) -> bool:
 
     # Defaults (sesuai kebutuhan UI sekarang)
     if not data.get("status_permintaan"):
-        data["status_permintaan"] = "Draft"
+        data["status_permintaan"] = "Usulan"
 
     # Lat/Lon dipaksa float agar aman
     lat = _to_float(data.get("latitude"))

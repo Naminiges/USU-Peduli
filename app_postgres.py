@@ -336,7 +336,7 @@ def log_permintaan_posko(data_permintaan, nama_relawan, id_relawan, nama_posko=N
         kode_posko = sanitize_for_log(data_permintaan.get("kode_posko", "UNKNOWN"))
         nama_posko_safe = sanitize_for_log(nama_posko) if nama_posko else kode_posko
         keterangan = sanitize_for_log(data_permintaan.get("keterangan", ""))
-        status = sanitize_for_log(data_permintaan.get("status", "Draft"))
+        status = sanitize_for_log(data_permintaan.get("status", "Usulan"))
         tanggal = sanitize_for_log(data_permintaan.get("tanggal", ""))
 
         # Format log yang terstruktur dan mudah dibaca
@@ -637,9 +637,9 @@ def submit_permintaan():
         "tanggal": datetime.datetime.now().strftime("%d-%B-%y"),
         "kode_posko": kode_posko,
         "keterangan": keterangan,
-        "status_permintaan": "Draft",
+        "status_permintaan": "Usulan",
         # kompatibel dengan logger lama
-        "status": "Draft",
+        "status": "Usulan",
         "kode_barang": "-",
         "jumlah_diminta": "-",
         "id_relawan": session.get("id_relawan", session.get("nama_relawan")),
@@ -697,7 +697,7 @@ def api_update_permintaan_status():
     status_new = (payload.get("status") or payload.get("status_permintaan") or "").strip()
     note = (payload.get("note") or "").strip() or None
 
-    allowed = {"Draft", "Diproses", "Dikirim", "Diterima", "Ditolak"}
+    allowed = {"Usulan","Draft", "Diproses", "Dikirim", "Diterima", "Ditolak"}
     if status_new not in allowed:
         return jsonify({"success": False, "error": "Status tidak valid."}), 400
 
