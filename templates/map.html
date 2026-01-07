@@ -601,10 +601,10 @@
               <input
                 class="form-check-input"
                 type="checkbox"
-                id="togglePermintaanDraft"
+                id="togglePermintaanUsulan"
                 checked
               />
-              <label class="form-check-label" for="togglePermintaanDraft">
+              <label class="form-check-label" for="togglePermintaanUsulan">
                 <span
                   style="
                     display: inline-block;
@@ -615,7 +615,7 @@
                     margin-right: 6px;
                   "
                 ></span>
-                Draft
+                Usulan
               </label>
             </div>
             <div class="form-check">
@@ -3393,13 +3393,13 @@
 
       function _permintaanStatusKey(status){
         const s = String(status || '').toLowerCase();
-        if (s.includes('draft')) return 'draft';
+        if (s.includes('usulan')) return 'usulan';
         if (s.includes('diproses')) return 'diproses';
         if (s.includes('dikirim')) return 'dikirim';
         if (s.includes('diterima')) return 'diterima';
         if (s.includes('ditolak')) return 'ditolak';
         {#if (s.includes('selesai')) return 'selesai';#}
-        return 'draft';
+        return 'usulan';
       }
 
       function permintaanStatusColor(status){
@@ -3409,7 +3409,7 @@
         if (k === 'diterima') return '#22c55e';
         if (k === 'ditolak') return '#ef4444';
         {#if (k === 'selesai') return '#10b981';#}
-        return '#64748b'; // draft
+        return '#64748b'; // Usulan
       }
 
       function getPermintaanIcon(status) {
@@ -3490,7 +3490,7 @@
 
 
           const waktuText = _formatWaktuGMT7(r.tanggal || r.waktu || r.timestamp);
-          const status = r.status_permintaan || r.status || 'Draft';
+          const status = r.status_permintaan || r.status || 'Usulan';
           const kodePosko = r.kode_posko || '-';
           const namaPosko = _poskoNameByKode(kodePosko);
           const idRelawan = r.id_relawan || '-';
@@ -3520,11 +3520,11 @@
       // =============================================================================
       // ADMIN: PENGATURAN STATUS PERMINTAAN LOGISTIK (khusus is_admin)
       // =============================================================================
-      const PERMINTAAN_STATUS_OPTIONS = ["Draft", "Diproses", "Dikirim", "Diterima", "Ditolak"];
+      const PERMINTAAN_STATUS_OPTIONS = ["Usulan", "Diproses", "Dikirim", "Diterima", "Ditolak"];
 
       function _renderPermintaanStatusBadge(status) {
         const bg = permintaanStatusColor(status);
-        const label = status || 'Draft';
+        const label = status || 'Usulan';
         return `<span class="badge" style="background:${bg};">${escapeHtml(label)}</span>`;
       }
 
@@ -3545,7 +3545,7 @@
           const kodePosko = r.kode_posko || '-';
           const namaPosko = _poskoNameByKode(kodePosko);
           const waktuText = _formatWaktuGMT7(r.waktu || r.tanggal || r.timestamp);
-          const status = r.status_permintaan || r.status || 'Draft';
+          const status = r.status_permintaan || r.status || 'Usulan';
           const ket = String(r.keterangan || '').trim();
           const ketShort = ket.length > 120 ? (ket.slice(0, 120) + '…') : (ket || '-');
 
@@ -4334,7 +4334,7 @@ if (!isKnown && !showLain) return;
               const ckRelawanLok = document.getElementById('toggleLokasiRelawan');
 
               const ckPermintaan = document.getElementById('togglePermintaanLogistik');
-              const ckPermDraft = document.getElementById('togglePermintaanDraft');
+              const ckPermUsulan = document.getElementById('togglePermintaanUsulan');
               const ckPermDiproses = document.getElementById('togglePermintaanDiproses');
               const ckPermDikirim = document.getElementById('togglePermintaanDikirim');
               const ckPermDiterima = document.getElementById('togglePermintaanDiterima');
@@ -4435,7 +4435,7 @@ if (!isKnown && !showLain) return;
 
               function _permintaanAllowedMap(){
                   const m = {
-                      draft: ckPermDraft ? ckPermDraft.checked : true,
+                      usulan: ckPermUsulan ? ckPermUsulan.checked : true,
                       diproses: ckPermDiproses ? ckPermDiproses.checked : true,
                       dikirim: ckPermDikirim ? ckPermDikirim.checked : true,
                       diterima: ckPermDiterima ? ckPermDiterima.checked : true,
@@ -4454,7 +4454,7 @@ if (!isKnown && !showLain) return;
 
                   const allowed = _permintaanAllowedMap();
                   const filtered = (permintaanLogistik || []).filter(r => {
-                      const k = _permintaanStatusKey(r.status_permintaan || r.status || 'Draft');
+                      const k = _permintaanStatusKey(r.status_permintaan || r.status || 'Usulan');
                       return allowed[k] !== false;
                   });
 
@@ -4474,9 +4474,9 @@ if (!isKnown && !showLain) return;
               if (ckRelawanLok) ckRelawanLok.addEventListener('change', () => syncMasterFromChildren(ckRelAll, elRelawanBody, [ckRelawanLok], applyRelawanVisibility));
 
               // Permintaan (master + status)
-              if (ckPermintaan) ckPermintaan.addEventListener('change', () => syncGroupFromMaster(ckPermintaan, elPermintaanBody, [ckPermDraft, ckPermDiproses, ckPermDikirim, ckPermDiterima, ckPermDitolak], applyPermintaanVisibility));
-              [ckPermDraft, ckPermDiproses, ckPermDikirim, ckPermDiterima, ckPermDitolak].forEach(el => {
-                  if (el) el.addEventListener('change', () => syncMasterFromChildren(ckPermintaan, elPermintaanBody, [ckPermDraft, ckPermDiproses, ckPermDikirim, ckPermDiterima, ckPermDitolak], applyPermintaanVisibility));
+              if (ckPermintaan) ckPermintaan.addEventListener('change', () => syncGroupFromMaster(ckPermintaan, elPermintaanBody, [ckPermUsulan, ckPermDiproses, ckPermDikirim, ckPermDiterima, ckPermDitolak], applyPermintaanVisibility));
+              [ckPermUsulan, ckPermDiproses, ckPermDikirim, ckPermDiterima, ckPermDitolak].forEach(el => {
+                  if (el) el.addEventListener('change', () => syncMasterFromChildren(ckPermintaan, elPermintaanBody, [ckPermUsulan, ckPermDiproses, ckPermDikirim, ckPermDiterima, ckPermDitolak], applyPermintaanVisibility));
               });
 
               // Asesmen (master + child)
@@ -4489,7 +4489,7 @@ if (!isKnown && !showLain) return;
               syncGroupFromMaster(ckAsesmenAll, elAsesmenBody, [ckKes, ckPen, ckPsi, ckInf, ckWas, ckKond], applyAsesmenVisibility);
               syncGroupFromMaster(ckLokAll, elLokasiBody, [ckLokPosko, ckLokGudang, ckLokStarlink,ckLokJembatanRusak, ckLokJalanPutus, ckLokTitikLongsor, ckLokSumurBor, ckLokLain], applyLokasiFilter);
               syncGroupFromMaster(ckRelAll, elRelawanBody, [ckRelawanLok], applyRelawanVisibility);
-              syncGroupFromMaster(ckPermintaan, elPermintaanBody, [ckPermDraft, ckPermDiproses, ckPermDikirim, ckPermDiterima, ckPermDitolak], applyPermintaanVisibility);
+              syncGroupFromMaster(ckPermintaan, elPermintaanBody, [ckPermUsulan, ckPermDiproses, ckPermDikirim, ckPermDiterima, ckPermDitolak], applyPermintaanVisibility);
 
               // Render marker awal
               applyLokasiFilter();
