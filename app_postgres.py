@@ -6,6 +6,7 @@ import math
 from pathlib import Path
 from dotenv import load_dotenv
 from media_upload import save_asesmen_photos, photos_to_photo_path_value
+from zoneinfo import ZoneInfo
 
 load_dotenv()
 
@@ -13,7 +14,7 @@ load_dotenv()
 # PostgreSQL helper (utama)
 # ------------------------------------------------------------------------------
 try:
-    from pg_data import (
+    from pg_data_ import (
         pg_get_status_map,
         pg_get_data_lokasi,
         pg_get_relawan_list,
@@ -179,6 +180,28 @@ def get_ref_jenis_lokasi_any() -> list:
             print(f"[PG] get_ref_jenis_lokasi_any error: {e}")
     return []
 
+try:
+    _TZ_WIB = ZoneInfo("Asia/Jakarta")
+except Exception:
+    _TZ_WIB = datetime.timezone(datetime.timedelta(hours=7))
+
+
+def _parse_waktu_form(v: str):
+    """
+    Input HTML datetime-local biasanya tanpa timezone (WIB).
+    Kita ubah jadi UTC naive datetime supaya konsisten.
+    """
+    s = (v or "").strip()
+    if not s:
+        return None
+    try:
+        dt_local = datetime.datetime.fromisoformat(s)
+    except Exception:
+        return None
+    if dt_local.tzinfo is None:
+        dt_local = dt_local.replace(tzinfo=_TZ_WIB)
+    return dt_local.astimezone(datetime.timezone.utc).replace(tzinfo=None)
+
 def get_ref_kabkota_any() -> list:
     if _pg_enabled() and pg_get_ref_kabkota is not None:
         try:
@@ -241,6 +264,7 @@ def write_lokasi_relawan_any(data: dict) -> bool:
                 lokasi=data.get("lokasi"),
                 lokasi_posko=data.get("lokasi_posko"),
                 photo_link=data.get("photo_link"),
+                waktu=data.get("waktu"),
             )
         )
     except Exception as e:
@@ -523,7 +547,7 @@ def map_view():
             ref_kondisi = []
 
     return render_template(
-        "map.html",
+        "map_.html",
         data_lokasi=json.dumps(data_lokasi),
         stok_gudang=stok_gudang,
         rekap_kabkota=list(latest_rekap.values()),
@@ -622,6 +646,7 @@ def submit_permintaan():
     keterangan = request.form.get("keterangan", "")
     latitude = request.form.get("latitude")
     longitude = request.form.get("longitude")
+    waktu_utc = _parse_waktu_form(request.form.get("waktu"))
 
     # Ambil nama posko untuk log yang lebih informatif
     nama_posko = None
@@ -647,6 +672,7 @@ def submit_permintaan():
         "photo_link": "",
         "latitude": latitude,
         "longitude": longitude,
+        "waktu": waktu_utc,
     }
 
     try:
@@ -1098,6 +1124,7 @@ def submit_absensi():
     latitude = request.form.get("latitude")
     longitude = request.form.get("longitude")
     catatan = request.form.get("catatan")
+    waktu_utc = _parse_waktu_form(request.form.get("waktu"))
 
     lokasi_terdeteksi = "Mencari..."
 
@@ -1146,6 +1173,7 @@ def submit_absensi():
         "lokasi_posko": lokasi_posko_code,
         "catatan": catatan,
         "photo_link": "",
+        "waktu": waktu_utc,
     }
 
     write_lokasi_relawan_any(data)
@@ -1211,6 +1239,7 @@ def submit_asesmen_kesehatan():
     lon = request.form.get("longitude")
     catatan = request.form.get("catatan") or None
     radius_in = request.form.get("radius")
+    waktu_utc = _parse_waktu_form(request.form.get("waktu"))
     try:
         radius = float(radius_in) if radius_in not in (None, "") else 2.0
     except Exception:
@@ -1265,6 +1294,7 @@ def submit_asesmen_kesehatan():
             catatan=catatan,
             photo_path=photo_path,
             radius=radius,
+            waktu=waktu_utc
         )
         flash(f"Asesmen Kesehatan tersimpan (Status: {status}, Skor: {skor_100:.1f}).", "success")
     except Exception as e:
@@ -1295,6 +1325,7 @@ def submit_asesmen_pendidikan():
     lon = request.form.get("longitude")
     catatan = request.form.get("catatan") or None
     radius_in = request.form.get("radius")
+    waktu_utc = _parse_waktu_form(request.form.get("waktu"))
     try:
         radius = float(radius_in) if radius_in not in (None, "") else 2.0
     except Exception:
@@ -1344,6 +1375,7 @@ def submit_asesmen_pendidikan():
             catatan=catatan,
             photo_path=photo_path,
             radius=radius,
+            waktu=waktu_utc
         )
         flash(f"Asesmen Pendidikan tersimpan (Status: {status}, Skor: {skor_100:.1f}).", "success")
     except Exception as e:
@@ -1373,6 +1405,8 @@ def submit_asesmen_psikososial():
     lon = request.form.get("longitude")
     catatan = request.form.get("catatan") or None
     radius_in = request.form.get("radius")
+    waktu_utc = _parse_waktu_form(request.form.get("waktu"))
+
     try:
         radius = float(radius_in) if radius_in not in (None, "") else 2.0
     except Exception:
@@ -1422,6 +1456,7 @@ def submit_asesmen_psikososial():
             catatan=catatan,
             photo_path=photo_path,
             radius=radius,
+            waktu=waktu_utc
         )
         flash(f"Asesmen Psikososial tersimpan (Status: {status}, Skor: {skor_100:.1f}).", "success")
     except Exception as e:
@@ -1451,6 +1486,8 @@ def submit_asesmen_infrastruktur():
     lon = request.form.get("longitude")
     catatan = request.form.get("catatan") or None
     radius_in = request.form.get("radius")
+    waktu_utc = _parse_waktu_form(request.form.get("waktu"))
+
     try:
         radius = float(radius_in) if radius_in not in (None, "") else 2.0
     except Exception:
@@ -1500,6 +1537,7 @@ def submit_asesmen_infrastruktur():
             catatan=catatan,
             photo_path=photo_path,
             radius=radius,
+            waktu=waktu_utc
         )
         flash(f"Asesmen Infrastruktur tersimpan (Status: {status}, Skor: {skor_100:.1f}).", "success")
     except Exception as e:
@@ -1529,6 +1567,8 @@ def submit_asesmen_wash():
     lon = request.form.get("longitude")
     catatan = request.form.get("catatan") or None
     radius_in = request.form.get("radius")
+    waktu_utc = _parse_waktu_form(request.form.get("waktu"))
+
     try:
         radius = float(radius_in) if radius_in not in (None, "") else 2.0
     except Exception:
@@ -1578,6 +1618,7 @@ def submit_asesmen_wash():
             catatan=catatan,
             photo_path=photo_path,
             radius=radius,
+            waktu=waktu_utc,
         )
         flash(f"Asesmen Wash tersimpan (Status: {status}, Skor: {skor_100:.1f}).", "success")
     except Exception as e:
@@ -1609,6 +1650,7 @@ def submit_asesmen_kondisi():
         lon = request.form.get("longitude")
         catatan = request.form.get("catatan")
         radius = float(request.form.get("radius", 2) or 2)
+        waktu_utc = _parse_waktu_form(request.form.get("waktu"))
 
         # ===== Kondisi Banjir =====
         lokasi = request.form.get("lokasi")
@@ -1650,6 +1692,7 @@ def submit_asesmen_kondisi():
             catatan=catatan,
             photo_path=photo_path,
             radius=radius,
+            waktu=waktu_utc
         )
 
         flash("Asesmen Kondisi berhasil disimpan", "success")
@@ -1688,6 +1731,7 @@ def submit_lokasi():
 
     latitude = (request.form.get("latitude") or "").strip()
     longitude = (request.form.get("longitude") or "").strip()
+    waktu_utc = _parse_waktu_form(request.form.get("waktu"))
 
     if not latitude or not longitude:
         flash("Gagal simpan lokasi: koordinat GPS belum didapat. Coba tunggu GPS OK / geser pin.", "danger")
@@ -1723,6 +1767,7 @@ def submit_lokasi():
             pic=pic,
             pic_hp=pic_hp,
             photo_path=photo_path,
+            waktu=waktu_utc,  # ✅ TAMBAH
         )
         flash(f"Lokasi berhasil disimpan: {new_id}", "success")
     except Exception as e:

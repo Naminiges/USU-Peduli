@@ -1,4 +1,4 @@
-"""pg_data.py
+"""pg_data_.py
 
 Helper untuk baca/tulis data dari PostgreSQL (SATGAS) TANPA merusak gaya code app.
 
@@ -46,7 +46,7 @@ from __future__ import annotations
 
 import json
 import os
-from datetime import datetime, timezone
+from datetime import datetime, timezone, timedelta
 from zoneinfo import ZoneInfo
 from decimal import Decimal
 from pathlib import Path
@@ -134,7 +134,40 @@ def _now_wib_naive() -> datetime:
     """
     return datetime.now(_WIB).replace(tzinfo=None)
 
+def _normalize_input_ts(v: Any) -> Optional[datetime]:
+    """
+    Normalisasi input waktu untuk kolom timestamptz:
+    - None / "" => None (biarkan DB default now()).
+    - datetime aware => convert ke UTC lalu jadi naive.
+    - datetime naive => dipakai apa adanya.
+    - string ISO (datetime-local) => dianggap WIB lalu dikonversi UTC-naive.
+    """
+    if v is None:
+        return None
 
+    if isinstance(v, datetime):
+        if v.tzinfo is not None:
+            return v.astimezone(timezone.utc).replace(tzinfo=None)
+        return v
+
+    if isinstance(v, str):
+        s = v.strip()
+        if not s:
+            return None
+        try:
+            dt = datetime.fromisoformat(s)
+        except Exception:
+            return None
+
+        if dt.tzinfo is None:
+            try:
+                dt = dt.replace(tzinfo=ZoneInfo("Asia/Jakarta"))
+            except Exception:
+                dt = dt.replace(tzinfo=timezone(timedelta(hours=7)))
+
+        return dt.astimezone(timezone.utc).replace(tzinfo=None)
+
+    return None
 
 def pg_fetchall(sql: str, params: Optional[Tuple[Any, ...]] = None) -> List[Dict[str, Any]]:
     """Jalankan query dan return list of dict."""
@@ -562,6 +595,7 @@ def pg_insert_data_lokasi(
     pic: Optional[str] = None,
     pic_hp: Optional[str] = None,
     photo_path: Optional[str] = None,
+    waktu: Optional[datetime] = None,
 ) -> str:
     table = _get_env("PG_DATA_LOKASI_TABLE", "public.data_lokasi")
 
@@ -571,20 +605,21 @@ def pg_insert_data_lokasi(
 
     lat_f = _to_float(latitude)
     lon_f = _to_float(longitude)
+    w = _normalize_input_ts(waktu)
 
     sql = f"""
         INSERT INTO {table}
-        (id_lokasi, jenis_lokasi, nama_kabkota, status_lokasi, tingkat_akses, kondisi,
+        (waktu, id_lokasi, jenis_lokasi, nama_kabkota, status_lokasi, tingkat_akses, kondisi,
          nama_lokasi, alamat, kecamatan, desa_kelurahan,
          latitude, longitude, lokasi_text, catatan, pic, pic_hp, photo_path)
         VALUES
-        (%s, %s, %s, %s, %s, %s,
+        (COALESCE(%s, now()), %s, %s, %s, %s, %s, %s,
          %s, %s, %s, %s,
          %s, %s, %s, %s, %s, %s, %s);
     """
 
     pg_execute(sql, (
-        final_id, jenis_lokasi, nama_kabkota, status_lokasi, tingkat_akses, kondisi,
+        w, final_id, jenis_lokasi, nama_kabkota, status_lokasi, tingkat_akses, kondisi,
         nama_lokasi, alamat, kecamatan, desa_kelurahan,
         lat_f, lon_f, lokasi_text, catatan, pic, pic_hp, photo_path
     ))
@@ -644,7 +679,8 @@ def pg_insert_lokasi_relawan(
     if lat_f is None or lon_f is None:
         raise ValueError("latitude/longitude tidak valid")
 
-    w = waktu or datetime.now(timezone.utc).replace(tzinfo=None)
+    # w = waktu or datetime.now(timezone.utc).replace(tzinfo=None)
+    w = _normalize_input_ts(waktu)
 
     # Urutan percobaan (biar tahan beda nama kolom/atribut)
     attempts: List[Tuple[str, Tuple[Any, ...]]] = [
@@ -652,7 +688,7 @@ def pg_insert_lokasi_relawan(
             f"""
             INSERT INTO {table}
             (waktu, id_relawan, latitude, longitude, catatan, lokasi, lokasi_posko, photo_link)
-            VALUES (%s,%s,%s,%s,%s,%s,%s,%s)
+            VALUES (COALESCE(%s, now()),%s,%s,%s,%s,%s,%s,%s)
             """,
             (w, id_relawan, lat_f, lon_f, catatan, lokasi, lokasi_posko, photo_link),
         ),
@@ -660,7 +696,7 @@ def pg_insert_lokasi_relawan(
             f"""
             INSERT INTO {table}
             (waktu, id_relawan, latitude, longitude, catatan)
-            VALUES (%s,%s,%s,%s,%s)
+            VALUES (COALESCE(%s, now()),%s,%s,%s,%s)
             """,
             (w, id_relawan, lat_f, lon_f, catatan),
         ),
@@ -668,7 +704,7 @@ def pg_insert_lokasi_relawan(
             f"""
             INSERT INTO {table}
             (timestamp, id_relawan, latitude, longitude, catatan)
-            VALUES (%s,%s,%s,%s,%s)
+            VALUES (COALESCE(%s, now()),%s,%s,%s,%s)
             """,
             (w, id_relawan, lat_f, lon_f, catatan),
         ),
@@ -711,7 +747,9 @@ def _insert_asesmen(
 
     lat_f = _to_float(latitude)
     lon_f = _to_float(longitude)
-    w = waktu or datetime.now(timezone.utc).replace(tzinfo=None)
+    # w = waktu or datetime.now(timezone.utc).replace(tzinfo=None)
+
+    w = _normalize_input_ts(waktu)
 
     rad_f = _to_float(radius)
 
@@ -733,7 +771,7 @@ def _insert_asesmen(
                         f"""
                         INSERT INTO {table}
                         (waktu, id_relawan, kode_posko, jawaban, skor, status, latitude, longitude, catatan, radius, photo_path)
-                        VALUES (%s,%s,%s,%s::jsonb,%s,%s,%s,%s,%s,%s,%s)
+                        VALUES (COALESCE(%s, now()),%s,%s,%s::jsonb,%s,%s,%s,%s,%s,%s,%s)
                         """,
                         (w, id_relawan, kode_posko, payload, float(skor), status, lat_f, lon_f, catatan, rad_f, photo_v),
                     )
@@ -743,7 +781,7 @@ def _insert_asesmen(
                         f"""
                         INSERT INTO {table}
                         (waktu, id_relawan, kode_posko, jawaban, skor, status, latitude, longitude, catatan, radius, photo_path)
-                        VALUES (%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s)
+                        VALUES (COALESCE(%s, now()),%s,%s,%s,%s,%s,%s,%s,%s,%s,%s)
                         """,
                         (w, id_relawan, kode_posko, payload, float(skor), status, lat_f, lon_f, catatan, rad_f, photo_v),
                     )
@@ -754,7 +792,7 @@ def _insert_asesmen(
                         f"""
                         INSERT INTO {table}
                         (waktu, id_relawan, kode_posko, jawaban, skor, status, latitude, longitude, catatan, radius, photo_path)
-                        VALUES (%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s)
+                        VALUES (COALESCE(%s, now()),%s,%s,%s,%s,%s,%s,%s,%s,%s,%s)
                         """,
                         (w, id_relawan, kode_posko, payload, float(skor), status, lat_f, lon_f, catatan, rad_f, photo_v),
                     )
@@ -764,7 +802,7 @@ def _insert_asesmen(
                         f"""
                         INSERT INTO {table}
                         (waktu, id_relawan, kode_posko, jawaban, skor, status, latitude, longitude, catatan, radius, photo_path)
-                        VALUES (%s,%s,%s,%s::jsonb,%s,%s,%s,%s,%s,%s,%s)
+                        VALUES (COALESCE(%s, now()),%s,%s,%s::jsonb,%s,%s,%s,%s,%s,%s,%s)
                         """,
                         (w, id_relawan, kode_posko, payload, float(skor), status, lat_f, lon_f, catatan, rad_f, photo_v),
                     )
@@ -777,7 +815,7 @@ def _insert_asesmen(
                     f"""
                     INSERT INTO {table}
                     (waktu, id_relawan, kode_posko, jawaban, skor, status, latitude, longitude, catatan, radius)
-                    VALUES (%s,%s,%s,%s::jsonb,%s,%s,%s,%s,%s,%s)
+                    VALUES (COALESCE(%s, now()),%s,%s,%s::jsonb,%s,%s,%s,%s,%s,%s)
                     """,
                     (w, id_relawan, kode_posko, payload, float(skor), status, lat_f, lon_f, catatan, rad_f),
                 )
@@ -787,7 +825,7 @@ def _insert_asesmen(
                     f"""
                     INSERT INTO {table}
                     (waktu, id_relawan, kode_posko, jawaban, skor, status, latitude, longitude, catatan, radius)
-                    VALUES (%s,%s,%s,%s,%s,%s,%s,%s,%s,%s)
+                    VALUES (COALESCE(%s, now()),%s,%s,%s,%s,%s,%s,%s,%s,%s)
                     """,
                     (w, id_relawan, kode_posko, payload, float(skor), status, lat_f, lon_f, catatan, rad_f),
                 )
@@ -798,7 +836,7 @@ def _insert_asesmen(
                     f"""
                     INSERT INTO {table}
                     (waktu, id_relawan, kode_posko, jawaban, skor, status, latitude, longitude, catatan, radius)
-                    VALUES (%s,%s,%s,%s,%s,%s,%s,%s,%s,%s)
+                    VALUES (COALESCE(%s, now()),%s,%s,%s,%s,%s,%s,%s,%s,%s)
                     """,
                     (w, id_relawan, kode_posko, payload, float(skor), status, lat_f, lon_f, catatan, rad_f),
                 )
@@ -808,7 +846,7 @@ def _insert_asesmen(
                     f"""
                     INSERT INTO {table}
                     (waktu, id_relawan, kode_posko, jawaban, skor, status, latitude, longitude, catatan, radius)
-                    VALUES (%s,%s,%s,%s::jsonb,%s,%s,%s,%s,%s,%s)
+                    VALUES (COALESCE(%s, now()),%s,%s,%s::jsonb,%s,%s,%s,%s,%s,%s)
                     """,
                     (w, id_relawan, kode_posko, payload, float(skor), status, lat_f, lon_f, catatan, rad_f),
                 )
@@ -822,7 +860,7 @@ def _insert_asesmen(
                         f"""
                         INSERT INTO {table}
                         (waktu, id_relawan, kode_posko, jawaban, skor, status, latitude, longitude, catatan, photo_path)
-                        VALUES (%s,%s,%s,%s::jsonb,%s,%s,%s,%s,%s,%s)
+                        VALUES (COALESCE(%s, now()),%s,%s,%s::jsonb,%s,%s,%s,%s,%s,%s)
                         """,
                         (w, id_relawan, kode_posko, payload, float(skor), status, lat_f, lon_f, catatan, photo_v),
                     )
@@ -832,7 +870,7 @@ def _insert_asesmen(
                         f"""
                         INSERT INTO {table}
                         (waktu, id_relawan, kode_posko, jawaban, skor, status, latitude, longitude, catatan, photo_path)
-                        VALUES (%s,%s,%s,%s,%s,%s,%s,%s,%s,%s)
+                        VALUES (COALESCE(%s, now()),%s,%s,%s,%s,%s,%s,%s,%s,%s)
                         """,
                         (w, id_relawan, kode_posko, payload, float(skor), status, lat_f, lon_f, catatan, photo_v),
                     )
@@ -843,7 +881,7 @@ def _insert_asesmen(
                         f"""
                         INSERT INTO {table}
                         (waktu, id_relawan, kode_posko, jawaban, skor, status, latitude, longitude, catatan, photo_path)
-                        VALUES (%s,%s,%s,%s,%s,%s,%s,%s,%s,%s)
+                        VALUES (COALESCE(%s, now()),%s,%s,%s,%s,%s,%s,%s,%s,%s)
                         """,
                         (w, id_relawan, kode_posko, payload, float(skor), status, lat_f, lon_f, catatan, photo_v),
                     )
@@ -853,7 +891,7 @@ def _insert_asesmen(
                         f"""
                         INSERT INTO {table}
                         (waktu, id_relawan, kode_posko, jawaban, skor, status, latitude, longitude, catatan, photo_path)
-                        VALUES (%s,%s,%s,%s::jsonb,%s,%s,%s,%s,%s,%s)
+                        VALUES (COALESCE(%s, now()),%s,%s,%s::jsonb,%s,%s,%s,%s,%s,%s)
                         """,
                         (w, id_relawan, kode_posko, payload, float(skor), status, lat_f, lon_f, catatan, photo_v),
                     )
@@ -866,7 +904,7 @@ def _insert_asesmen(
                     f"""
                     INSERT INTO {table}
                     (waktu, id_relawan, kode_posko, jawaban, skor, status, latitude, longitude, catatan)
-                    VALUES (%s,%s,%s,%s::jsonb,%s,%s,%s,%s,%s)
+                    VALUES (COALESCE(%s, now()),%s,%s,%s::jsonb,%s,%s,%s,%s,%s)
                     """,
                     (w, id_relawan, kode_posko, payload, float(skor), status, lat_f, lon_f, catatan),
                 )
@@ -876,7 +914,7 @@ def _insert_asesmen(
                     f"""
                     INSERT INTO {table}
                     (waktu, id_relawan, kode_posko, jawaban, skor, status, latitude, longitude, catatan)
-                    VALUES (%s,%s,%s,%s,%s,%s,%s,%s,%s)
+                    VALUES (COALESCE(%s, now()),%s,%s,%s,%s,%s,%s,%s,%s)
                     """,
                     (w, id_relawan, kode_posko, payload, float(skor), status, lat_f, lon_f, catatan),
                 )
@@ -887,7 +925,7 @@ def _insert_asesmen(
                     f"""
                     INSERT INTO {table}
                     (waktu, id_relawan, kode_posko, jawaban, skor, status, latitude, longitude, catatan)
-                    VALUES (%s,%s,%s,%s,%s,%s,%s,%s,%s)
+                    VALUES (COALESCE(%s, now()),%s,%s,%s,%s,%s,%s,%s,%s)
                     """,
                     (w, id_relawan, kode_posko, payload, float(skor), status, lat_f, lon_f, catatan),
                 )
@@ -897,7 +935,7 @@ def _insert_asesmen(
                     f"""
                     INSERT INTO {table}
                     (waktu, id_relawan, kode_posko, jawaban, skor, status, latitude, longitude, catatan)
-                    VALUES (%s,%s,%s,%s::jsonb,%s,%s,%s,%s,%s)
+                    VALUES (COALESCE(%s, now()),%s,%s,%s::jsonb,%s,%s,%s,%s,%s)
                     """,
                     (w, id_relawan, kode_posko, payload, float(skor), status, lat_f, lon_f, catatan),
                 )
@@ -1484,7 +1522,7 @@ def pg_insert_permintaan_posko(data: Dict[str, Any]) -> bool:
 # 12) LOGISTIK - Permintaan (public.logistik_permintaan)
 # ------------------------------------------------------------------------------
 
-def pg_insert_logistik_permintaan(data: Dict[str, Any]) -> bool:
+def pg_insert_logistik_permintaan(data: Dict[str, Any], waktu: Optional[datetime] = None) -> bool:
     """Insert permintaan logistik ke tabel logistik_permintaan.
 
     Ekspektasi kolom (sesuai skema yang kamu tunjukkan di DBeaver):
@@ -1510,17 +1548,19 @@ def pg_insert_logistik_permintaan(data: Dict[str, Any]) -> bool:
     # Lat/Lon dipaksa float agar aman
     lat = _to_float(data.get("latitude"))
     lon = _to_float(data.get("longitude"))
+    w = _normalize_input_ts(waktu if waktu is not None else data.get("waktu"))
 
     # Simpan (tanpa 'id' karena bigserial)
     sql = f"""
         INSERT INTO {table}
-        (kode_posko, keterangan, status_permintaan, id_relawan, photo_link, latitude, longitude)
-        VALUES (%s,%s,%s,%s,%s,%s,%s)
+        (waktu, kode_posko, keterangan, status_permintaan, id_relawan, photo_link, latitude, longitude)
+        VALUES (COALESCE(%s, now()),%s,%s,%s,%s,%s,%s,%s)
     """
 
     pg_execute(
         sql,
         (
+            w,
             data.get("kode_posko"),
             data.get("keterangan"),
             data.get("status_permintaan"),
