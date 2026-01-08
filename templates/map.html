@@ -1068,7 +1068,7 @@
         <div class="modal-content">
           <div class="modal-header bg-warning text-dark">
             <h5 class="modal-title" id="permintaanAdminModalLabel">
-              <i class="fas fa-gear"></i> Pengaturan Status Permintaan Logistik
+              <i class="fas fa-gear"></i> Pengaturan Status
             </h5>
             <div class="d-flex gap-2 align-items-center">
               <button
@@ -1088,6 +1088,21 @@
             </div>
           </div>
           <div class="modal-body">
+            <div class="d-flex flex-column flex-md-row justify-content-between align-items-md-center gap-2 mb-2">
+              <h6 class="fw-bold mb-0">
+                <i class="fas fa-clipboard-check me-1"></i> Kelola Permintaan Logistik
+              </h6>
+
+              <div class="d-flex flex-wrap gap-2 align-items-center">
+                <div class="row flex-wrap gap-2 align-items-center flex-grow-1">
+                  
+                  <div class="col d-flex gap-2 align-items-center">
+                    <input oninput="renderPermintaanAdminTable(true)" type="date" class="form-control form-control-sm" id="filterPermintaanAdminStart" style="min-width: 130px;" />
+                    <input oninput="renderPermintaanAdminTable(true)" type="date" class="form-control form-control-sm" id="filterPermintaanAdminEnd" style="min-width: 130px;" />
+                  </div>
+                </div>
+              </div>
+            </div>
             <div class="alert alert-info small mb-3">
               <i class="fas fa-info-circle me-1"></i>
               Hanya relawan admin yang bisa mengubah status. Perubahan akan
@@ -1116,15 +1131,41 @@
               </table>
             </div>
 
+            <div id="permintaanAdminLoadMoreContainer" class="text-center mt-3 d-none">
+              <button type="button" class="btn btn-sm btn-outline-primary shadow-sm px-4" id="btnPermintaanAdminLoadMore" onclick="loadMorePermintaanAdmin()">
+                <i class="fas fa-arrow-down me-1"></i> Muat Lebih Banyak
+              </button>
+            </div>
+
             <hr class="my-4" />
 
-            <div class="d-flex justify-content-between align-items-center mb-2">
+            <div class="d-flex flex-column flex-md-row justify-content-between align-items-md-center gap-2 mb-2">
               <h6 class="fw-bold mb-0">
                 <i class="fas fa-clipboard-check me-1"></i> Kelola Asesmen (is_active)
               </h6>
-              <button type="button" class="btn btn-sm btn-light" id="btnRefreshAsesmenAdmin" title="Refresh Data Asesmen">
-                <i class="fas fa-sync-alt"></i>
-              </button>
+
+              <div class="row g-2 align-items-center flex-wrap">
+                <div class="col-auto">
+                  <select class="form-select form-select-sm" id="filterAsesmenAdminKind" oninput="loadAdminAsesmen()" style="min-width: 140px;">
+                    <option value="">--Semua Jenis--</option>
+                    <option value="kesehatan">Kesehatan</option>
+                    <option value="pendidikan">Pendidikan</option>
+                    <option value="psikososial">Psikososial</option>
+                    <option value="infrastruktur">Infrastruktur</option>
+                    <option value="wash">WASH</option>
+                    <option value="kondisi">Kondisi</option>
+                  </select>
+                </div>
+                <div class="col-auto d-flex gap-1 align-items-center">
+                  <input oninput="loadAdminAsesmen()" type="date" class="form-control form-control-sm" id="filterAsesmenAdminStart" style="width: 130px;" />
+                  <input oninput="loadAdminAsesmen()" type="date" class="form-control form-control-sm" id="filterAsesmenAdminEnd" style="width: 130px;" />
+                </div>
+                <div class="col-auto">
+                  <button type="button" class="btn btn-sm btn-light border" id="btnRefreshAsesmenAdmin" title="Refresh Data Asesmen" onclick="loadAdminAsesmen()">
+                    <i class="fas fa-sync-alt"></i>
+                  </button>
+                </div>
+              </div>
             </div>
             <div class="alert alert-warning small mb-3">
               <i class="fas fa-exclamation-triangle me-1"></i>
@@ -1153,16 +1194,43 @@
               </table>
             </div>
 
+            <div id="asesmenAdminLoadMoreContainer" class="text-center mt-3 d-none">
+              <button type="button" class="btn btn-sm btn-outline-primary shadow-sm px-4" id="btnAsesmenAdminLoadMore" onclick="loadAdminAsesmen(true)">
+                <i class="fas fa-arrow-down me-1"></i> Muat Lebih Banyak
+              </button>
+            </div>
+
 
             <hr class="my-4" />
 
-            <div class="d-flex justify-content-between align-items-center mb-2">
+            <div class="d-flex flex-column flex-md-row justify-content-between align-items-md-center gap-2 mb-2">
               <h6 class="fw-bold mb-0">
                 <i class="fas fa-map-marker-alt me-1"></i> Kelola Data Lokasi
               </h6>
-              <button type="button" class="btn btn-sm btn-light" id="btnRefreshLokasiAdmin" title="Refresh Data Lokasi">
-                <i class="fas fa-sync-alt"></i>
-              </button>
+
+              <div class="row g-2 align-items-center flex-wrap">
+                <div class="col-auto">
+                  <input type="search" class="form-control form-control-sm" id="filterAdminLokasiSearch" oninput="loadAdminLokasi()" placeholder="Cari Lokasi..." style="min-width: 150px;" />
+                </div>
+                <div class="col-auto">
+                  <select class="form-select form-select-sm" id="filterAdminLokasiKind" oninput="loadAdminLokasi()" style="min-width: 140px;">
+                    <option value="">--Semua Jenis--</option>
+                    {% if ref_jenis_lokasi and ref_jenis_lokasi|length > 0 %}
+                      {% for v in ref_jenis_lokasi %}
+                        <option value="{{ v }}">{{ v }}</option>
+                      {% endfor %}
+                    {% else %}
+                      <option value="Posko Pengungsian">Posko Pengungsian</option>
+                      <option value="Gudang Logistik">Gudang Logistik</option>
+                    {% endif %}
+                  </select>
+                </div>
+                <div class="col-auto">
+                  <button type="button" class="btn btn-sm btn-light border" id="btnRefreshLokasiAdmin" title="Refresh Data Lokasi" onclick="loadAdminLokasi()">
+                    <i class="fas fa-sync-alt"></i>
+                  </button>
+                </div>
+              </div>
             </div>
 
             <div id="adminLokasiAlert" class="alert alert-info py-2 small d-none"></div>
@@ -1185,6 +1253,12 @@
                   </tr>
                 </tbody>
               </table>
+            </div>
+
+            <div id="adminLokasiLoadMoreContainer" class="text-center mt-3 d-none">
+              <button type="button" class="btn btn-sm btn-outline-primary shadow-sm px-4" id="btnAdminLokasiLoadMore" onclick="loadAdminLokasi(true)">
+                <i class="fas fa-arrow-down me-1"></i> Muat Lebih Banyak
+              </button>
             </div>
             <hr class="my-4" />
 
@@ -2607,6 +2681,7 @@
               let asesmenKondisi = safeJsonParse({{ asesmen_kondisi | tojson | safe }}, []);
               let permintaanLogistik = safeJsonParse({{ permintaan_logistik | tojson | safe }}, []);
               const CURRENT_IS_ADMIN = {{ 'true' if is_admin else 'false' }};
+              const DATA_POSKO = safeJsonParse({{ data_posko | tojson | safe }}, []);
 
               // Ref jenis lokasi untuk admin (dropdown)
               const REF_JENIS_LOKASI = safeJsonParse({{ ref_jenis_lokasi | tojson | safe }}, []);
@@ -3581,19 +3656,68 @@
         return `<span class="badge" style="background:${bg};">${escapeHtml(label)}</span>`;
       }
 
-      function renderPermintaanAdminTable() {
+      let ADMIN_PERMINTAAN_DISPLAY_COUNT = 10;
+
+      function loadMorePermintaanAdmin() {
+        ADMIN_PERMINTAAN_DISPLAY_COUNT += 10;
+        renderPermintaanAdminTable();
+      }
+
+      function renderPermintaanAdminTable(resetCount = false) {
+        if (resetCount) {
+          ADMIN_PERMINTAAN_DISPLAY_COUNT = 10;
+        }
+
         const tbody = document.getElementById('permintaanAdminTableBody');
+        const loadMoreBtn = document.getElementById('btnPermintaanAdminLoadMore');
+        const loadMoreContainer = document.getElementById('permintaanAdminLoadMoreContainer');
         if (!tbody) return;
 
         const rows = Array.isArray(permintaanLogistik) ? permintaanLogistik : [];
         tbody.innerHTML = '';
 
-        if (!rows.length) {
+        // Filter tanggal default
+        const now = new Date();
+        const yyyy = now.getFullYear();
+        const mm = String(now.getMonth() + 1).padStart(2, "0");
+        const dd = String(now.getDate()).padStart(2, "0");
+
+        const past = new Date();
+        past.setDate(now.getDate() - 30);
+        const yyyy30 = past.getFullYear();
+        const mm30 = String(past.getMonth() + 1).padStart(2, "0");
+        const dd30 = String(past.getDate()).padStart(2, "0");
+
+        const start = document.getElementById('filterPermintaanAdminStart')?.value || `${yyyy30}-${mm30}-${dd30}`;
+        const end   = document.getElementById('filterPermintaanAdminEnd')?.value || `${yyyy}-${mm}-${dd}`;
+        
+        const filteredRows = rows.filter(r => {
+          const rawWaktu = r.waktu || r.tanggal || r.timestamp;
+          if (!rawWaktu) return true;
+          // Ambil YYYY-MM-DD saja dari string waktu
+          const tanggal = String(rawWaktu).substring(0, 10);
+          return tanggal >= start && tanggal <= end;
+        });
+
+        if (!filteredRows.length) {
           tbody.innerHTML = '<tr><td colspan="6" class="text-muted text-center">Belum ada permintaan.</td></tr>';
+          if (loadMoreContainer) loadMoreContainer.classList.add('d-none');
           return;
         }
 
-        rows.forEach(r => {
+        // Slicing untuk pagination frontend
+        const displayRows = filteredRows.slice(0, ADMIN_PERMINTAAN_DISPLAY_COUNT);
+        const hasMore = filteredRows.length > ADMIN_PERMINTAAN_DISPLAY_COUNT;
+
+        if (loadMoreContainer) {
+          if (hasMore) {
+            loadMoreContainer.classList.remove('d-none');
+          } else {
+            loadMoreContainer.classList.add('d-none');
+          }
+        }
+
+        displayRows.forEach(r => {
           const id = r.id;
           const kodePosko = r.kode_posko || '-';
           const namaPosko = _poskoNameByKode(kodePosko);
@@ -3703,6 +3827,8 @@
       };
 
       let ADMIN_ASESMEN_ROWS = [];
+      let ADMIN_ASESMEN_OFFSET = 0;
+      const ADMIN_ASESMEN_LIMIT = 10;
 
       function _asesmenKindLabel(kind) {
         const k = String(kind || '').trim().toLowerCase();
@@ -3715,10 +3841,30 @@
         return true;
       }
 
-      async function loadAdminAsesmen() {
+      function _poskoNameByKode(kode) {
+        if (!kode || kode === '-') return '-';
+        if (typeof DATA_POSKO !== 'undefined' && Array.isArray(DATA_POSKO)) {
+          const found = DATA_POSKO.find(p => p.kode === kode);
+          if (found) return found.nama;
+        }
+        return kode;
+      }
+
+      async function loadAdminAsesmen(isLoadMore = false) {
         const tbody = document.getElementById('asesmenAdminTableBody');
-        if (tbody) {
-          tbody.innerHTML = '<tr><td colspan="8" class="text-muted text-center">Memuat...</td></tr>';
+        const loadMoreBtn = document.getElementById('btnAsesmenAdminLoadMore');
+        const loadMoreContainer = document.getElementById('asesmenAdminLoadMoreContainer');
+
+        if (!isLoadMore) {
+          ADMIN_ASESMEN_OFFSET = 0;
+          if (tbody) {
+            tbody.innerHTML = '<tr><td colspan="8" class="text-muted text-center">Memuat...</td></tr>';
+          }
+        } else {
+          if (loadMoreBtn) {
+            loadMoreBtn.disabled = true;
+            loadMoreBtn.innerHTML = '<i class="fas fa-spinner fa-spin me-1"></i> Memuat...';
+          }
         }
 
         if (!CURRENT_IS_ADMIN) {
@@ -3726,28 +3872,66 @@
             tbody.innerHTML = '<tr><td colspan="8" class="text-muted text-center">Bukan admin.</td></tr>';
           }
           ADMIN_ASESMEN_ROWS = [];
+          if (loadMoreContainer) loadMoreContainer.classList.add('d-none');
           return;
         }
 
+        // Filter tanggal default
+        const now = new Date();
+        const yyyy = now.getFullYear();
+        const mm = String(now.getMonth() + 1).padStart(2, "0");
+        const dd = String(now.getDate()).padStart(2, "0");
+
+        const past = new Date();
+        past.setDate(now.getDate() - 30);
+        const yyyy30 = past.getFullYear();
+        const mm30 = String(past.getMonth() + 1).padStart(2, "0");
+        const dd30 = String(past.getDate()).padStart(2, "0");
+
+        const start = document.getElementById('filterAsesmenAdminStart')?.value || `${yyyy30}-${mm30}-${dd30}`;
+        const end   = document.getElementById('filterAsesmenAdminEnd')?.value || `${yyyy}-${mm}-${dd}`;
+        const kind  = document.getElementById('filterAsesmenAdminKind')?.value || '';
+
         try {
-          const resp = await fetch('/api/admin_asesmen_list?hours=720');
+          const url = `/api/admin_asesmen_list?limit=${ADMIN_ASESMEN_LIMIT}&offset=${ADMIN_ASESMEN_OFFSET}&start=${start}&end=${end}&kind=${kind}&t=${Date.now()}`;
+          const resp = await fetch(url);
           const result = await resp.json().catch(() => ({}));
+
           if (resp.ok && result && result.success) {
-            ADMIN_ASESMEN_ROWS = Array.isArray(result.rows) ? result.rows : [];
+            const newRows = Array.isArray(result.rows) ? result.rows : [];
+            
+            if (!isLoadMore) {
+              ADMIN_ASESMEN_ROWS = newRows;
+            } else {
+              ADMIN_ASESMEN_ROWS = ADMIN_ASESMEN_ROWS.concat(newRows);
+            }
+
+            ADMIN_ASESMEN_OFFSET += newRows.length;
             renderAsesmenAdminTable();
+
+            if (loadMoreContainer) {
+              if (result.has_more) {
+                loadMoreContainer.classList.remove('d-none');
+              } else {
+                loadMoreContainer.classList.add('d-none');
+              }
+            }
           } else {
             const err = (result && result.error) ? result.error : 'Unknown error';
-            if (tbody) {
+            if (!isLoadMore && tbody) {
               tbody.innerHTML = `<tr><td colspan="8" class="text-muted text-center">Gagal memuat asesmen: ${escapeHtml(err)}</td></tr>`;
             }
-            ADMIN_ASESMEN_ROWS = [];
           }
         } catch (e) {
           console.error(e);
-          if (tbody) {
+          if (!isLoadMore && tbody) {
             tbody.innerHTML = '<tr><td colspan="8" class="text-muted text-center">Error memuat data asesmen.</td></tr>';
           }
-          ADMIN_ASESMEN_ROWS = [];
+        } finally {
+          if (loadMoreBtn) {
+            loadMoreBtn.disabled = false;
+            loadMoreBtn.innerHTML = '<i class="fas fa-arrow-down me-1"></i> Muat Lebih Banyak';
+          }
         }
       }
 
@@ -3943,16 +4127,22 @@
         return html;
       }
 
-      function renderAdminLokasiTable(rows) {
-        if (!adminLokasiTableBody) return;
+      let LIMIT_ADMIN_LOKASI = 10;
+      let OFFSET_ADMIN_LOKASI = 0;
+      let ADMIN_LOKASI_ROWS = [];
 
-        if (!rows || !rows.length) {
+      function renderAdminLokasiTable(rows = null) {
+        if (!adminLokasiTableBody) return;
+        
+        const dataRows = (rows !== null) ? rows : ADMIN_LOKASI_ROWS;
+
+        if (!dataRows || !dataRows.length) {
           adminLokasiTableBody.innerHTML = `<tr><td colspan="6" class="text-muted text-center">Tidak ada data.</td></tr>`;
           return;
         }
 
         let html = '';
-        rows.forEach(r => {
+        dataRows.forEach(r => {
           const idLok = String(r.id_lokasi || '').trim();
           const kab = String(r.nama_kabkota || r.kabupaten_kota || '').trim();
           const nama = String(r.nama_lokasi || '').trim();
@@ -4008,25 +4198,73 @@
         });
       }
 
-      async function loadAdminLokasi() {
+      async function loadAdminLokasi(isLoadMore = false) {
         if (!CURRENT_IS_ADMIN) return;
         if (!adminLokasiTableBody) return;
 
-        try {
+        const loadMoreBtn = document.getElementById('btnAdminLokasiLoadMore');
+        const loadMoreContainer = document.getElementById('adminLokasiLoadMoreContainer');
+
+        if (!isLoadMore) {
+          OFFSET_ADMIN_LOKASI = 0;
+          ADMIN_LOKASI_ROWS = [];
           adminLokasiTableBody.innerHTML = `<tr><td colspan="6" class="text-muted text-center">Memuat...</td></tr>`;
-          const res = await fetch('/api/admin_lokasi_list?limit=2000', { method: 'GET', credentials: 'same-origin' });
+        } else {
+          if (loadMoreBtn) {
+            loadMoreBtn.disabled = true;
+            loadMoreBtn.innerHTML = '<i class="fas fa-spinner fa-spin me-1"></i> Memuat...';
+          }
+        }
+
+        // Filter tanggal default
+        const now = new Date();
+        const yyyy = now.getFullYear();
+        const mm = String(now.getMonth() + 1).padStart(2, "0");
+        const dd = String(now.getDate()).padStart(2, "0");
+
+        const past = new Date();
+        past.setDate(now.getDate() - 30);
+        const yyyy30 = past.getFullYear();
+        const mm30 = String(past.getMonth() + 1).padStart(2, "0");
+        const dd30 = String(past.getDate()).padStart(2, "0");
+
+        const filterSearch = document.getElementById('filterAdminLokasiSearch')?.value || '';
+        const filterKind = document.getElementById('filterAdminLokasiKind')?.value || '';
+        const filterStart = document.getElementById('filterAdminLokasiStart')?.value || `${yyyy30}-${mm30}-${dd30}`;
+        const filterEnd = document.getElementById('filterAdminLokasiEnd')?.value || `${yyyy}-${mm}-${dd}`;
+
+        try {
+          const res = await fetch(`/api/admin_lokasi_list?limit=${LIMIT_ADMIN_LOKASI}&offset=${OFFSET_ADMIN_LOKASI}&search=${filterSearch}&kind=${filterKind}&start=${filterStart}&end=${filterEnd}`, { method: 'GET', credentials: 'same-origin' });
           const data = await res.json();
           if (!data || !data.success) {
             _showAdminLokasiAlert((data && data.error) ? data.error : 'Gagal memuat data lokasi.', 'danger');
-            renderAdminLokasiTable([]);
+            renderAdminLokasiTable();
             return;
           }
+
+          const newRows = data.rows || [];
+          ADMIN_LOKASI_ROWS = ADMIN_LOKASI_ROWS.concat(newRows);
+          OFFSET_ADMIN_LOKASI += newRows.length;
+
           _showAdminLokasiAlert('Data lokasi dimuat.', 'success');
-          renderAdminLokasiTable(data.rows || []);
+          renderAdminLokasiTable();
+
+          if (loadMoreContainer) {
+            if (data.has_more) {
+              loadMoreContainer.classList.remove('d-none');
+            } else {
+              loadMoreContainer.classList.add('d-none');
+            }
+          }
         } catch (e) {
           console.error(e);
           _showAdminLokasiAlert('Terjadi error saat memuat data lokasi.', 'danger');
-          renderAdminLokasiTable([]);
+          renderAdminLokasiTable();
+        } finally {
+          if (loadMoreBtn) {
+            loadMoreBtn.disabled = false;
+            loadMoreBtn.innerHTML = '<i class="fas fa-arrow-down me-1"></i> Muat Lebih Banyak';
+          }
         }
       }
 
@@ -5852,5 +6090,36 @@ window.getLocationForLokasi = function () {
     </script>
 
 
+    <script>
+      document.addEventListener("DOMContentLoaded", function () {
+        const startInput = document.getElementById("filterAsesmenAdminStart");
+        const endInput = document.getElementById("filterAsesmenAdminEnd");
+        const pStartInput = document.getElementById("filterPermintaanAdminStart");
+        const pEndInput = document.getElementById("filterPermintaanAdminEnd");
+        const lStartInput = document.getElementById("filterAdminLokasiStart");
+        const lEndInput = document.getElementById("filterAdminLokasiEnd");
+
+        const today = new Date();
+        const thirtyDaysAgo = new Date();
+        thirtyDaysAgo.setDate(today.getDate() - 30);
+
+        const formatDate = (date) => {
+          const yyyy = date.getFullYear();
+          const mm = String(date.getMonth() + 1).padStart(2, "0");
+          const dd = String(date.getDate()).padStart(2, "0");
+          return `${yyyy}-${mm}-${dd}`;
+        };
+
+        const thirtyStr = formatDate(thirtyDaysAgo);
+        const todayStr = formatDate(today);
+
+        if (startInput) startInput.value = startInput.value || thirtyStr;
+        if (endInput)   endInput.value   = endInput.value || todayStr;
+        if (pStartInput) pStartInput.value = pStartInput.value || thirtyStr;
+        if (pEndInput)   pEndInput.value   = pEndInput.value || todayStr;
+        if (lStartInput) lStartInput.value = lStartInput.value || thirtyStr;
+        if (lEndInput)   lEndInput.value   = lEndInput.value || todayStr;
+      });
+    </script>
   </body>
 </html>

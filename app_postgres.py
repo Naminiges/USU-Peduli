@@ -872,17 +872,40 @@ def api_admin_asesmen_list():
     except Exception:
         hours = 24
 
+    start = request.args.get("start", "")
+    end   = request.args.get("end", "")
+    kind  = request.args.get("kind", "")
+
+    limit_raw = request.args.get("limit", "10")
     try:
-        rows = pg_get_admin_asesmen_list(hours=hours, limit_per_kind=200)
-        return jsonify({"success": True, "rows": rows})
+        limit = int(str(limit_raw).strip())
+    except Exception:
+        limit = 10
+
+    offset_raw = request.args.get("offset", "0")
+    try:
+        offset = int(str(offset_raw).strip())
+    except Exception:
+        offset = 0
+
+    try:
+        result = pg_get_admin_asesmen_list(
+            hours=hours, 
+            limit_per_kind=500, 
+            start=start, 
+            end=end, 
+            kind_filter=kind,
+            offset=offset,
+            limit=limit
+        )
+        # result is already {"success": True, "rows": [...], "has_more": ...}
+        return jsonify({"success": True, **result})
     except Exception as e:
         return jsonify({"success": False, "error": str(e)}), 500
 
 
 # ==============================================================================
-
-# ==============================================================================
-# 2d. ADMIN: BACA LOG AKSI ADMIN
+# 2e. ADMIN: BACA LOG AKSI ADMIN
 # ==============================================================================
 @app.route("/api/admin_action_logs", methods=["GET"])
 def api_admin_action_logs():
@@ -927,15 +950,33 @@ def api_admin_lokasi_list():
     if not _pg_enabled() or pg_get_admin_lokasi_list is None:
         return jsonify({"success": False, "error": "Fitur belum aktif (pg_data belum siap)."}), 500
 
-    limit_raw = request.args.get("limit", "500")
+    limit_raw = request.args.get("limit", "10")
     try:
         limit = int(str(limit_raw).strip())
     except Exception:
-        limit = 500
+        limit = 10
+
+    offset_raw = request.args.get("offset", "0")
+    try:
+        offset = int(str(offset_raw).strip())
+    except Exception:
+        offset = 0
+
+    search = request.args.get("search", "").strip()
+    kind = request.args.get("kind", "").strip()
+    start = request.args.get("start", "").strip() or None
+    end = request.args.get("end", "").strip() or None
 
     try:
-        rows = pg_get_admin_lokasi_list(limit=limit)
-        return jsonify({"success": True, "rows": rows})
+        result = pg_get_admin_lokasi_list(
+            limit=limit, 
+            offset=offset, 
+            search=search, 
+            kind=kind, 
+            start=start, 
+            end=end
+        )
+        return jsonify({"success": True, **result})
     except Exception as e:
         return jsonify({"success": False, "error": str(e)}), 500
 

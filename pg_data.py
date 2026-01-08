@@ -1196,7 +1196,7 @@ def pg_get_relawan_locations_last24h(hours: int = 168) -> List[Dict[str, Any]]:
         out.append(rr)
     return out
 
-def _pg_get_asesmen_last_hours(table_env: str, default_table: str, hours: int =168, only_active: bool = True) -> List[Dict[str, Any]]:
+def _pg_get_asesmen_last_hours(table_env: str, default_table: str, hours: int =168, only_active: bool = True, start: Optional[date] = None, end: Optional[date] = None) -> List[Dict[str, Any]]:
     """Ambil asesmen dalam N jam terakhir untuk kebutuhan peta (buffer).
 
     Return field minimal:
@@ -1205,7 +1205,14 @@ def _pg_get_asesmen_last_hours(table_env: str, default_table: str, hours: int =1
     table = _get_env(table_env, default_table)
     relawan_table = _get_env("PG_RELAWAN_TABLE", "public.data_relawan")
     active_filter = "AND (lr.is_active IS DISTINCT FROM false)" if only_active else ""
+    start_filter = "AND lr.waktu::date >= %s" if start else ""
+    end_filter = "AND lr.waktu::date <= %s" if end else ""
 
+    # If using date filter, ignore the "last N hours" restriction
+    time_limit = ""
+    if not start and not end:
+        time_limit = "AND lr.waktu >= NOW() - (%s * INTERVAL '1 hour')"
+        
     sql = f"""
         SELECT
             lr.id,
@@ -1225,15 +1232,27 @@ def _pg_get_asesmen_last_hours(table_env: str, default_table: str, hours: int =1
         FROM {table} lr
         LEFT JOIN {relawan_table} dr
           ON dr.id_relawan = lr.id_relawan
-        WHERE waktu >= NOW() - (%s * INTERVAL '1 hour')
+        WHERE 1=1
+          {time_limit}
           {active_filter}
+          {start_filter}
+          {end_filter}
           AND latitude IS NOT NULL
           AND longitude IS NOT NULL
-        ORDER BY waktu DESC;
+        ORDER BY lr.waktu DESC;
     """
 
+    params = []
+    if not start and not end:
+        params.append(hours)
+
+    if start:
+        params.append(start)
+    if end:
+        params.append(end)
+
     try:
-        rows = pg_fetchall(sql, (hours,))
+        rows = pg_fetchall(sql, tuple(params))
     except Exception:
         # Fallback jika kolom radius belum ada
         sql2 = f"""
@@ -1254,13 +1273,16 @@ def _pg_get_asesmen_last_hours(table_env: str, default_table: str, hours: int =1
             FROM {table} lr
             LEFT JOIN {relawan_table} dr
               ON dr.id_relawan = lr.id_relawan
-            WHERE waktu >= NOW() - (%s * INTERVAL '1 hour')
+            WHERE 1=1
+              {time_limit}
               {active_filter}
+              {start_filter}
+              {end_filter}
               AND latitude IS NOT NULL
               AND longitude IS NOT NULL
-            ORDER BY waktu DESC;
+            ORDER BY lr.waktu DESC;
         """
-        rows = pg_fetchall(sql2, (hours,))
+        rows = pg_fetchall(sql2, tuple(params))
     out: List[Dict[str, Any]] = []
     for r in rows:
         rr = _json_safe_row(r)
@@ -1947,15 +1969,46 @@ def _ensure_data_lokasi_is_active_column() -> None:
         return
 
 
-def pg_get_admin_lokasi_list(limit: int = 500) -> List[Dict[str, Any]]:
-    """Ambil daftar data_lokasi (aktif + nonaktif) untuk panel admin."""
+def pg_get_admin_lokasi_list(
+    limit: int = 10, 
+    offset: int = 0, 
+    search: str = "", 
+    kind: str = "", 
+    start: Optional[Union[str, date]] = None, 
+    end: Optional[Union[str, date]] = None
+) -> Dict[str, Any]:
+    """Ambil daftar data_lokasi (aktif + nonaktif) untuk panel admin dengan filter dan pagination."""
     _ensure_data_lokasi_is_active_column()
 
     table = _get_env("PG_DATA_LOKASI_TABLE", "public.data_lokasi")
+    
     try:
-        lim = max(1, min(5000, int(limit)))
+        lim = max(1, min(100, int(limit)))
+        off = max(0, int(offset))
     except Exception:
-        lim = 500
+        lim = 10
+        off = 0
+
+    where_clauses = ["1=1"]
+    params = []
+
+    if search.strip():
+        where_clauses.append("(nama_lokasi ILIKE %s OR nama_kabkota ILIKE %s OR id_lokasi ILIKE %s)")
+        s = f"%{search.strip()}%"
+        params.extend([s, s, s])
+
+    if kind.strip():
+        where_clauses.append("jenis_lokasi = %s")
+        params.append(kind.strip())
+
+    if start:
+        where_clauses.append("waktu::date >= %s")
+        params.append(start)
+    if end:
+        where_clauses.append("waktu::date <= %s")
+        params.append(end)
+
+    where_sql = " AND ".join(where_clauses)
 
     sql = f"""
         SELECT
@@ -1966,15 +2019,25 @@ def pg_get_admin_lokasi_list(limit: int = 500) -> List[Dict[str, Any]]:
             waktu,
             COALESCE(is_active, TRUE) AS is_active
         FROM {table}
+        WHERE {where_sql}
         ORDER BY waktu DESC
-        LIMIT {lim};
+        LIMIT %s OFFSET %s;
     """
+    
+    # Query for has_more
+    sql_count = f"SELECT COUNT(*) as total FROM {table} WHERE {where_sql};"
 
     try:
-        rows = pg_fetchall(sql)
-        return [_json_safe_row(r) for r in rows]
+        rows = pg_fetchall(sql, (*params, lim + 1, off))
+        has_more = len(rows) > lim
+        paged_rows = rows[:lim]
+
+        return {
+            "rows": [_json_safe_row(r) for r in paged_rows],
+            "has_more": has_more
+        }
     except Exception:
-        return []
+        return {"rows": [], "has_more": False}
 
 
 def pg_set_data_lokasi_active(
@@ -2078,22 +2141,44 @@ def pg_update_data_lokasi_jenis(
 
     return ok
 
-def pg_get_admin_asesmen_list(hours: int = 24, limit_per_kind: int = 200) -> List[Dict[str, Any]]:
-    """Ambil daftar asesmen (aktif + nonaktif) untuk panel admin.
+def pg_get_admin_asesmen_list(hours: int = 24, limit_per_kind: int = 500, start: Optional[date] = None, end: Optional[date] = None, kind_filter: str = "", offset: int = 0, limit: int = 10) -> Dict[str, Any]:
+    """Ambil daftar asesmen (aktif + nonaktif) untuk panel admin dengan pagination.
 
-    NOTE: Front-end peta tetap mengambil yang aktif saja.
+    Return: {"rows": [...], "has_more": bool}
     """
     try:
         h = int(hours)
     except Exception:
         h = 24
-    h = max(1, min(24 * 14, h))
+    h = max(1, min(24 * 60, h))
 
     try:
-        lim = int(limit_per_kind)
+        lim_k = int(limit_per_kind)
     except Exception:
-        lim = 200
-    lim = max(1, min(2000, lim))
+        lim_k = 500
+    lim_k = max(1, min(2000, lim_k))
+
+    try:
+        off = int(offset)
+    except Exception:
+        off = 0
+    
+    try:
+        lim = int(limit)
+    except Exception:
+        lim = 10
+
+    if isinstance(start, str) and start:
+        try:
+            start = datetime.strptime(start, "%Y-%m-%d").date()
+        except Exception:
+            start = None
+
+    if isinstance(end, str) and end:
+        try:
+            end = datetime.strptime(end, "%Y-%m-%d").date()
+        except Exception:
+            end = None
 
     buckets = [
         ("kesehatan", "PG_ASESMEN_KESEHATAN_TABLE", "public.asesmen_kesehatan"),
@@ -2104,16 +2189,21 @@ def pg_get_admin_asesmen_list(hours: int = 24, limit_per_kind: int = 200) -> Lis
         ("kondisi", "PG_ASESMEN_KONDISI_TABLE", "public.asesmen_kondisi"),
     ]
 
-    out: List[Dict[str, Any]] = []
+    all_data: List[Dict[str, Any]] = []
     for kind, env, default_table in buckets:
+        # Jika ada filter jenis, skip yang tidak cocok
+        if kind_filter and kind_filter.strip().lower() != kind:
+            continue
+
         try:
-            rows = _pg_get_asesmen_last_hours(env, default_table, hours=h, only_active=False)
+            # Kita ambil lim_k (cukup banyak) dari tiap tabel untuk disortir gabungan
+            rows = _pg_get_asesmen_last_hours(env, default_table, hours=h, only_active=False, start=start, end=end)
         except Exception:
             rows = []
 
-        for r in (rows or [])[:lim]:
+        for r in (rows or [])[:lim_k]:
             rr = _json_safe_row(r)
-            out.append(
+            all_data.append(
                 {
                     "kind": kind,
                     "id": rr.get("id"),
@@ -2127,6 +2217,12 @@ def pg_get_admin_asesmen_list(hours: int = 24, limit_per_kind: int = 200) -> Lis
                 }
             )
 
-    out.sort(key=lambda x: str(x.get("waktu") or ""), reverse=True)
-    return out
+    # Sort gabungan by waktu DESC
+    all_data.sort(key=lambda x: str(x.get("waktu") or ""), reverse=True)
+    
+    # Slicing untuk pagination
+    paged_rows = all_data[off : off + lim]
+    has_more = len(all_data) > (off + lim)
+
+    return {"rows": paged_rows, "has_more": has_more, "total_all_loaded": len(all_data)}
 
