@@ -273,92 +273,102 @@
 
       <hr />
 
-<div class="d-flex align-items-center mb-3 mt-4">
-    <div class="bg-primary text-white rounded-circle d-flex align-items-center justify-content-center me-2 shadow-sm" style="width: 32px; height: 32px;">
-        <i class="fas fa-truck-fast" style="font-size: 0.9rem;"></i>
+<div class="d-flex align-items-center mb-3 mt-2">
+    <div class="bg-success text-white rounded-circle d-flex align-items-center justify-content-center me-2" style="width: 32px; height: 32px;">
+        <i class="fas fa-truck-loading"></i>
     </div>
-    <h5 class="mb-0 text-dark fw-bold">Pengiriman Logistik</h5>
+    <h5 class="mb-0 text-dark fw-bold">Data Distribusi Logistik Keluar</h5>
 </div>
+<div class="logistik-scroll-container shadow-sm">
+  <div class="accordion" id="accordionStokGudang">
+      
+      {% for group in stok_gudang %}
+          {% set card_id = "stok" ~ loop.index %}
+          
+          <div class="accordion-item border-0 shadow-sm mb-3 rounded overflow-hidden">
+              
+              <h2 class="accordion-header" id="heading{{ card_id }}">
+                  <button class="accordion-button collapsed bg-white py-3" type="button" data-bs-toggle="collapse" data-bs-target="#collapse{{ card_id }}" aria-expanded="false">
+                      <div class="d-flex flex-column flex-md-row w-100 justify-content-between align-items-md-center me-3 gap-2">
+                          
+                          <div>
+                              <div class="fw-bold text-dark" style="font-size: 1rem;">
+                                  {{ group.header.nama or 'Relawan' }}
+                              </div>
+                              <div class="small text-muted mt-1">
+                                  <i class="fas fa-map-marker-alt text-danger me-1"></i> 
+                                  {{ group.header.daerah }}
+                              </div>
+                          </div>
 
-<div class="accordion" id="accordionLogistik">
-    
-    {% for group in data_distribusi %}
-        {% set card_id = "logistik" ~ loop.index %}
-        
-        <div class="accordion-item border-0 shadow-sm mb-3" style="border-radius: 10px; overflow: hidden;">
-            
-            <h2 class="accordion-header" id="heading{{ card_id }}">
-                <button class="accordion-button collapsed bg-white py-3 px-3" type="button" data-bs-toggle="collapse" data-bs-target="#collapse{{ card_id }}" aria-expanded="false" style="box-shadow: none;">
-                    
-                    <div class="w-100">
-                        <div class="d-flex justify-content-between align-items-start">
-                            <div class="fw-bold text-dark" style="font-size: 1rem;">
-                                {{ group.header.nama }}
-                            </div>
-                            <span class="badge bg-light text-secondary border rounded-pill" style="font-weight: normal;">
-                                <i class="far fa-calendar me-1"></i> {{ group.header.tanggal }}
-                            </span>
-                        </div>
+                          <div class="text-md-end text-start">
+                              <span class="badge bg-light text-dark border mb-1">
+                                  <i class="far fa-calendar-alt me-1"></i> {{ group.header.tanggal }}
+                              </span>
+                              <div class="small text-muted">
+                                  {{ group.list_barang|length }} Jenis Barang
+                              </div>
+                          </div>
+                      </div>
+                  </button>
+              </h2>
 
-                        <div class="text-muted small mt-1">
-                            <i class="fas fa-map-pin text-danger me-1"></i> {{ group.header.daerah }}
-                        </div>
-                    </div>
-
-                </button>
-            </h2>
-
-            <div id="collapse{{ card_id }}" class="accordion-collapse collapse" data-bs-parent="#accordionLogistik">
-                <div class="accordion-body bg-light p-0">
-                    
-                    <div class="table-responsive">
-                        <table class="table table-sm table-borderless mb-0">
-                            <thead class="text-secondary small border-bottom">
-                                <tr>
-                                    <th class="ps-4 py-2">Barang</th>
-                                    <th class="text-center py-2">Jml</th>
-                                    <th class="text-end pe-4 py-2">Status</th>
-                                </tr>
-                            </thead>
-                            <tbody>
-                                {% for item in group.items %}
-                                <tr class="border-bottom border-light">
-                                    <td class="ps-4 align-middle">
-                                        <div class="fw-bold text-dark">{{ item.deskripsi }}</div>
-                                    </td>
-                                    <td class="text-center align-middle">
-                                        <span class="fw-bold text-primary">{{ item.jumlah }}</span>
-                                        <small class="text-muted">{{ item.satuan }}</small>
-                                    </td>
-                                    <td class="text-end pe-4 align-middle">
-                                        {% if item.status == 'Selesai' %}
-                                            <i class="fas fa-check-circle text-success" title="Selesai"></i>
-                                        {% else %}
-                                            <span class="badge bg-warning text-dark" style="font-size: 0.7rem;">{{ item.status }}</span>
-                                        {% endif %}
-                                    </td>
-                                </tr>
-                                {% endfor %}
-                            </tbody>
-                        </table>
-                    </div>
-                    
-                    <div class="p-2 text-center text-muted small fst-italic bg-white border-top">
-                        Total {{ group.items|length }} jenis barang dikirim.
-                    </div>
-
-                </div>
-            </div>
-        </div>
-    {% else %}
-        <div class="text-center py-5 text-muted bg-light rounded border border-dashed">
-            <i class="fas fa-box-open fa-2x mb-3 opacity-25"></i>
-            <p class="mb-0 small">Belum ada data pengiriman.</p>
-        </div>
-    {% endfor %}
-
+              <div id="collapse{{ card_id }}" class="accordion-collapse collapse" aria-labelledby="heading{{ card_id }}" data-bs-parent="#accordionStokGudang">
+                  <div class="accordion-body p-0">
+                      <div class="table-responsive">
+                          <table class="table table-sm table-hover mb-0 align-middle">
+                              <thead class="bg-light text-secondary">
+                                  <tr>
+                                      <th class="ps-4 py-2 border-0">Barang</th>
+                                      <th class="text-center py-2 border-0">Jumlah</th>
+                                      <th class="text-end pe-4 py-2 border-0">Status</th>
+                                  </tr>
+                              </thead>
+                              <tbody>
+                                  {% for item in group.list_barang %}
+                                  <tr>
+                                      <td class="ps-4">
+                                          <span class="fw-bold text-dark">{{ item.deskripsi }}</span>
+                                      </td>
+                                      
+                                      <td class="text-center">
+                                          <span class="fw-bold">{{ item.jumlah }}</span> 
+                                          <span class="text-muted small">{{ item.satuan }}</span>
+                                      </td>
+                                      
+                                      <td class="text-end pe-4">
+                                          {% if item.status == 'Selesai' %}
+                                              <span class="badge bg-success bg-opacity-10 text-success px-2 py-1 rounded-pill" style="font-size: 0.75rem;">
+                                                  <i class="fas fa-check me-1"></i>Selesai
+                                              </span>
+                                          {% else %}
+                                              <span class="badge bg-warning bg-opacity-10 text-warning px-2 py-1 rounded-pill" style="font-size: 0.75rem;">
+                                                  {{ item.status }}
+                                              </span>
+                                          {% endif %}
+                                      </td>
+                                  </tr>
+                                  {% endfor %}
+                              </tbody>
+                          </table>
+                      </div>
+                      
+                      <div class="bg-light p-2 text-center border-top">
+                          <small class="text-muted">
+                              Total distribusi untuk <strong>{{ group.header.nama }}</strong>
+                          </small>
+                      </div>
+                  </div>
+              </div>
+          </div>
+      {% else %}
+          <div class="text-center py-5 text-muted bg-light rounded border border-dashed">
+              <i class="fas fa-box-open fa-3x mb-3 opacity-25"></i>
+              <p class="mb-0">Belum ada data distribusi logistik keluar.</p>
+          </div>
+      {% endfor %}
+  </div>
 </div>
-
       <hr />
 
       <h5><i class="fas fa-chart-bar"></i> Data Bencana & Korban</h5>

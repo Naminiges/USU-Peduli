@@ -354,6 +354,34 @@ hr {
     margin: 20px 0;
 }
 
+/* Container Scroll Logistik */
+.logistik-scroll-container {
+    max-height: 450px; /* Tinggi maksimal container, sesuaikan kebutuhan */
+    overflow-y: auto;  /* Aktifkan scroll vertikal */
+    overflow-x: hidden;
+    padding-right: 5px; /* Spasi untuk scrollbar */
+    border: 1px solid #e5e7eb; /* Opsional: Border tipis biar rapi */
+    border-radius: 10px;
+    background-color: #f8fafc; /* Opsional: Warna background container */
+    padding: 10px;
+}
+
+/* Mempercantik Scrollbar (Chrome/Edge/Safari) */
+.logistik-scroll-container::-webkit-scrollbar {
+    width: 6px;
+}
+.logistik-scroll-container::-webkit-scrollbar-track {
+    background: #f1f1f1;
+    border-radius: 4px;
+}
+.logistik-scroll-container::-webkit-scrollbar-thumb {
+    background: #cbd5e1;
+    border-radius: 4px;
+}
+.logistik-scroll-container::-webkit-scrollbar-thumb:hover {
+    background: #94a3b8;
+}
+
 /* Container agar bisa di-scroll vertikal */
 .bencana-scroll-container {
     max-height: 500px; /* Tinggi maksimal list, selebihnya scroll */

@@ -1,4 +1,4 @@
-from flask import Flask, render_template, request, redirect, url_for, session, flash, jsonify, send_from_directory
+from flask import Flask, render_template, request, redirect, url_for, session, flash, jsonify, send_from_directory, abort
 import json
 import datetime
 import os  # Untuk mendapatkan waktu saat ini dan Secret Key
@@ -16,6 +16,22 @@ CACHE_STOK = {"data": [], "timestamp": 0}
 CACHE_REKAP = {"data": [], "timestamp": 0}
 CACHE_DISTRIBUSI = {"data": [], "timestamp": 0} 
 load_dotenv()
+
+# def dd(data):
+#     """
+#     Fungsi Dump and Die ala Laravel untuk Flask.
+#     Mencetak data ke terminal dan menampilkan JSON di browser, lalu stop.
+#     """
+#     print("\n" + "="*30)
+#     print(" DUMPING DATA ")
+#     print("="*30)
+#     print(data) # Cetak di terminal
+#     print("="*30 + "\n")
+    
+#     # Paksa berhenti dan tampilkan data sebagai JSON di browser
+#     response = jsonify(data)
+#     response.status_code = 200
+#     abort(response)
 
 # ------------------------------------------------------------------------------
 # PostgreSQL helper (utama)
@@ -139,19 +155,26 @@ def convert_tanggal_indo_ke_iso(tgl_str):
         if not tgl_str: 
             return ""
         s = str(tgl_str).strip()
+        
         parts = s.split('-')
         
         if len(parts) == 3:
-            tgl = parts[0].strip()
-            bln_txt = parts[1].strip()
-            thn = parts[2].strip()
+            tgl = str(parts[0]).strip()
+            bln_txt = str(parts[1]).strip()
+            thn = str(parts[2]).strip()
+            # ===========================================
+            
             bln_kode = BULAN_INDO.get(bln_txt.lower(), '01')
+            
+            # Cek panjang string tahun (Anti-Error len())
             if len(thn) == 2:
                 thn = "20" + thn
+            
             return f"{thn}-{bln_kode}-{tgl.zfill(2)}"
             
     except Exception as e:
-        print(f"Error konversi tanggal '{tgl_str}': {e}")
+        print(f"[ERROR TANGGAL] Input: '{tgl_str}' | Error: {e}")
+        
     return ""
 
 
@@ -239,7 +262,7 @@ def get_logistik_keluar_grouped():
                         'nama': nama,
                         'daerah': daerah
                     },
-                    'items': []
+                    'list_barang': []
                 }
             
             # Masukkan barang ke dalam list items
@@ -249,7 +272,7 @@ def get_logistik_keluar_grouped():
                 'satuan': row.get('satuan'),
                 'status': row.get('status_pengiriman')
             }
-            grouped_data[group_key]['items'].append(item_detail)
+            grouped_data[group_key]['list_barang'].append(item_detail)
             
         # Ubah ke List agar bisa di-loop di HTML
         final_list = list(grouped_data.values())
@@ -579,6 +602,8 @@ def map_view():
     except Exception as e:
         print(f"[SHEET] get_stok_gudang error: {e}")
 
+    # dd(stok_gudang)
+
     status_map = get_status_map_any()
 
     rekap_kabkota = []
@@ -588,7 +613,6 @@ def map_view():
     except Exception as e:
         print(f"[SHEET] get_rekap_kabkota error: {e}")
 
-    # Tetap pakai teknik lama: ambil 1 record per kabkota (kalau input belum uniq)
     latest_rekap = {}
     for row in rekap_kabkota:
         kabkota = row.get("kabkota") or row.get("kabupaten_kota") or row.get("nama_kabkota")
@@ -689,7 +713,6 @@ def map_view():
         ref_tingkat_akses=ref_tingkat_akses,
         ref_kondisi=ref_kondisi,
         asesmen_kondisi=json.dumps(pg_get_asesmen_kondisi_last24h(720) if pg_get_asesmen_kondisi_last24h else []),
-
         permintaan_logistik=json.dumps(permintaan_logistik)
     )
 
