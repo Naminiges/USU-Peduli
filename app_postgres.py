@@ -1,14 +1,38 @@
-from flask import Flask, render_template, request, redirect, url_for, session, flash, jsonify, send_from_directory
+from flask import Flask, render_template, request, redirect, url_for, session, flash, jsonify, send_from_directory, abort
 import json
 import datetime
 import os  # Untuk mendapatkan waktu saat ini dan Secret Key
 import math
+import time
+import gspread
+from itertools import groupby
+from pathlib import Path
+from oauth2client.service_account import ServiceAccountCredentials
 from pathlib import Path
 from dotenv import load_dotenv
 from media_upload import save_asesmen_photos, photos_to_photo_path_value, save_lokasi_photo
 from zoneinfo import ZoneInfo
 
+CACHE_STOK = {"data": [], "timestamp": 0}
+CACHE_REKAP = {"data": [], "timestamp": 0}
+CACHE_DISTRIBUSI = {"data": [], "timestamp": 0} 
 load_dotenv()
+
+# def dd(data):
+#     """
+#     Fungsi Dump and Die ala Laravel untuk Flask.
+#     Mencetak data ke terminal dan menampilkan JSON di browser, lalu stop.
+#     """
+#     print("\n" + "="*30)
+#     print(" DUMPING DATA ")
+#     print("="*30)
+#     print(data) # Cetak di terminal
+#     print("="*30 + "\n")
+    
+#     # Paksa berhenti dan tampilkan data sebagai JSON di browser
+#     response = jsonify(data)
+#     response.status_code = 200
+#     abort(response)
 
 # ------------------------------------------------------------------------------
 # PostgreSQL helper (utama)
@@ -122,6 +146,149 @@ if not app.secret_key:
 def _pg_enabled() -> bool:
     return bool(os.environ.get("DATABASE_URL"))
 
+# --- 1. HELPER: KONVERSI TANGGAL INDONESIA KE ISO ---
+BULAN_INDO = {
+    'januari': '01', 'februari': '02', 'maret': '03', 'april': '04',
+    'mei': '05', 'juni': '06', 'juli': '07', 'agustus': '08',
+    'september': '09', 'oktober': '10', 'november': '11', 'desember': '12'
+}
+
+def convert_tanggal_indo_ke_iso(tgl_str):
+    try:
+        if not tgl_str: 
+            return ""
+        s = str(tgl_str).strip()
+        
+        parts = s.split('-')
+        
+        if len(parts) == 3:
+            tgl = str(parts[0]).strip()
+            bln_txt = str(parts[1]).strip()
+            thn = str(parts[2]).strip()
+            # ===========================================
+            
+            bln_kode = BULAN_INDO.get(bln_txt.lower(), '01')
+            
+            # Cek panjang string tahun (Anti-Error len())
+            if len(thn) == 2:
+                thn = "20" + thn
+            
+            return f"{thn}-{bln_kode}-{tgl.zfill(2)}"
+            
+    except Exception as e:
+        print(f"[ERROR TANGGAL] Input: '{tgl_str}' | Error: {e}")
+        
+    return ""
+
+
+def get_rekap_from_spreadsheet():
+    # Cek cache
+    if time.time() - CACHE_REKAP["timestamp"] < 300 and CACHE_REKAP["data"]:
+        return CACHE_REKAP["data"]
+
+    try:
+        # Setup Auth
+        scope = ["https://spreadsheets.google.com/feeds", "https://www.googleapis.com/auth/drive"]
+        creds = ServiceAccountCredentials.from_json_keyfile_name('service_account.json', scope)
+        client = gspread.authorize(creds)
+        
+        # URL dari snippet kamu
+        url_sheet = "https://docs.google.com/spreadsheets/d/170n5uyiW3zftwZFV77e_mxd8ythgGpgby6RAuVV47oM/edit?usp=sharing"
+        sheet = client.open_by_url(url_sheet).worksheet("rekapitulasi_data_kabkota")
+        
+        # Ambil data mentah
+        raw_data = sheet.get_all_records()
+        
+        # --- PROSES CLEANING DATA ---
+        cleaned_data = []
+        for row in raw_data:
+            # A. Buat kolom tanggal_iso untuk keperluan filter di HTML
+            row['tanggal_iso'] = convert_tanggal_indo_ke_iso(row.get('tanggal', ''))
+            
+            # B. Pastikan kolom angka benar-benar angka (Integer)
+            # Jika kosong/None, set jadi 0 agar tidak error di HTML
+            row['korban_meninggal'] = int(row.get('korban_meninggal') or 0)
+            row['korban_hilang']    = int(row.get('korban_hilang') or 0)
+            row['mengungsi']        = int(row.get('mengungsi') or 0)
+            # C. Pastikan text tidak None
+            row['sumber_info']      = row.get('sumber_info') or "-"
+            row['kabkota']          = row.get('kabkota') or "Wilayah Tidak Diketahui"
+
+            cleaned_data.append(row)
+        # ----------------------------
+
+        # Simpan data BERSIH ke cache
+        CACHE_REKAP["data"] = cleaned_data
+        CACHE_REKAP["timestamp"] = time.time()
+        
+        print("[GSPREAD] Rekap: Berhasil ambil data baru")
+        return cleaned_data
+
+    except Exception as e:
+        print(f"[GSPREAD] Error mengambil rekap: {e}")
+        # Kembalikan cache lama jika ada error koneksi
+        return CACHE_REKAP["data"] if CACHE_REKAP["data"] else []
+
+def get_logistik_keluar_grouped():
+    # Cek cache khusus distribusi
+    if time.time() - CACHE_DISTRIBUSI["timestamp"] < 300 and CACHE_DISTRIBUSI["data"]:
+        return CACHE_DISTRIBUSI["data"]
+
+    try:
+        # Setup Auth
+        scope = ["https://spreadsheets.google.com/feeds", "https://www.googleapis.com/auth/drive"]
+        creds = ServiceAccountCredentials.from_json_keyfile_name('service_account.json', scope)
+        client = gspread.authorize(creds)
+        
+        # URL Spreadsheet kamu
+        url_sheet = "https://docs.google.com/spreadsheets/d/1ZO4m71gw_veXszakUP4SURYdh_sX0I6h4nPjegr73XQ/edit?usp=sharing"
+        sheet = client.open_by_url(url_sheet).worksheet("pembersihan_data")
+        raw_data = sheet.get_all_records()
+        
+        grouped_data = {}
+        
+        for row in raw_data:
+            # Ambil key utama (bersihkan spasi)
+            tgl = str(row.get('tanggal', '')).strip()
+            nama = str(row.get('nama', '')).strip()
+            daerah = str(row.get('alamat/daerah', '')).strip()
+            
+            # Key unik: Gabungan Tanggal + Nama + Daerah
+            # Contoh: "6 Dec 2025_Tim Diksaintek_Aceh Tamiang"
+            group_key = f"{tgl}_{nama}_{daerah}"
+            
+            # Jika grup belum ada, buat header-nya
+            if group_key not in grouped_data:
+                grouped_data[group_key] = {
+                    'header': {
+                        'tanggal': tgl,
+                        'nama': nama,
+                        'daerah': daerah
+                    },
+                    'list_barang': []
+                }
+            
+            # Masukkan barang ke dalam list items
+            item_detail = {
+                'deskripsi': row.get('deskripsi'),
+                'jumlah': row.get('jumlah'),
+                'satuan': row.get('satuan'),
+                'status': row.get('status_pengiriman')
+            }
+            grouped_data[group_key]['list_barang'].append(item_detail)
+            
+        # Ubah ke List agar bisa di-loop di HTML
+        final_list = list(grouped_data.values())
+        
+        # Simpan Cache
+        CACHE_DISTRIBUSI["data"] = final_list
+        CACHE_DISTRIBUSI["timestamp"] = time.time()
+        
+        return final_list
+
+    except Exception as e:
+        print(f"[GSPREAD] Error distribusi: {e}")
+        return []
 
 def ensure_kabkota_geojson_ready():
     """Generate static/data/kabkota_sumut.json dari Postgres bila perlu (tanpa ubah front-end)."""
@@ -456,22 +623,22 @@ def map_view():
 
     # Opsional: stok gudang / master logistik / rekap (kalau ada tabelnya)
     stok_gudang = []
-    if _pg_enabled() and pg_get_stok_gudang is not None:
-        try:
-            stok_gudang = pg_get_stok_gudang() or []
-        except Exception as e:
-            print(f"[PG] get_stok_gudang error: {e}")
+    try:
+        stok_gudang = get_logistik_keluar_grouped()
+    except Exception as e:
+        print(f"[SHEET] get_stok_gudang error: {e}")
+
+    # dd(stok_gudang)
 
     status_map = get_status_map_any()
 
     rekap_kabkota = []
-    if _pg_enabled() and pg_get_rekap_kabkota_latest is not None:
-        try:
-            rekap_kabkota = pg_get_rekap_kabkota_latest() or []
-        except Exception as e:
-            print(f"[PG] get_rekap_kabkota_latest error: {e}")
+    try:
+        # Panggil fungsi baru tadi
+        rekap_kabkota = get_rekap_from_spreadsheet()
+    except Exception as e:
+        print(f"[SHEET] get_rekap_kabkota error: {e}")
 
-    # Tetap pakai teknik lama: ambil 1 record per kabkota (kalau input belum uniq)
     latest_rekap = {}
     for row in rekap_kabkota:
         kabkota = row.get("kabkota") or row.get("kabupaten_kota") or row.get("nama_kabkota")
@@ -552,7 +719,7 @@ def map_view():
         "map.html",
         data_lokasi=json.dumps(data_lokasi),
         stok_gudang=stok_gudang,
-        rekap_kabkota=list(latest_rekap.values()),
+        rekap_kabkota=rekap_kabkota,
         relawan_lokasi=json.dumps(relawan_lokasi),
         relawan_list=data_relawan,
         data_posko=data_posko_list,
@@ -572,7 +739,6 @@ def map_view():
         ref_tingkat_akses=ref_tingkat_akses,
         ref_kondisi=ref_kondisi,
         asesmen_kondisi=json.dumps(pg_get_asesmen_kondisi_last24h(720) if pg_get_asesmen_kondisi_last24h else []),
-
         permintaan_logistik=json.dumps(permintaan_logistik)
     )
 
