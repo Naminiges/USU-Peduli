@@ -1,13 +1,37 @@
-from flask import Flask, render_template, request, redirect, url_for, session, flash, jsonify, send_from_directory
+from flask import Flask, render_template, request, redirect, url_for, session, flash, jsonify, send_from_directory, abort
 import json
 import datetime
 import os  # Untuk mendapatkan waktu saat ini dan Secret Key
 import math
+import time
+import gspread
+from itertools import groupby
+from pathlib import Path
+from oauth2client.service_account import ServiceAccountCredentials
 from pathlib import Path
 from dotenv import load_dotenv
 from media_upload import save_asesmen_photos, photos_to_photo_path_value
 
+CACHE_STOK = {"data": [], "timestamp": 0}
+CACHE_REKAP = {"data": [], "timestamp": 0}
+CACHE_DISTRIBUSI = {"data": [], "timestamp": 0} 
 load_dotenv()
+
+# def dd(data):
+#     """
+#     Fungsi Dump and Die ala Laravel untuk Flask.
+#     Mencetak data ke terminal dan menampilkan JSON di browser, lalu stop.
+#     """
+#     print("\n" + "="*30)
+#     print(" DUMPING DATA ")
+#     print("="*30)
+#     print(data) # Cetak di terminal
+#     print("="*30 + "\n")
+    
+#     # Paksa berhenti dan tampilkan data sebagai JSON di browser
+#     response = jsonify(data)
+#     response.status_code = 200
+#     abort(response)
 
 # ------------------------------------------------------------------------------
 # PostgreSQL helper (utama)
@@ -35,6 +59,13 @@ try:
         pg_get_logistik_permintaan_last24h,
         pg_insert_logistik_permintaan,
         pg_update_logistik_permintaan_status,
+        pg_deactivate_asesmen,
+        pg_set_asesmen_active,
+        pg_get_admin_asesmen_list,
+        pg_get_admin_action_logs,
+        pg_get_admin_lokasi_list,
+        pg_set_data_lokasi_active,
+        pg_update_data_lokasi_jenis,
         pg_insert_data_lokasi,
         pg_get_ref_jenis_lokasi,
         pg_get_ref_kabkota,
@@ -76,6 +107,13 @@ except Exception as _pg_err:
     pg_insert_logistik_permintaan = None
     pg_get_logistik_permintaan_last24h = None
     pg_update_logistik_permintaan_status = None
+    pg_deactivate_asesmen = None
+    pg_set_asesmen_active = None
+    pg_get_admin_asesmen_list = None
+    pg_get_admin_action_logs = None
+    pg_get_admin_lokasi_list = None
+    pg_set_data_lokasi_active = None
+    pg_update_data_lokasi_jenis = None
     pg_insert_data_lokasi = None
     pg_get_ref_jenis_lokasi = None
     pg_get_ref_kabkota = None
@@ -105,6 +143,149 @@ if not app.secret_key:
 def _pg_enabled() -> bool:
     return bool(os.environ.get("DATABASE_URL"))
 
+# --- 1. HELPER: KONVERSI TANGGAL INDONESIA KE ISO ---
+BULAN_INDO = {
+    'januari': '01', 'februari': '02', 'maret': '03', 'april': '04',
+    'mei': '05', 'juni': '06', 'juli': '07', 'agustus': '08',
+    'september': '09', 'oktober': '10', 'november': '11', 'desember': '12'
+}
+
+def convert_tanggal_indo_ke_iso(tgl_str):
+    try:
+        if not tgl_str: 
+            return ""
+        s = str(tgl_str).strip()
+        
+        parts = s.split('-')
+        
+        if len(parts) == 3:
+            tgl = str(parts[0]).strip()
+            bln_txt = str(parts[1]).strip()
+            thn = str(parts[2]).strip()
+            # ===========================================
+            
+            bln_kode = BULAN_INDO.get(bln_txt.lower(), '01')
+            
+            # Cek panjang string tahun (Anti-Error len())
+            if len(thn) == 2:
+                thn = "20" + thn
+            
+            return f"{thn}-{bln_kode}-{tgl.zfill(2)}"
+            
+    except Exception as e:
+        print(f"[ERROR TANGGAL] Input: '{tgl_str}' | Error: {e}")
+        
+    return ""
+
+
+def get_rekap_from_spreadsheet():
+    # Cek cache
+    if time.time() - CACHE_REKAP["timestamp"] < 300 and CACHE_REKAP["data"]:
+        return CACHE_REKAP["data"]
+
+    try:
+        # Setup Auth
+        scope = ["https://spreadsheets.google.com/feeds", "https://www.googleapis.com/auth/drive"]
+        creds = ServiceAccountCredentials.from_json_keyfile_name('service_account.json', scope)
+        client = gspread.authorize(creds)
+        
+        # URL dari snippet kamu
+        url_sheet = "https://docs.google.com/spreadsheets/d/170n5uyiW3zftwZFV77e_mxd8ythgGpgby6RAuVV47oM/edit?usp=sharing"
+        sheet = client.open_by_url(url_sheet).worksheet("rekapitulasi_data_kabkota")
+        
+        # Ambil data mentah
+        raw_data = sheet.get_all_records()
+        
+        # --- PROSES CLEANING DATA ---
+        cleaned_data = []
+        for row in raw_data:
+            # A. Buat kolom tanggal_iso untuk keperluan filter di HTML
+            row['tanggal_iso'] = convert_tanggal_indo_ke_iso(row.get('tanggal', ''))
+            
+            # B. Pastikan kolom angka benar-benar angka (Integer)
+            # Jika kosong/None, set jadi 0 agar tidak error di HTML
+            row['korban_meninggal'] = int(row.get('korban_meninggal') or 0)
+            row['korban_hilang']    = int(row.get('korban_hilang') or 0)
+            row['mengungsi']        = int(row.get('mengungsi') or 0)
+            # C. Pastikan text tidak None
+            row['sumber_info']      = row.get('sumber_info') or "-"
+            row['kabkota']          = row.get('kabkota') or "Wilayah Tidak Diketahui"
+
+            cleaned_data.append(row)
+        # ----------------------------
+
+        # Simpan data BERSIH ke cache
+        CACHE_REKAP["data"] = cleaned_data
+        CACHE_REKAP["timestamp"] = time.time()
+        
+        print("[GSPREAD] Rekap: Berhasil ambil data baru")
+        return cleaned_data
+
+    except Exception as e:
+        print(f"[GSPREAD] Error mengambil rekap: {e}")
+        # Kembalikan cache lama jika ada error koneksi
+        return CACHE_REKAP["data"] if CACHE_REKAP["data"] else []
+
+def get_logistik_keluar_grouped():
+    # Cek cache khusus distribusi
+    if time.time() - CACHE_DISTRIBUSI["timestamp"] < 300 and CACHE_DISTRIBUSI["data"]:
+        return CACHE_DISTRIBUSI["data"]
+
+    try:
+        # Setup Auth
+        scope = ["https://spreadsheets.google.com/feeds", "https://www.googleapis.com/auth/drive"]
+        creds = ServiceAccountCredentials.from_json_keyfile_name('service_account.json', scope)
+        client = gspread.authorize(creds)
+        
+        # URL Spreadsheet kamu
+        url_sheet = "https://docs.google.com/spreadsheets/d/1ZO4m71gw_veXszakUP4SURYdh_sX0I6h4nPjegr73XQ/edit?usp=sharing"
+        sheet = client.open_by_url(url_sheet).worksheet("pembersihan_data")
+        raw_data = sheet.get_all_records()
+        
+        grouped_data = {}
+        
+        for row in raw_data:
+            # Ambil key utama (bersihkan spasi)
+            tgl = str(row.get('tanggal', '')).strip()
+            nama = str(row.get('nama', '')).strip()
+            daerah = str(row.get('alamat/daerah', '')).strip()
+            
+            # Key unik: Gabungan Tanggal + Nama + Daerah
+            # Contoh: "6 Dec 2025_Tim Diksaintek_Aceh Tamiang"
+            group_key = f"{tgl}_{nama}_{daerah}"
+            
+            # Jika grup belum ada, buat header-nya
+            if group_key not in grouped_data:
+                grouped_data[group_key] = {
+                    'header': {
+                        'tanggal': tgl,
+                        'nama': nama,
+                        'daerah': daerah
+                    },
+                    'list_barang': []
+                }
+            
+            # Masukkan barang ke dalam list items
+            item_detail = {
+                'deskripsi': row.get('deskripsi'),
+                'jumlah': row.get('jumlah'),
+                'satuan': row.get('satuan'),
+                'status': row.get('status_pengiriman')
+            }
+            grouped_data[group_key]['list_barang'].append(item_detail)
+            
+        # Ubah ke List agar bisa di-loop di HTML
+        final_list = list(grouped_data.values())
+        
+        # Simpan Cache
+        CACHE_DISTRIBUSI["data"] = final_list
+        CACHE_DISTRIBUSI["timestamp"] = time.time()
+        
+        return final_list
+
+    except Exception as e:
+        print(f"[GSPREAD] Error distribusi: {e}")
+        return []
 
 def ensure_kabkota_geojson_ready():
     """Generate static/data/kabkota_sumut.json dari Postgres bila perlu (tanpa ubah front-end)."""
@@ -139,6 +320,23 @@ def get_data_lokasi_any() -> list:
         except Exception as e:
             print(f"[PG] get_data_lokasi_any error: {e}")
     return []
+
+
+def _is_active_row(row: dict) -> bool:
+    """Normalisasi flag is_active (True jika kolom belum ada/None).
+
+    - False / 'false' / '0' / 'no' dianggap nonaktif.
+    """
+    try:
+        v = row.get('is_active')
+    except Exception:
+        return True
+
+    if v is False:
+        return False
+    if isinstance(v, str) and v.strip().lower() in ('false', '0', 'no', 'n'):
+        return False
+    return True
 
 def get_ref_jenis_lokasi_any() -> list:
     if _pg_enabled() and pg_get_ref_jenis_lokasi is not None:
@@ -345,7 +543,7 @@ def api_refresh_map():
     """API endpoint untuk mendapatkan data map terbaru."""
     try:
         data_lokasi_raw = get_data_lokasi_any()
-        data_lokasi = [d for d in data_lokasi_raw if d.get("latitude") and d.get("longitude")]
+        data_lokasi = [d for d in data_lokasi_raw if d.get("latitude") and d.get("longitude") and _is_active_row(d)]
 
         status_map = get_status_map_any()
 
@@ -353,7 +551,7 @@ def api_refresh_map():
         relawan_lokasi = []
         if pg_get_relawan_locations_last24h:
             try:
-                relawan_lokasi = pg_get_relawan_locations_last24h(168)
+                relawan_lokasi = pg_get_relawan_locations_last24h(720)
             except Exception as e:
                 print(f"Warning: gagal ambil lokasi_relawan dari Postgres: {e}")
 
@@ -362,7 +560,7 @@ def api_refresh_map():
         permintaan_logistik = []
         if pg_get_logistik_permintaan_last24h:
             try:
-                permintaan_logistik = pg_get_logistik_permintaan_last24h(168) or []
+                permintaan_logistik = pg_get_logistik_permintaan_last24h(720) or []
             except Exception as e:
                 print(f"Warning: gagal ambil logistik_permintaan dari Postgres: {e}")
 
@@ -372,12 +570,12 @@ def api_refresh_map():
                 "data_lokasi": data_lokasi,
                 "status_map": status_map,
                 "relawan_lokasi": relawan_lokasi,
-                "asesmen_kesehatan": pg_get_asesmen_kesehatan_last24h(168) if pg_get_asesmen_kesehatan_last24h else [],
-                "asesmen_pendidikan": pg_get_asesmen_pendidikan_last24h(168) if pg_get_asesmen_pendidikan_last24h else [],
-                "asesmen_psikososial": pg_get_asesmen_psikososial_last24h(168) if pg_get_asesmen_psikososial_last24h else [],
-                "asesmen_infrastruktur": pg_get_asesmen_infrastruktur_last24h(168) if pg_get_asesmen_infrastruktur_last24h else [],
-                "asesmen_wash": pg_get_asesmen_wash_last24h(168) if pg_get_asesmen_wash_last24h else [],
-                "asesmen_kondisi": pg_get_asesmen_kondisi_last24h(168) if pg_get_asesmen_kondisi_last24h else [],
+                "asesmen_kesehatan": pg_get_asesmen_kesehatan_last24h(720) if pg_get_asesmen_kesehatan_last24h else [],
+                "asesmen_pendidikan": pg_get_asesmen_pendidikan_last24h(720) if pg_get_asesmen_pendidikan_last24h else [],
+                "asesmen_psikososial": pg_get_asesmen_psikososial_last24h(720) if pg_get_asesmen_psikososial_last24h else [],
+                "asesmen_infrastruktur": pg_get_asesmen_infrastruktur_last24h(720) if pg_get_asesmen_infrastruktur_last24h else [],
+                "asesmen_wash": pg_get_asesmen_wash_last24h(720) if pg_get_asesmen_wash_last24h else [],
+                "asesmen_kondisi": pg_get_asesmen_kondisi_last24h(720) if pg_get_asesmen_kondisi_last24h else [],
 
                 "permintaan_logistik": permintaan_logistik
             }
@@ -395,26 +593,26 @@ def map_view():
     ensure_kabkota_geojson_ready()
 
     data_lokasi_raw = get_data_lokasi_any()
-    data_lokasi = [d for d in data_lokasi_raw if d.get("latitude") and d.get("longitude")]
+    data_lokasi = [d for d in data_lokasi_raw if d.get("latitude") and d.get("longitude") and _is_active_row(d)]
 
     # Opsional: stok gudang / master logistik / rekap (kalau ada tabelnya)
     stok_gudang = []
-    if _pg_enabled() and pg_get_stok_gudang is not None:
-        try:
-            stok_gudang = pg_get_stok_gudang() or []
-        except Exception as e:
-            print(f"[PG] get_stok_gudang error: {e}")
+    try:
+        stok_gudang = get_logistik_keluar_grouped()
+    except Exception as e:
+        print(f"[SHEET] get_stok_gudang error: {e}")
+
+    # dd(stok_gudang)
 
     status_map = get_status_map_any()
 
     rekap_kabkota = []
-    if _pg_enabled() and pg_get_rekap_kabkota_latest is not None:
-        try:
-            rekap_kabkota = pg_get_rekap_kabkota_latest() or []
-        except Exception as e:
-            print(f"[PG] get_rekap_kabkota_latest error: {e}")
+    try:
+        # Panggil fungsi baru tadi
+        rekap_kabkota = get_rekap_from_spreadsheet()
+    except Exception as e:
+        print(f"[SHEET] get_rekap_kabkota error: {e}")
 
-    # Tetap pakai teknik lama: ambil 1 record per kabkota (kalau input belum uniq)
     latest_rekap = {}
     for row in rekap_kabkota:
         kabkota = row.get("kabkota") or row.get("kabupaten_kota") or row.get("nama_kabkota")
@@ -445,7 +643,7 @@ def map_view():
     relawan_lokasi = []
     if pg_get_relawan_locations_last24h:
         try:
-            relawan_lokasi = pg_get_relawan_locations_last24h(168)
+            relawan_lokasi = pg_get_relawan_locations_last24h(720)
         except Exception as e:
             print(f"Warning: gagal ambil lokasi_relawan dari Postgres: {e}")
 
@@ -453,7 +651,7 @@ def map_view():
     permintaan_logistik = []
     if pg_get_logistik_permintaan_last24h:
         try:
-            permintaan_logistik = pg_get_logistik_permintaan_last24h(168)
+            permintaan_logistik = pg_get_logistik_permintaan_last24h(720)
         except Exception as e:
             print(f"Warning: gagal ambil logistik_permintaan dari Postgres: {e}")
 
@@ -495,7 +693,7 @@ def map_view():
         "map.html",
         data_lokasi=json.dumps(data_lokasi),
         stok_gudang=stok_gudang,
-        rekap_kabkota=list(latest_rekap.values()),
+        rekap_kabkota=rekap_kabkota,
         relawan_lokasi=json.dumps(relawan_lokasi),
         relawan_list=data_relawan,
         data_posko=data_posko_list,
@@ -504,18 +702,17 @@ def map_view():
         nama_relawan=session.get("nama_relawan", ""),
         is_admin=session.get("is_admin", False),
         status_map=json.dumps(status_map),
-        asesmen_kesehatan=json.dumps(pg_get_asesmen_kesehatan_last24h(168) if pg_get_asesmen_kesehatan_last24h else []),
-        asesmen_pendidikan=json.dumps(pg_get_asesmen_pendidikan_last24h(168) if pg_get_asesmen_pendidikan_last24h else []),
-        asesmen_psikososial=json.dumps(pg_get_asesmen_psikososial_last24h(168) if pg_get_asesmen_psikososial_last24h else []),
-        asesmen_infrastruktur=json.dumps(pg_get_asesmen_infrastruktur_last24h(168) if pg_get_asesmen_infrastruktur_last24h else []),
-        asesmen_wash=json.dumps(pg_get_asesmen_wash_last24h(168) if pg_get_asesmen_wash_last24h else []),
+        asesmen_kesehatan=json.dumps(pg_get_asesmen_kesehatan_last24h(720) if pg_get_asesmen_kesehatan_last24h else []),
+        asesmen_pendidikan=json.dumps(pg_get_asesmen_pendidikan_last24h(720) if pg_get_asesmen_pendidikan_last24h else []),
+        asesmen_psikososial=json.dumps(pg_get_asesmen_psikososial_last24h(720) if pg_get_asesmen_psikososial_last24h else []),
+        asesmen_infrastruktur=json.dumps(pg_get_asesmen_infrastruktur_last24h(720) if pg_get_asesmen_infrastruktur_last24h else []),
+        asesmen_wash=json.dumps(pg_get_asesmen_wash_last24h(720) if pg_get_asesmen_wash_last24h else []),
         ref_jenis_lokasi=ref_jenis_lokasi,
         ref_kabkota=ref_kabkota,
         ref_status_lokasi=ref_status_lokasi,
         ref_tingkat_akses=ref_tingkat_akses,
         ref_kondisi=ref_kondisi,
-        asesmen_kondisi=json.dumps(pg_get_asesmen_kondisi_last24h(168) if pg_get_asesmen_kondisi_last24h else []),
-
+        asesmen_kondisi=json.dumps(pg_get_asesmen_kondisi_last24h(720) if pg_get_asesmen_kondisi_last24h else []),
         permintaan_logistik=json.dumps(permintaan_logistik)
     )
 
@@ -641,7 +838,7 @@ def submit_permintaan():
 def api_update_permintaan_status():
     """Update status_permintaan pada logistik_permintaan.
     Hanya untuk relawan yang login dan is_admin=True.
-    Payload: {id: <int>, status: <str>}
+    Payload: {id: <int>, status: <str>, note?: <str>}
     """
     if not session.get("logged_in"):
         return jsonify({"success": False, "error": "Unauthorized"}), 401
@@ -654,11 +851,17 @@ def api_update_permintaan_status():
 
     payload = request.get_json(silent=True) or {}
     if not payload:
-        # fallback kalau dikirim sebagai form-urlencoded
         payload = request.form.to_dict() if request.form else {}
 
+    # fallback: kalau front-end ngirim id_permintaan / permintaan_id
     id_raw = payload.get("id")
-    status_new = (payload.get("status") or "").strip()
+    if id_raw is None:
+        id_raw = payload.get("id_permintaan")
+    if id_raw is None:
+        id_raw = payload.get("permintaan_id")
+
+    status_new = (payload.get("status") or payload.get("status_permintaan") or "").strip()
+    note = (payload.get("note") or "").strip() or None
 
     allowed = {"Draft", "Diproses", "Dikirim", "Diterima", "Ditolak"}
     if status_new not in allowed:
@@ -670,10 +873,296 @@ def api_update_permintaan_status():
         return jsonify({"success": False, "error": "ID tidak valid."}), 400
 
     try:
-        pg_update_logistik_permintaan_status(id_int, status_new)
+        ok = pg_update_logistik_permintaan_status(
+            id_int,
+            status_new,
+            actor_id_relawan=session.get("id_relawan"),
+            actor_nama_relawan=session.get("nama_relawan"),
+            note=note,
+        )
+
+        if not ok:
+            return jsonify({"success": False, "error": "Data permintaan tidak ditemukan."}), 404
+
         return jsonify({"success": True})
     except Exception as e:
         return jsonify({"success": False, "error": str(e)}), 500
+
+
+
+# ==============================================================================
+
+
+# ==============================================================================
+# ==============================================================================
+# 2c. ADMIN: SET ASESMEN is_active (toggle True/False)
+# ==============================================================================
+@app.route("/api/set_asesmen_active", methods=["POST"])
+def api_set_asesmen_active():
+    """Set is_active True/False pada asesmen tertentu.
+
+    Hanya untuk relawan yang login dan is_admin=True.
+    Payload: {kind: 'kesehatan|pendidikan|psikososial|infrastruktur|wash|kondisi', id: <int>, is_active: true/false, note?: <str>}
+    """
+    if not session.get("logged_in"):
+        return jsonify({"success": False, "error": "Unauthorized"}), 401
+
+    if not session.get("is_admin"):
+        return jsonify({"success": False, "error": "Forbidden"}), 403
+
+    if not _pg_enabled() or pg_set_asesmen_active is None:
+        return jsonify({"success": False, "error": "Fitur belum aktif (pg_data belum siap)."}), 500
+
+    payload = request.get_json(silent=True) or {}
+    if not payload:
+        payload = request.form.to_dict() if request.form else {}
+
+    kind = (payload.get("kind") or "").strip()
+    asesmen_id = payload.get("id")
+    is_active_raw = payload.get("is_active")
+    note = (payload.get("note") or "").strip() or None
+
+    if not kind or asesmen_id is None or is_active_raw is None:
+        return jsonify({"success": False, "error": "Payload tidak lengkap."}), 400
+
+    # Normalisasi bool
+    if isinstance(is_active_raw, str):
+        is_active_val = is_active_raw.strip().lower() in ("1", "true", "yes", "y", "on")
+    else:
+        is_active_val = bool(is_active_raw)
+
+    try:
+        ok = pg_set_asesmen_active(
+            kind=kind,
+            asesmen_id=asesmen_id,
+            is_active=is_active_val,
+            actor_id_relawan=session.get("id_relawan"),
+            actor_nama_relawan=session.get("nama_relawan"),
+            note=note,
+        )
+
+        if ok:
+            return jsonify({"success": True})
+        return jsonify({"success": False, "error": "Data tidak ditemukan."}), 404
+
+    except Exception as e:
+        return jsonify({"success": False, "error": str(e)}), 400
+
+
+# Backward compatible (dipakai patch sebelumnya)
+@app.route("/api/deactivate_asesmen", methods=["POST"])
+def api_deactivate_asesmen():
+    """Alias untuk set is_active=false."""
+    if not session.get("logged_in"):
+        return jsonify({"success": False, "error": "Unauthorized"}), 401
+
+    if not session.get("is_admin"):
+        return jsonify({"success": False, "error": "Forbidden"}), 403
+
+    if not _pg_enabled() or pg_set_asesmen_active is None:
+        return jsonify({"success": False, "error": "Fitur belum aktif (pg_data belum siap)."}), 500
+
+    payload = request.get_json(silent=True) or {}
+    if not payload:
+        payload = request.form.to_dict() if request.form else {}
+
+    kind = (payload.get("kind") or "").strip()
+    asesmen_id = payload.get("id")
+    note = (payload.get("note") or "").strip() or None
+
+    if not kind or asesmen_id is None:
+        return jsonify({"success": False, "error": "Payload tidak lengkap."}), 400
+
+    try:
+        ok = pg_set_asesmen_active(
+            kind=kind,
+            asesmen_id=asesmen_id,
+            is_active=False,
+            actor_id_relawan=session.get("id_relawan"),
+            actor_nama_relawan=session.get("nama_relawan"),
+            note=note,
+        )
+        if ok:
+            return jsonify({"success": True})
+        return jsonify({"success": False, "error": "Data tidak ditemukan."}), 404
+    except Exception as e:
+        return jsonify({"success": False, "error": str(e)}), 400
+
+
+# ==============================================================================
+# 2d. ADMIN: LIST ASESMEN (AKTIF + NONAKTIF) UNTUK PANEL ADMIN
+# ==============================================================================
+@app.route("/api/admin_asesmen_list", methods=["GET"])
+def api_admin_asesmen_list():
+    """Ambil daftar asesmen (aktif + nonaktif) untuk panel admin."""
+    if not session.get("logged_in"):
+        return jsonify({"success": False, "error": "Unauthorized"}), 401
+
+    if not session.get("is_admin"):
+        return jsonify({"success": False, "error": "Forbidden"}), 403
+
+    if not _pg_enabled() or pg_get_admin_asesmen_list is None:
+        return jsonify({"success": False, "error": "Fitur belum aktif (pg_data belum siap)."}), 500
+
+    hours_raw = request.args.get("hours", "24")
+    try:
+        hours = int(str(hours_raw).strip())
+    except Exception:
+        hours = 24
+
+    try:
+        rows = pg_get_admin_asesmen_list(hours=hours, limit_per_kind=200)
+        return jsonify({"success": True, "rows": rows})
+    except Exception as e:
+        return jsonify({"success": False, "error": str(e)}), 500
+
+
+# ==============================================================================
+
+# ==============================================================================
+# 2d. ADMIN: BACA LOG AKSI ADMIN
+# ==============================================================================
+@app.route("/api/admin_action_logs", methods=["GET"])
+def api_admin_action_logs():
+    """Ambil log aksi admin (untuk ditampilkan di modal admin)."""
+    if not session.get("logged_in"):
+        return jsonify({"success": False, "error": "Unauthorized"}), 401
+
+    if not session.get("is_admin"):
+        return jsonify({"success": False, "error": "Forbidden"}), 403
+
+    if not _pg_enabled() or pg_get_admin_action_logs is None:
+        return jsonify({"success": False, "error": "Fitur belum aktif (pg_data belum siap)."}), 500
+
+    limit_raw = request.args.get("limit", "200")
+    try:
+        limit = int(str(limit_raw).strip())
+    except Exception:
+        limit = 200
+
+    try:
+        logs = pg_get_admin_action_logs(limit)
+        return jsonify({"success": True, "logs": logs})
+    except Exception as e:
+        return jsonify({"success": False, "error": str(e)}), 500
+
+
+# ==============================================================================
+# 2e. ADMIN: DATA LOKASI (is_active + update jenis_lokasi)
+# ==============================================================================
+@app.route("/api/admin_lokasi_list", methods=["GET"])
+def api_admin_lokasi_list():
+    """Ambil daftar data_lokasi (aktif + nonaktif) untuk panel admin.
+
+    Query: limit (default 500)
+    """
+    if not session.get("logged_in"):
+        return jsonify({"success": False, "error": "Unauthorized"}), 401
+
+    if not session.get("is_admin"):
+        return jsonify({"success": False, "error": "Forbidden"}), 403
+
+    if not _pg_enabled() or pg_get_admin_lokasi_list is None:
+        return jsonify({"success": False, "error": "Fitur belum aktif (pg_data belum siap)."}), 500
+
+    limit_raw = request.args.get("limit", "500")
+    try:
+        limit = int(str(limit_raw).strip())
+    except Exception:
+        limit = 500
+
+    try:
+        rows = pg_get_admin_lokasi_list(limit=limit)
+        return jsonify({"success": True, "rows": rows})
+    except Exception as e:
+        return jsonify({"success": False, "error": str(e)}), 500
+
+
+@app.route("/api/set_lokasi_active", methods=["POST"])
+def api_set_lokasi_active():
+    """Set is_active True/False pada data_lokasi tertentu.
+
+    Payload: {id_lokasi: <str>, is_active: true/false, note?: <str>}
+    """
+    if not session.get("logged_in"):
+        return jsonify({"success": False, "error": "Unauthorized"}), 401
+
+    if not session.get("is_admin"):
+        return jsonify({"success": False, "error": "Forbidden"}), 403
+
+    if not _pg_enabled() or pg_set_data_lokasi_active is None:
+        return jsonify({"success": False, "error": "Fitur belum aktif (pg_data belum siap)."}), 500
+
+    payload = request.get_json(silent=True) or {}
+    if not payload:
+        payload = request.form.to_dict() if request.form else {}
+
+    id_lokasi = (payload.get("id_lokasi") or payload.get("id") or "").strip()
+    is_active_raw = payload.get("is_active")
+    note = (payload.get("note") or "").strip() or None
+
+    if not id_lokasi or is_active_raw is None:
+        return jsonify({"success": False, "error": "Payload tidak lengkap."}), 400
+
+    if isinstance(is_active_raw, str):
+        is_active_val = is_active_raw.strip().lower() in ("1", "true", "yes", "y", "on")
+    else:
+        is_active_val = bool(is_active_raw)
+
+    try:
+        ok = pg_set_data_lokasi_active(
+            id_lokasi=id_lokasi,
+            is_active=is_active_val,
+            actor_id_relawan=session.get("id_relawan"),
+            actor_nama_relawan=session.get("nama_relawan"),
+            note=note,
+        )
+        if ok:
+            return jsonify({"success": True})
+        return jsonify({"success": False, "error": "Data tidak ditemukan."}), 404
+    except Exception as e:
+        return jsonify({"success": False, "error": str(e)}), 400
+
+
+@app.route("/api/update_lokasi_jenis", methods=["POST"])
+def api_update_lokasi_jenis():
+    """Update jenis_lokasi pada data_lokasi.
+
+    Payload: {id_lokasi: <str>, jenis_lokasi: <str>, note?: <str>}
+    """
+    if not session.get("logged_in"):
+        return jsonify({"success": False, "error": "Unauthorized"}), 401
+
+    if not session.get("is_admin"):
+        return jsonify({"success": False, "error": "Forbidden"}), 403
+
+    if not _pg_enabled() or pg_update_data_lokasi_jenis is None:
+        return jsonify({"success": False, "error": "Fitur belum aktif (pg_data belum siap)."}), 500
+
+    payload = request.get_json(silent=True) or {}
+    if not payload:
+        payload = request.form.to_dict() if request.form else {}
+
+    id_lokasi = (payload.get("id_lokasi") or payload.get("id") or "").strip()
+    jenis_lokasi = (payload.get("jenis_lokasi") or "").strip()
+    note = (payload.get("note") or "").strip() or None
+
+    if not id_lokasi or not jenis_lokasi:
+        return jsonify({"success": False, "error": "Payload tidak lengkap."}), 400
+
+    try:
+        ok = pg_update_data_lokasi_jenis(
+            id_lokasi=id_lokasi,
+            jenis_lokasi=jenis_lokasi,
+            actor_id_relawan=session.get("id_relawan"),
+            actor_nama_relawan=session.get("nama_relawan"),
+            note=note,
+        )
+        if ok:
+            return jsonify({"success": True})
+        return jsonify({"success": False, "error": "Data tidak ditemukan."}), 404
+    except Exception as e:
+        return jsonify({"success": False, "error": str(e)}), 400
 
 
 # ==============================================================================
