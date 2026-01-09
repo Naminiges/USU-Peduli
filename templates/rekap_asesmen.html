@@ -1,0 +1,867 @@
+<!DOCTYPE html>
+<html lang="id">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Rekap Data Asesmen - SATGAS USU</title>
+    <link
+      href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/css/bootstrap.min.css"
+      rel="stylesheet"
+    />
+    <link
+      rel="stylesheet"
+      href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0-beta3/css/all.min.css"
+    />
+    <link
+      rel="stylesheet"
+      href="{{ url_for('static', filename='css/style.css') }}"
+    />
+    <style>
+      body {
+        background-color: #f5f7fa;
+        padding: 20px;
+        font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', 'Roboto', 'Oxygen', 'Ubuntu', 'Cantarell', 'Fira Sans', 'Droid Sans', 'Helvetica Neue', sans-serif;
+      }
+      
+      .back-button {
+        position: fixed;
+        top: 20px;
+        left: 20px;
+        z-index: 1000;
+        background: linear-gradient(135deg, #10b981 0%, #059669 100%);
+        color: white;
+        border: none;
+        padding: 12px 20px;
+        border-radius: 10px;
+        font-size: 14px;
+        font-weight: 600;
+        cursor: pointer;
+        box-shadow: 0 2px 8px rgba(16, 185, 129, 0.3);
+        transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+        text-decoration: none;
+        display: inline-flex;
+        align-items: center;
+        gap: 8px;
+      }
+      
+      .back-button:hover {
+        background: linear-gradient(135deg, #059669 0%, #047857 100%);
+        transform: translateY(-2px);
+        box-shadow: 0 4px 12px rgba(16, 185, 129, 0.4);
+        color: white;
+        text-decoration: none;
+      }
+      
+      .rekap-container {
+        background: linear-gradient(135deg, #ffffff 0%, #f0fdf4 100%);
+        border-radius: 16px;
+        padding: 24px;
+        margin-bottom: 24px;
+        box-shadow: 0 10px 40px rgba(16, 185, 129, 0.15), 0 2px 8px rgba(0, 0, 0, 0.1);
+        border: 1px solid rgba(16, 185, 129, 0.2);
+        margin-top: 60px;
+      }
+      
+      .rekap-header {
+        display: flex;
+        justify-content: space-between;
+        align-items: flex-start;
+        margin-bottom: 24px;
+      }
+      
+      .rekap-title {
+        font-size: 24px;
+        font-weight: 700;
+        color: #059669;
+        margin: 0;
+        letter-spacing: -0.5px;
+      }
+      
+      .rekap-subtitle {
+        font-size: 14px;
+        color: #64748b;
+        margin-top: 4px;
+      }
+      
+      .last-updated {
+        background: linear-gradient(135deg, #d1fae5 0%, #a7f3d0 100%);
+        padding: 6px 12px;
+        border-radius: 20px;
+        font-size: 12px;
+        color: #065f46;
+        font-weight: 500;
+      }
+      
+      .filter-section {
+        background-color: white;
+        border-radius: 12px;
+        padding: 20px;
+        margin-bottom: 24px;
+        box-shadow: 0 2px 8px rgba(0, 0, 0, 0.08);
+        border: 1px solid rgba(16, 185, 129, 0.1);
+      }
+      
+      .filter-row {
+        display: grid;
+        grid-template-columns: 1fr 1fr;
+        gap: 16px;
+        margin-bottom: 16px;
+      }
+      
+      .filter-group {
+        display: flex;
+        flex-direction: column;
+      }
+      
+      .filter-label {
+        font-size: 14px;
+        font-weight: 500;
+        color: #333;
+        margin-bottom: 8px;
+      }
+      
+      .filter-input {
+        position: relative;
+      }
+      
+      .filter-input input,
+      .filter-input select {
+        width: 100%;
+        padding: 10px 14px;
+        border: 2px solid #e2e8f0;
+        border-radius: 10px;
+        font-size: 14px;
+        transition: all 0.3s ease;
+      }
+      
+      .filter-input input:focus,
+      .filter-input select:focus {
+        outline: none;
+        border-color: #10b981;
+        box-shadow: 0 0 0 3px rgba(16, 185, 129, 0.1);
+      }
+      
+      .filter-input input[type="date"] {
+        cursor: pointer;
+      }
+      
+      .filter-input input[type="date"]::-webkit-calendar-picker-indicator {
+        cursor: pointer;
+        opacity: 0.6;
+        filter: invert(0.5);
+      }
+      
+      .filter-input input[type="date"]::-webkit-calendar-picker-indicator:hover {
+        opacity: 1;
+      }
+      
+      .filter-input .calendar-icon {
+        position: absolute;
+        right: 14px;
+        top: 50%;
+        transform: translateY(-50%);
+        color: #10b981;
+        pointer-events: none;
+      }
+      
+      .filter-actions {
+        display: flex;
+        gap: 12px;
+        justify-content: flex-end;
+        margin-top: 20px;
+      }
+      
+      .btn-reset {
+        background-color: white;
+        color: #1e293b;
+        border: 2px solid #e2e8f0;
+        padding: 10px 24px;
+        border-radius: 10px;
+        font-size: 14px;
+        font-weight: 600;
+        cursor: pointer;
+        transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+      }
+      
+      .btn-reset:hover {
+        background-color: #f8fafc;
+        border-color: #cbd5e1;
+        transform: translateY(-2px);
+        box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+      }
+      
+      .btn-apply {
+        background: linear-gradient(135deg, #10b981 0%, #059669 100%);
+        color: white;
+        border: none;
+        padding: 10px 24px;
+        border-radius: 10px;
+        font-size: 14px;
+        cursor: pointer;
+        font-weight: 600;
+        transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+        box-shadow: 0 2px 8px rgba(16, 185, 129, 0.3);
+      }
+      
+      .btn-apply:hover {
+        background: linear-gradient(135deg, #059669 0%, #047857 100%);
+        transform: translateY(-2px);
+        box-shadow: 0 4px 12px rgba(16, 185, 129, 0.4);
+      }
+      
+      .kabkota-list {
+        display: none;
+        background-color: white;
+        border-radius: 8px;
+        padding: 20px;
+        margin-top: 24px;
+      }
+      
+      .kabkota-list.show {
+        display: block;
+      }
+      
+      .kabkota-item {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        padding: 16px;
+        border: 1px solid #e9ecef;
+        border-radius: 8px;
+        margin-bottom: 12px;
+        transition: all 0.2s;
+      }
+      
+      .kabkota-item:hover {
+        border-color: #10b981;
+        box-shadow: 0 2px 8px rgba(16, 185, 129, 0.15);
+        transform: translateY(-2px);
+      }
+      
+      .kabkota-info {
+        flex: 1;
+      }
+      
+      .kabkota-name {
+        font-size: 16px;
+        font-weight: 600;
+        color: #333;
+        margin-bottom: 4px;
+      }
+      
+      .kabkota-stats {
+        font-size: 14px;
+        color: #666;
+      }
+      
+      .btn-more-info {
+        background: linear-gradient(135deg, #10b981 0%, #059669 100%);
+        color: white;
+        border: none;
+        padding: 8px 16px;
+        border-radius: 10px;
+        font-size: 14px;
+        font-weight: 600;
+        cursor: pointer;
+        transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+        box-shadow: 0 2px 6px rgba(16, 185, 129, 0.25);
+      }
+      
+      .btn-more-info:hover {
+        background: linear-gradient(135deg, #059669 0%, #047857 100%);
+        transform: translateY(-2px);
+        box-shadow: 0 4px 10px rgba(16, 185, 129, 0.35);
+      }
+      
+      .detail-cards {
+        display: none;
+        grid-template-columns: repeat(auto-fill, minmax(300px, 1fr));
+        gap: 16px;
+        margin-top: 24px;
+      }
+      
+      .detail-cards.show {
+        display: grid;
+      }
+      
+      .asesmen-card {
+        background-color: white;
+        border-radius: 12px;
+        padding: 20px;
+        box-shadow: 0 2px 8px rgba(0, 0, 0, 0.08);
+        border: 1px solid rgba(16, 185, 129, 0.1);
+        transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+      }
+      
+      .asesmen-card:hover {
+        transform: translateY(-4px);
+        box-shadow: 0 8px 20px rgba(0, 0, 0, 0.12);
+        border-color: rgba(16, 185, 129, 0.3);
+      }
+      
+      .asesmen-card-header {
+        display: flex;
+        justify-content: space-between;
+        align-items: flex-start;
+        margin-bottom: 12px;
+        padding-bottom: 12px;
+        border-bottom: 2px solid #f1f5f9;
+      }
+      
+      .asesmen-card-title {
+        font-size: 16px;
+        font-weight: 700;
+        color: #059669;
+        margin: 0;
+        flex: 1;
+      }
+      
+      .asesmen-card-badge {
+        padding: 4px 10px;
+        border-radius: 8px;
+        font-size: 11px;
+        font-weight: 600;
+        text-transform: uppercase;
+        letter-spacing: 0.5px;
+      }
+      
+      .badge-status-aman {
+        background-color: #d1fae5;
+        color: #065f46;
+      }
+      
+      .badge-status-waspada {
+        background-color: #fef3c7;
+        color: #92400e;
+      }
+      
+      .badge-status-kritis {
+        background-color: #fee2e2;
+        color: #991b1b;
+      }
+      
+      .badge-status-pending {
+        background-color: #e0e7ff;
+        color: #3730a3;
+      }
+      
+      .badge-status-ditolak {
+        background-color: #f3f4f6;
+        color: #6b7280;
+      }
+      
+      .asesmen-card-body {
+        display: flex;
+        flex-direction: column;
+        gap: 8px;
+      }
+      
+      .asesmen-card-info {
+        display: flex;
+        align-items: center;
+        gap: 8px;
+        font-size: 13px;
+        color: #64748b;
+      }
+      
+      .asesmen-card-info i {
+        color: #10b981;
+        width: 16px;
+      }
+      
+      .asesmen-card-info strong {
+        color: #1e293b;
+        font-weight: 600;
+      }
+      
+      .asesmen-card-nomor {
+        display: inline-block;
+        background: linear-gradient(135deg, #10b981 0%, #059669 100%);
+        color: white;
+        padding: 4px 10px;
+        border-radius: 6px;
+        font-size: 12px;
+        font-weight: 600;
+        margin-left: 8px;
+      }
+      
+      .asesmen-card-actions {
+        display: flex;
+        justify-content: flex-end;
+        margin-top: 12px;
+        padding-top: 12px;
+        border-top: 1px solid #f1f5f9;
+      }
+      
+      .btn-map-icon {
+        background: linear-gradient(135deg, #10b981 0%, #059669 100%);
+        color: white;
+        border: none;
+        padding: 8px 12px;
+        border-radius: 8px;
+        font-size: 13px;
+        font-weight: 600;
+        cursor: pointer;
+        transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+        box-shadow: 0 2px 6px rgba(16, 185, 129, 0.25);
+        display: inline-flex;
+        align-items: center;
+        gap: 6px;
+      }
+      
+      .btn-map-icon:hover {
+        background: linear-gradient(135deg, #059669 0%, #047857 100%);
+        transform: translateY(-2px);
+        box-shadow: 0 4px 10px rgba(16, 185, 129, 0.35);
+        color: white;
+      }
+      
+      .btn-map-icon i {
+        font-size: 14px;
+      }
+      
+      .stat-card {
+        background-color: white;
+        border-radius: 12px;
+        padding: 24px;
+        box-shadow: 0 2px 8px rgba(0, 0, 0, 0.08);
+        position: relative;
+        border: 1px solid rgba(16, 185, 129, 0.1);
+        transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+      }
+      
+      .stat-card:hover {
+        transform: translateY(-4px);
+        box-shadow: 0 8px 20px rgba(0, 0, 0, 0.12);
+      }
+      
+      .stat-card-header {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        margin-bottom: 16px;
+      }
+      
+      .stat-card-title {
+        font-size: 14px;
+        font-weight: 600;
+        color: #666;
+        text-transform: uppercase;
+        letter-spacing: 0.5px;
+      }
+      
+      .stat-card-badge {
+        padding: 4px 12px;
+        border-radius: 12px;
+        font-size: 12px;
+        font-weight: 500;
+      }
+      
+      .badge-all {
+        background-color: #e9ecef;
+        color: #333;
+      }
+      
+      .badge-ok {
+        background-color: #22c55e;
+        color: white;
+      }
+      
+      .badge-review {
+        background-color: #f59e0b;
+        color: white;
+      }
+      
+      .badge-issue {
+        background-color: #ef4444;
+        color: white;
+      }
+      
+      .stat-card-value {
+        font-size: 36px;
+        font-weight: bold;
+        color: #333;
+        margin-bottom: 8px;
+      }
+      
+      .stat-card-desc {
+        font-size: 14px;
+        color: #666;
+      }
+      
+      .loading {
+        text-align: center;
+        padding: 40px;
+        color: #666;
+      }
+      
+      .empty-state {
+        text-align: center;
+        padding: 40px;
+        color: #666;
+      }
+      
+      @media (max-width: 768px) {
+        .filter-row {
+          grid-template-columns: 1fr;
+        }
+        
+        .detail-cards {
+          grid-template-columns: 1fr;
+        }
+        
+        #detailCardsContent {
+          grid-template-columns: 1fr !important;
+        }
+        
+        .rekap-header {
+          flex-direction: column;
+          gap: 12px;
+        }
+        
+        .back-button {
+          top: 10px;
+          left: 10px;
+          padding: 10px 16px;
+          font-size: 12px;
+        }
+        
+        .rekap-container {
+          margin-top: 70px;
+        }
+      }
+    </style>
+  </head>
+
+  <body>
+    <a href="{{ url_for('map_view') }}" class="back-button">
+      <i class="fas fa-arrow-left"></i>
+      Kembali ke Peta
+    </a>
+    <div class="container-fluid">
+      <div class="rekap-container">
+        <div class="rekap-header">
+          <div>
+            <h1 class="rekap-title">Rekapan Data</h1>
+            <p class="rekap-subtitle">Ringkasan hasil input data berdasarkan filter yang dipilih.</p>
+          </div>
+          <div class="last-updated">Terakhir diperbarui: Hari ini</div>
+        </div>
+
+        <div class="filter-section">
+          <div class="filter-row">
+            <div class="filter-group">
+              <label class="filter-label">Dari Tanggal</label>
+              <div class="filter-input">
+                <input type="date" id="tanggalDari" />
+                <i class="fas fa-calendar calendar-icon"></i>
+              </div>
+            </div>
+            <div class="filter-group">
+              <label class="filter-label">Sampai Tanggal</label>
+              <div class="filter-input">
+                <input type="date" id="tanggalSampai" />
+                <i class="fas fa-calendar calendar-icon"></i>
+              </div>
+            </div>
+          </div>
+          <div class="filter-row">
+            <div class="filter-group">
+              <label class="filter-label">Asesmen</label>
+              <div class="filter-input">
+                <select id="jenisAsesmen">
+                  <option value="">Semua</option>
+                  <option value="kesehatan">Kesehatan</option>
+                  <option value="pendidikan">Pendidikan</option>
+                  <option value="psikososial">Psikososial</option>
+                  <option value="infrastruktur">Infrastruktur</option>
+                  <option value="wash">WASH</option>
+                  <option value="kondisi">Kondisi</option>
+                </select>
+              </div>
+            </div>
+            <div class="filter-group">
+              <label class="filter-label">Status</label>
+              <div class="filter-input">
+                <select id="statusFilter">
+                  <option value="Semua">Semua</option>
+                  <option value="Aman">Aman</option>
+                  <option value="Waspada">Waspada</option>
+                  <option value="Kritis">Kritis</option>
+                </select>
+              </div>
+            </div>
+          </div>
+          <div class="filter-actions">
+            <button class="btn-reset" onclick="resetFilters()">Reset</button>
+            <button class="btn-apply" onclick="applyFilters()">Terapkan</button>
+          </div>
+        </div>
+
+        <div id="kabkotaList" class="kabkota-list">
+          <h3 style="margin-bottom: 20px; font-size: 18px; font-weight: 600;">Daftar Kabupaten/Kota</h3>
+          <div id="kabkotaListContent"></div>
+        </div>
+
+        <div id="detailCards" class="detail-cards">
+          <div id="detailCardsHeader" style="grid-column: 1 / -1; margin-bottom: 16px;">
+            <h3 style="font-size: 18px; font-weight: 600; color: #059669; margin: 0;">
+              <i class="fas fa-list-ul me-2"></i>
+              <span id="detailKabkotaName">Detail Asesmen</span>
+            </h3>
+          </div>
+          <div id="detailCardsContent" style="grid-column: 1 / -1; display: grid; grid-template-columns: repeat(auto-fill, minmax(300px, 1fr)); gap: 16px;">
+            <!-- Cards akan diisi oleh JavaScript -->
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/js/bootstrap.bundle.min.js"></script>
+    <script>
+      let currentFilters = {
+        tanggal_dari: "",
+        tanggal_sampai: "",
+        jenis_asesmen: "",
+        status: "Semua"
+      };
+
+
+      function resetFilters() {
+        document.getElementById("tanggalDari").value = "";
+        document.getElementById("tanggalSampai").value = "";
+        document.getElementById("jenisAsesmen").value = "";
+        document.getElementById("statusFilter").value = "Semua";
+        
+        currentFilters = {
+          tanggal_dari: "",
+          tanggal_sampai: "",
+          jenis_asesmen: "",
+          status: "Semua"
+        };
+        
+        document.getElementById("kabkotaList").classList.remove("show");
+        document.getElementById("detailCards").classList.remove("show");
+      }
+
+      function formatDateForAPI(dateStr) {
+        // Convert yyyy-mm-dd to dd/mm/yyyy for API
+        if (!dateStr) return "";
+        const parts = dateStr.split("-");
+        if (parts.length === 3) {
+          return `${parts[2]}/${parts[1]}/${parts[0]}`;
+        }
+        return dateStr;
+      }
+
+      function applyFilters() {
+        const tanggalDariRaw = document.getElementById("tanggalDari").value;
+        const tanggalSampaiRaw = document.getElementById("tanggalSampai").value;
+        const jenisAsesmen = document.getElementById("jenisAsesmen").value;
+        const status = document.getElementById("statusFilter").value;
+
+        // Convert date format for API (dd/mm/yyyy)
+        const tanggalDari = formatDateForAPI(tanggalDariRaw);
+        const tanggalSampai = formatDateForAPI(tanggalSampaiRaw);
+
+        currentFilters = {
+          tanggal_dari: tanggalDari,
+          tanggal_sampai: tanggalSampai,
+          jenis_asesmen: jenisAsesmen,
+          status: status
+        };
+
+        // Hide detail cards
+        document.getElementById("detailCards").classList.remove("show");
+
+        // Show loading
+        const listContent = document.getElementById("kabkotaListContent");
+        listContent.innerHTML = '<div class="loading"><i class="fas fa-spinner fa-spin"></i> Memuat data...</div>';
+        document.getElementById("kabkotaList").classList.add("show");
+
+        // Fetch data
+        fetch("/api/rekap_asesmen", {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json"
+          },
+          body: JSON.stringify(currentFilters)
+        })
+        .then(response => response.json())
+        .then(data => {
+          if (data.success) {
+            displayKabkotaList(data.data);
+          } else {
+            listContent.innerHTML = `<div class="empty-state">Error: ${data.error || "Gagal memuat data"}</div>`;
+          }
+        })
+        .catch(error => {
+          console.error("Error:", error);
+          listContent.innerHTML = `<div class="empty-state">Error: Gagal memuat data</div>`;
+        });
+      }
+
+      function displayKabkotaList(data) {
+        const listContent = document.getElementById("kabkotaListContent");
+        
+        if (!data || data.length === 0) {
+          listContent.innerHTML = '<div class="empty-state">Tidak ada data untuk filter yang dipilih</div>';
+          return;
+        }
+
+        let html = "";
+        data.forEach(item => {
+          html += `
+            <div class="kabkota-item">
+              <div class="kabkota-info">
+                <div class="kabkota-name">${item.kabkota}</div>
+                </div>
+              <button class="btn-more-info" onclick="showDetail('${item.kabkota}')">More Info</button>
+            </div>
+          `;
+        });
+
+        listContent.innerHTML = html;
+      }
+
+      function getStatusBadgeClass(status) {
+        const s = String(status || "").toLowerCase();
+        if (s.includes("aman")) return "badge-status-aman";
+        if (s.includes("waspada")) return "badge-status-waspada";
+        if (s.includes("kritis")) return "badge-status-kritis";
+        if (s.includes("pending") || s.includes("review")) return "badge-status-pending";
+        if (s.includes("ditolak") || s.includes("error")) return "badge-status-ditolak";
+        return "badge-status-pending";
+      }
+
+      function formatWaktu(waktuStr) {
+        if (!waktuStr) return "-";
+        try {
+          const d = new Date(waktuStr);
+          if (isNaN(d.getTime())) return waktuStr;
+          return new Intl.DateTimeFormat("id-ID", {
+            year: "numeric",
+            month: "2-digit",
+            day: "2-digit",
+            hour: "2-digit",
+            minute: "2-digit",
+          }).format(d);
+        } catch (e) {
+          return waktuStr;
+        }
+      }
+
+      function showDetail(kabkota) {
+        // Update header
+        document.getElementById("detailKabkotaName").textContent = `Detail Asesmen - ${kabkota}`;
+        
+        // Show loading
+        const detailContent = document.getElementById("detailCardsContent");
+        detailContent.innerHTML = '<div style="grid-column: 1 / -1; text-align: center; padding: 40px;"><i class="fas fa-spinner fa-spin"></i> Memuat data...</div>';
+        document.getElementById("detailCards").classList.add("show");
+
+        // Scroll to detail cards
+        document.getElementById("detailCards").scrollIntoView({ behavior: "smooth" });
+
+        // Fetch detail
+        fetch("/api/rekap_asesmen_detail", {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json"
+          },
+          body: JSON.stringify({
+            ...currentFilters,
+            kabkota: kabkota
+          })
+        })
+        .then(response => response.json())
+        .then(data => {
+          if (data.success) {
+            const asesmenList = data.data.asesmen_list || [];
+            
+            if (asesmenList.length === 0) {
+              detailContent.innerHTML = '<div style="grid-column: 1 / -1; text-align: center; padding: 40px; color: #64748b;"><i class="fas fa-inbox fa-2x mb-3" style="opacity: 0.3;"></i><p>Tidak ada data asesmen untuk filter yang dipilih</p></div>';
+              return;
+            }
+
+            let html = "";
+            asesmenList.forEach((asesmen, index) => {
+              const jenisLabel = asesmen.jenis_label || asesmen.jenis_asesmen || "Asesmen";
+              const nomorUrut = asesmen.nomor_urut || (index + 1);
+              const status = asesmen.status || "-";
+              const statusBadgeClass = getStatusBadgeClass(status);
+              const waktu = formatWaktu(asesmen.waktu);
+              const relawan = asesmen.nama_relawan || asesmen.id_relawan || "-";
+              const skor = asesmen.skor ? parseFloat(asesmen.skor).toFixed(1) : "-";
+              const lat = asesmen.latitude;
+              const lon = asesmen.longitude;
+              const hasLocation = lat && lon && !isNaN(parseFloat(lat)) && !isNaN(parseFloat(lon));
+
+              html += `
+                <div class="asesmen-card">
+                  <div class="asesmen-card-header">
+                    <div>
+                      <h4 class="asesmen-card-title">
+                        ${jenisLabel}
+                        ${asesmenList.filter(a => a.jenis_asesmen === asesmen.jenis_asesmen).length > 1 
+                          ? `<span class="asesmen-card-nomor">#${nomorUrut}</span>` 
+                          : ''}
+                      </h4>
+                    </div>
+                    <span class="asesmen-card-badge ${statusBadgeClass}">${status}</span>
+                  </div>
+                  <div class="asesmen-card-body">
+                    <div class="asesmen-card-info">
+                      <i class="fas fa-user"></i>
+                      <span><strong>Relawan:</strong> ${relawan}</span>
+                    </div>
+                    <div class="asesmen-card-info">
+                      <i class="fas fa-star"></i>
+                      <span><strong>Skor:</strong> ${skor}</span>
+                    </div>
+                    <div class="asesmen-card-info">
+                      <i class="fas fa-clock"></i>
+                      <span><strong>Waktu:</strong> ${waktu}</span>
+                    </div>
+                    ${hasLocation ? `
+                    <div class="asesmen-card-actions">
+                      <button class="btn-map-icon" onclick="goToMapLocation(${lat}, ${lon})" title="Lihat di Peta">
+                        <i class="fas fa-map-marker-alt"></i>
+                        Lihat di Peta
+                      </button>
+                    </div>
+                    ` : ''}
+                  </div>
+                </div>
+              `;
+            });
+
+            detailContent.innerHTML = html;
+          } else {
+            detailContent.innerHTML = `<div style="grid-column: 1 / -1; text-align: center; padding: 40px; color: #ef4444;">Error: ${data.error || "Gagal memuat detail"}</div>`;
+          }
+        })
+        .catch(error => {
+          console.error("Error:", error);
+          detailContent.innerHTML = '<div style="grid-column: 1 / -1; text-align: center; padding: 40px; color: #ef4444;">Gagal memuat detail data</div>';
+        });
+      }
+
+      function goToMapLocation(lat, lon) {
+        // Redirect ke halaman map dengan parameter koordinat
+        const url = new URL(window.location.origin + "{{ url_for('map_view') }}");
+        url.searchParams.set('lat', lat);
+        url.searchParams.set('lon', lon);
+        url.searchParams.set('zoom', '15');
+        window.location.href = url.toString();
+      }
+
+      // Initialize date inputs with today's date format
+      document.addEventListener("DOMContentLoaded", function() {
+        // You can add date picker library here if needed
+        // For now, using simple text input with placeholder
+      });
+    </script>
+  </body>
+</html>
+
