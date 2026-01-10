@@ -4724,6 +4724,7 @@ if (!isKnown && !showLain) return;
                           const aksesText = lokasi.tingkat_akses || lokasi.akses || '-';
                           const kondisiText = lokasi.kondisi || lokasi.kondisi_umum || '-';
                           const catatanText = lokasi.catatan || '-';
+                          const latLonText = lokasi.latitude + ', ' + lokasi.longitude || '-';
 
                           const kondisiHtml = escapeHtml(kondisiText).replace(/\r?\n/g, '<br>');
                           const catatanHtml = escapeHtml(catatanText).replace(/\r?\n/g, '<br>');
@@ -4756,6 +4757,11 @@ if (!isKnown && !showLain) return;
                                                   <small><b>${aksesText}</b></small>
                                                   <small class="text-muted"> | Kondisi:</small>
                                                   <small><b>${kondisiHtml}</b></small>
+                                              </div>
+
+                                              <div style="margin-top:2px;">
+                                                  <small class="text-muted">Koordinat:</small>
+                                                  <small><b>${latLonText}</b></small>
                                               </div>
 
                                               <div style="margin-top:6px;">
