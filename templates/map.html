@@ -263,6 +263,15 @@
 
         {% endif %}
 
+        {#Button untuk Rekap Asesmen#}
+        <a
+          href="{{ url_for('rekap_asesmen') }}"
+          class="btn btn-info feature-btn"
+          style="text-decoration: none;"
+        >
+          <i class="fas fa-chart-bar me-2"></i> Rekap Asesmen
+        </a>
+        <!-- =============================================================== -->
         <form
           action="{{ url_for('logout') }}"
           method="post"
@@ -2822,7 +2831,25 @@
               const REF_JENIS_LOKASI = safeJsonParse({{ ref_jenis_lokasi | tojson | safe }}, []);
 
               // Inisialisasi Peta
-              var map = L.map('map').setView([2.3693, 99.0763], 9); // Koordinat tengah Sumatera Utara
+              // Cek apakah ada parameter URL untuk fokus ke lokasi tertentu
+              const urlParams = new URLSearchParams(window.location.search);
+              const urlLat = urlParams.get('lat');
+              const urlLon = urlParams.get('lon');
+              const urlZoom = urlParams.get('zoom');
+              
+              let initialCenter = [2.3693, 99.0763]; // Koordinat tengah Sumatera Utara
+              let initialZoom = 9;
+              
+              if (urlLat && urlLon) {
+                const lat = parseFloat(urlLat);
+                const lon = parseFloat(urlLon);
+                if (!isNaN(lat) && !isNaN(lon)) {
+                  initialCenter = [lat, lon];
+                  initialZoom = urlZoom ? parseInt(urlZoom) : 15;
+                }
+              }
+              
+              var map = L.map('map').setView(initialCenter, initialZoom);
 
               // ================== PANE LAYER (URUTAN Z) ==================
               // Kab/Kota di bawah, buffer asesmen di atas (agar buffer bisa diklik)
@@ -4922,6 +4949,76 @@ if (!isKnown && !showLain) return;
               renderRelawanMarkers(relawanLokasi);
               applyRelawanVisibility();
               applyPermintaanVisibility();
+              
+              // Jika ada parameter URL untuk fokus ke lokasi, tambahkan marker dan popup
+              if (urlLat && urlLon) {
+                const lat = parseFloat(urlLat);
+                const lon = parseFloat(urlLon);
+                if (!isNaN(lat) && !isNaN(lon)) {
+                  // Tunggu sebentar agar map sudah ter-render
+                  setTimeout(() => {
+                    // Buat marker khusus untuk lokasi yang difokuskan
+                    const focusMarker = L.marker([lat, lon], {
+                      icon: L.divIcon({
+                        className: 'custom-marker-icon',
+                        html: `
+                          <div style="
+                            background-color: #ef4444;
+                            width: 50px;
+                            height: 50px;
+                            border-radius: 50% 50% 50% 0;
+                            transform: rotate(-45deg);
+                            display: flex;
+                            align-items: center;
+                            justify-content: center;
+                            box-shadow: 0 4px 15px rgba(239, 68, 68, 0.5);
+                            border: 4px solid white;
+                            animation: pulse 2s infinite;
+                          ">
+                            <i class="fas fa-map-pin" style="
+                              color: white;
+                              transform: rotate(45deg);
+                              font-size: 20px;
+                            "></i>
+                          </div>
+                        `,
+                        iconSize: [50, 50],
+                        iconAnchor: [25, 50],
+                        popupAnchor: [0, -50]
+                      })
+                    }).addTo(map);
+                    
+                    // Buka popup
+                    focusMarker.bindPopup(`
+                      <div style="text-align: center; padding: 10px;">
+                        <h6 style="margin: 0 0 8px 0; font-weight: 700; color: #ef4444;">
+                          <i class="fas fa-map-marker-alt"></i> Lokasi Asesmen
+                        </h6>
+                        <p style="margin: 0; font-size: 12px; color: #64748b;">
+                          Lat: ${lat.toFixed(6)}<br>
+                          Lon: ${lon.toFixed(6)}
+                        </p>
+                      </div>
+                    `).openPopup();
+                    
+                    // Tambahkan animasi pulse
+                    const style = document.createElement('style');
+                    style.textContent = `
+                      @keyframes pulse {
+                        0%, 100% {
+                          transform: rotate(-45deg) scale(1);
+                          opacity: 1;
+                        }
+                        50% {
+                          transform: rotate(-45deg) scale(1.1);
+                          opacity: 0.8;
+                        }
+                      }
+                    `;
+                    document.head.appendChild(style);
+                  }, 500);
+                }
+              }
               // ==============================================================================
               // FUNGSI REFRESH MAP
               // ==============================================================================

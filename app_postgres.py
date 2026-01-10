@@ -80,6 +80,7 @@ try:
         pg_get_rekap_kabkota_latest,
         pg_insert_permintaan_posko,
         pg_next_id,
+        pg_get_asesmen_rekap_by_kabkota,
     )
 except Exception as _pg_err:
     print(f"[PG] Error import pg_data: {_pg_err}")
@@ -106,6 +107,7 @@ except Exception as _pg_err:
     pg_get_rekap_kabkota_latest = None
     pg_insert_permintaan_posko = None
     pg_next_id = None
+    pg_get_asesmen_rekap_by_kabkota = None
     pg_insert_logistik_permintaan = None
     pg_get_logistik_permintaan_last24h = None
     pg_update_logistik_permintaan_status = None
@@ -741,6 +743,216 @@ def map_view():
         asesmen_kondisi=json.dumps(pg_get_asesmen_kondisi_last24h(720) if pg_get_asesmen_kondisi_last24h else []),
         permintaan_logistik=json.dumps(permintaan_logistik)
     )
+
+
+@app.route("/rekap_asesmen")
+def rekap_asesmen():
+    """Halaman rekap data asesmen per kabupaten/kota."""
+    # Pastikan GeoJSON kab/kota siap
+    ensure_kabkota_geojson_ready()
+    return render_template("rekap_asesmen.html")
+
+
+@app.route("/api/rekap_asesmen", methods=["POST"])
+def api_rekap_asesmen():
+    """API endpoint untuk mendapatkan data rekap asesmen berdasarkan filter."""
+    # Pastikan GeoJSON kab/kota siap
+    ensure_kabkota_geojson_ready()
+    try:
+        data = request.get_json() or {}
+        
+        jenis_asesmen = data.get("jenis_asesmen") or None
+        tanggal_dari_str = data.get("tanggal_dari")
+        tanggal_sampai_str = data.get("tanggal_sampai")
+        status_filter = data.get("status") or None
+        
+        # Parse tanggal
+        tanggal_dari = None
+        tanggal_sampai = None
+        
+        if tanggal_dari_str:
+            try:
+                # Format: dd/mm/yyyy
+                parts = tanggal_dari_str.split("/")
+                if len(parts) == 3:
+                    tanggal_dari = datetime(int(parts[2]), int(parts[1]), int(parts[0]))
+            except Exception:
+                pass
+        
+        if tanggal_sampai_str:
+            try:
+                # Format: dd/mm/yyyy
+                parts = tanggal_sampai_str.split("/")
+                if len(parts) == 3:
+                    tanggal_sampai = datetime(int(parts[2]), int(parts[1]), int(parts[0]))
+            except Exception:
+                pass
+        
+        # Normalisasi status filter
+        if status_filter and status_filter.lower() == "semua":
+            status_filter = None
+        
+        if not pg_get_asesmen_rekap_by_kabkota:
+            return jsonify({
+                "success": False,
+                "error": "Fungsi rekap belum tersedia"
+            }), 500
+        
+        rekap_data = pg_get_asesmen_rekap_by_kabkota(
+            jenis_asesmen=jenis_asesmen,
+            tanggal_dari=tanggal_dari,
+            tanggal_sampai=tanggal_sampai,
+            status_filter=status_filter,
+            app_root_path=app.root_path,
+        )
+        
+        # Convert ke format list untuk frontend
+        result = []
+        for kabkota, stats in rekap_data.items():
+            total = stats.get("total", 0)
+            valid = stats.get("valid", 0)
+            pending = stats.get("pending", 0)
+            ditolak_error = stats.get("ditolak_error", 0)
+            
+            # Hitung persentase valid
+            persentase_valid = (valid / total * 100) if total > 0 else 0
+            
+            result.append({
+                "kabkota": kabkota,
+                "total": total,
+                "valid": valid,
+                "pending": pending,
+                "ditolak_error": ditolak_error,
+                "persentase_valid": round(persentase_valid, 1),
+            })
+        
+        # Sort by kabkota name
+        result.sort(key=lambda x: x.get("kabkota", ""))
+        
+        return jsonify({
+            "success": True,
+            "data": result
+        })
+    
+    except Exception as e:
+        print(f"[API] Error rekap asesmen: {e}")
+        return jsonify({
+            "success": False,
+            "error": str(e)
+        }), 500
+
+
+@app.route("/api/rekap_asesmen_detail", methods=["POST"])
+def api_rekap_asesmen_detail():
+    """API endpoint untuk mendapatkan detail statistik per kabupaten/kota."""
+    # Pastikan GeoJSON kab/kota siap
+    ensure_kabkota_geojson_ready()
+    try:
+        data = request.get_json() or {}
+        
+        kabkota = data.get("kabkota")
+        jenis_asesmen = data.get("jenis_asesmen") or None
+        tanggal_dari_str = data.get("tanggal_dari")
+        tanggal_sampai_str = data.get("tanggal_sampai")
+        status_filter = data.get("status") or None
+        
+        if not kabkota:
+            return jsonify({
+                "success": False,
+                "error": "Kabupaten/kota harus diisi"
+            }), 400
+        
+        # Parse tanggal
+        tanggal_dari = None
+        tanggal_sampai = None
+        
+        if tanggal_dari_str:
+            try:
+                parts = tanggal_dari_str.split("/")
+                if len(parts) == 3:
+                    tanggal_dari = datetime(int(parts[2]), int(parts[1]), int(parts[0]))
+            except Exception:
+                pass
+        
+        if tanggal_sampai_str:
+            try:
+                parts = tanggal_sampai_str.split("/")
+                if len(parts) == 3:
+                    tanggal_sampai = datetime(int(parts[2]), int(parts[1]), int(parts[0]))
+            except Exception:
+                pass
+        
+        if status_filter and status_filter.lower() == "semua":
+            status_filter = None
+        
+        if not pg_get_asesmen_rekap_by_kabkota:
+            return jsonify({
+                "success": False,
+                "error": "Fungsi rekap belum tersedia"
+            }), 500
+        
+        rekap_data = pg_get_asesmen_rekap_by_kabkota(
+            jenis_asesmen=jenis_asesmen,
+            tanggal_dari=tanggal_dari,
+            tanggal_sampai=tanggal_sampai,
+            status_filter=status_filter,
+            app_root_path=app.root_path,
+        )
+        
+        stats = rekap_data.get(kabkota, {})
+        detail_asesmen = stats.get("detail", [])
+        
+        # Mapping jenis asesmen ke label
+        jenis_label_map = {
+            "kesehatan": "Asesmen Kesehatan",
+            "pendidikan": "Asesmen Pendidikan",
+            "psikososial": "Asesmen Psikososial",
+            "infrastruktur": "Asesmen Infrastruktur",
+            "wash": "Asesmen WASH",
+            "kondisi": "Asesmen Kondisi",
+        }
+        
+        # Group by jenis asesmen untuk menghitung nomor urut
+        jenis_count = {}
+        asesmen_list = []
+        
+        for asesmen in detail_asesmen:
+            jenis = asesmen.get("jenis_asesmen", "")
+            if jenis not in jenis_count:
+                jenis_count[jenis] = 0
+            jenis_count[jenis] += 1
+            
+            asesmen_list.append({
+                "id": asesmen.get("id"),
+                "jenis_asesmen": jenis,
+                "jenis_label": jenis_label_map.get(jenis, jenis.capitalize()),
+                "nomor_urut": jenis_count[jenis],
+                "status": asesmen.get("status", "-"),
+                "skor": asesmen.get("skor"),
+                "waktu": asesmen.get("waktu"),
+                "id_relawan": asesmen.get("id_relawan"),
+                "nama_relawan": asesmen.get("nama_relawan"),
+                "latitude": asesmen.get("latitude"),
+                "longitude": asesmen.get("longitude"),
+            })
+        
+        # Sort by waktu (terbaru dulu)
+        asesmen_list.sort(key=lambda x: str(x.get("waktu") or ""), reverse=True)
+        
+        return jsonify({
+            "success": True,
+            "data": {
+                "kabkota": kabkota,
+                "asesmen_list": asesmen_list,
+            }
+        })
+    
+    except Exception as e:
+        print(f"[API] Error rekap detail: {e}")
+        return jsonify({
+            "success": False,
+            "error": str(e)
+        }), 500
 
 
 # ==============================================================================

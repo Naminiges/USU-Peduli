@@ -2226,3 +2226,217 @@ def pg_get_admin_asesmen_list(hours: int = 24, limit_per_kind: int = 500, start:
 
     return {"rows": paged_rows, "has_more": has_more, "total_all_loaded": len(all_data)}
 
+
+def pg_get_asesmen_rekap_by_kabkota(
+    jenis_asesmen: Optional[str] = None,
+    tanggal_dari: Optional[datetime] = None,
+    tanggal_sampai: Optional[datetime] = None,
+    status_filter: Optional[str] = None,
+    app_root_path: Optional[str] = None,
+) -> Dict[str, Dict[str, Any]]:
+    """Ambil rekap data asesmen dikelompokkan per kabupaten/kota.
+    
+    Args:
+        jenis_asesmen: 'kesehatan', 'pendidikan', 'psikososial', 'infrastruktur', 'wash', 'kondisi', atau None (semua)
+        tanggal_dari: Filter tanggal mulai (datetime)
+        tanggal_sampai: Filter tanggal akhir (datetime)
+        status_filter: Filter status ('Aman', 'Waspada', 'Kritis', atau None untuk semua)
+    
+    Returns:
+        Dict dengan key nama_kabkota, value dict berisi:
+        - total: jumlah total asesmen
+        - valid: jumlah asesmen dengan status valid (Aman/Waspada/Kritis yang sudah verified)
+        - pending: jumlah asesmen pending (butuh verifikasi)
+        - ditolak_error: jumlah asesmen ditolak atau error
+        - detail: list detail asesmen
+    """
+    from collections import defaultdict
+    
+    # Mapping jenis asesmen ke table
+    buckets = [
+        ("kesehatan", "PG_ASESMEN_KESEHATAN_TABLE", "public.asesmen_kesehatan"),
+        ("pendidikan", "PG_ASESMEN_PENDIDIKAN_TABLE", "public.asesmen_pendidikan"),
+        ("psikososial", "PG_ASESMEN_PSIKOSOSIAL_TABLE", "public.asesmen_psikososial"),
+        ("infrastruktur", "PG_ASESMEN_INFRASTRUKTUR_TABLE", "public.asesmen_infrastruktur"),
+        ("wash", "PG_ASESMEN_WASH_TABLE", "public.asesmen_wash"),
+        ("kondisi", "PG_ASESMEN_KONDISI_TABLE", "public.asesmen_kondisi"),
+    ]
+    
+    # Filter buckets jika jenis_asesmen ditentukan
+    if jenis_asesmen:
+        buckets = [b for b in buckets if b[0] == jenis_asesmen]
+    
+    # Load GeoJSON untuk mapping lat/lon ke kabupaten/kota
+    geo_json_path = None
+    try:
+        from pathlib import Path
+        if app_root_path:
+            geo_json_path = Path(app_root_path) / "static" / "data" / "kabkota_sumut.json"
+        else:
+            import os
+            app_root = os.getenv("APP_ROOT_PATH", ".")
+            geo_json_path = Path(app_root) / "static" / "data" / "kabkota_sumut.json"
+        
+        if geo_json_path and not geo_json_path.exists():
+            geo_json_path = None
+    except Exception:
+        pass
+    
+    geo_data = None
+    if geo_json_path:
+        try:
+            import json
+            with open(geo_json_path, "r", encoding="utf-8") as f:
+                geo_data = json.load(f)
+        except Exception:
+            geo_data = None
+    
+    def get_kabkota_from_coords(lat: float, lon: float) -> Optional[str]:
+        """Tentukan kabupaten/kota dari koordinat menggunakan GeoJSON."""
+        if not geo_data or not lat or not lon:
+            return None
+        
+        point = (float(lon), float(lat))
+        
+        for feature in geo_data.get("features", []):
+            geometry = feature.get("geometry", {})
+            props = feature.get("properties", {})
+            
+            nama_wilayah = (
+                props.get("kabkota")
+                or props.get("KABKOTA")
+                or props.get("NAMOBJ")
+                or None
+            )
+            
+            if not nama_wilayah:
+                continue
+            
+            # Check point in polygon
+            if geometry.get("type") == "Polygon":
+                poly_coords = geometry.get("coordinates", [[]])[0]
+                if poly_coords and _point_in_polygon(point, poly_coords):
+                    return nama_wilayah
+            elif geometry.get("type") == "MultiPolygon":
+                for poly in geometry.get("coordinates", []):
+                    poly_coords = poly[0] if poly else []
+                    if poly_coords and _point_in_polygon(point, poly_coords):
+                        return nama_wilayah
+        
+        return None
+    
+    def _point_in_polygon(point, polygon):
+        """Check if point is inside polygon using ray casting algorithm."""
+        x, y = point
+        n = len(polygon)
+        if n < 3:
+            return False
+        
+        inside = False
+        p1x, p1y = polygon[0]
+        for i in range(1, n + 1):
+            p2x, p2y = polygon[i % n]
+            if y > min(p1y, p2y):
+                if y <= max(p1y, p2y):
+                    if x <= max(p1x, p2x):
+                        if p1y != p2y:
+                            xinters = (y - p1y) * (p2x - p1x) / (p2y - p1y) + p1x
+                        if p1x == p2x or x <= xinters:
+                            inside = not inside
+            p1x, p1y = p2x, p2y
+        
+        return inside
+    
+    # Kumpulkan semua asesmen
+    all_asesmen: List[Dict[str, Any]] = []
+    
+    for kind, env, default_table in buckets:
+        try:
+            table = _get_env(env, default_table)
+            
+            # Build SQL dengan filter tanggal dan status
+            where_clauses = ["latitude IS NOT NULL", "longitude IS NOT NULL"]
+            params: List[Any] = []
+            
+            if tanggal_dari:
+                where_clauses.append("waktu >= %s")
+                params.append(tanggal_dari)
+            
+            if tanggal_sampai:
+                # Tambahkan 1 hari untuk include seluruh hari sampai
+                from datetime import timedelta
+                tanggal_sampai_end = tanggal_sampai + timedelta(days=1)
+                where_clauses.append("waktu < %s")
+                params.append(tanggal_sampai_end)
+            
+            if status_filter and status_filter.lower() != "semua":
+                where_clauses.append("UPPER(TRIM(status)) = UPPER(TRIM(%s))")
+                params.append(status_filter)
+            
+            relawan_table = _get_env("PG_RELAWAN_TABLE", "public.data_relawan")
+            sql = f"""
+                SELECT
+                    lr.id,
+                    lr.waktu,
+                    lr.id_relawan,
+                    dr.nama_relawan,
+                    lr.kode_posko,
+                    lr.skor,
+                    lr.status,
+                    lr.latitude,
+                    lr.longitude,
+                    lr.is_active,
+                    '{kind}' AS jenis_asesmen
+                FROM {table} lr
+                LEFT JOIN {relawan_table} dr ON dr.id_relawan = lr.id_relawan
+                WHERE {' AND '.join(where_clauses)}
+                ORDER BY lr.waktu DESC;
+            """
+            
+            rows = pg_fetchall(sql, tuple(params) if params else None)
+            
+            for r in rows:
+                lat = _to_float(r.get("latitude"))
+                lon = _to_float(r.get("longitude"))
+                
+                if lat and lon:
+                    kabkota = get_kabkota_from_coords(lat, lon)
+                    if kabkota:
+                        rr = _json_safe_row(r)
+                        rr["kabkota"] = kabkota
+                        all_asesmen.append(rr)
+        
+        except Exception as e:
+            print(f"[PG] Error getting asesmen {kind}: {e}")
+            continue
+    
+    # Group by kabupaten/kota dan hitung statistik
+    rekap: Dict[str, Dict[str, Any]] = defaultdict(lambda: {
+        "total": 0,
+        "valid": 0,
+        "pending": 0,
+        "ditolak_error": 0,
+        "detail": []
+    })
+    
+    for asesmen in all_asesmen:
+        kabkota = asesmen.get("kabkota")
+        if not kabkota:
+            continue
+        
+        status = str(asesmen.get("status") or "").strip().upper()
+        is_active = asesmen.get("is_active")
+        
+        # Tentukan kategori
+        if not is_active or (isinstance(is_active, str) and is_active.lower() in ("false", "0", "no")):
+            rekap[kabkota]["ditolak_error"] += 1
+        elif status in ("AMAN", "WASPADA", "KRITIS"):
+            rekap[kabkota]["valid"] += 1
+        else:
+            rekap[kabkota]["pending"] += 1
+        
+        rekap[kabkota]["total"] += 1
+        rekap[kabkota]["detail"].append(asesmen)
+    
+    # Convert defaultdict to regular dict
+    return dict(rekap)
