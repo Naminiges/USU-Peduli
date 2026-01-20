@@ -1,4 +1,4 @@
-"""pg_data.py
+"""pg_data_.py
 
 Helper untuk baca/tulis data dari PostgreSQL (SATGAS) TANPA merusak gaya code app.
 
@@ -46,7 +46,7 @@ from __future__ import annotations
 
 import json
 import os
-from datetime import datetime, timezone
+from datetime import datetime, timezone, timedelta, date
 from zoneinfo import ZoneInfo
 from decimal import Decimal
 from pathlib import Path
@@ -114,7 +114,8 @@ def _json_safe_value(v: Any) -> Any:
         # Kalau datetime bertz (umumnya dari timestamptz), normalkan ke UTC naive
         if v.tzinfo is not None and v.utcoffset() is not None:
             v = v.astimezone(timezone.utc).replace(tzinfo=None)
-        return v.isoformat()
+        # Anggap naive datetime dari DB adalah UTC, beri 'Z' agar frontend benar
+        return v.isoformat() + "Z"
     return v
 
 
@@ -134,7 +135,56 @@ def _now_wib_naive() -> datetime:
     """
     return datetime.now(_WIB).replace(tzinfo=None)
 
+def _normalize_input_ts(v: Any) -> Optional[datetime]:
+    """
+    Normalisasi input waktu untuk kolom timestamptz (disimpan sebagai UTC naive).
+    - naive datetime/string => dianggap Asia/Jakarta (WIB) lalu di-convert ke UTC.
+    """
+    if v is None:
+        return None
 
+    if isinstance(v, datetime):
+        if v.tzinfo is None:
+            try:
+                v = v.replace(tzinfo=ZoneInfo("Asia/Jakarta"))
+            except Exception:
+                v = v.replace(tzinfo=timezone(timedelta(hours=7)))
+        return v.astimezone(timezone.utc).replace(tzinfo=None)
+    
+    if isinstance(v, date) and not isinstance(v, datetime):
+        # Convert date to datetime at start of day WIB
+        dt = datetime(v.year, v.month, v.day)
+        return _normalize_input_ts(dt)
+
+    if isinstance(v, str):
+        s = v.strip()
+        if not s:
+            return None
+        
+        dt = None
+        # 1) Try fromisoformat
+        try:
+            dt = datetime.fromisoformat(s)
+        except Exception:
+            # 2) Try DD/MM/YYYY
+            try:
+                dt = datetime.strptime(s, "%d/%m/%Y")
+            except Exception:
+                # 3) Try YYYY-MM-DD
+                try:
+                    dt = datetime.strptime(s, "%Y-%m-%d")
+                except:
+                    return None
+
+        if dt.tzinfo is None:
+            try:
+                dt = dt.replace(tzinfo=ZoneInfo("Asia/Jakarta"))
+            except Exception:
+                dt = dt.replace(tzinfo=timezone(timedelta(hours=7)))
+
+        return dt.astimezone(timezone.utc).replace(tzinfo=None)
+
+    return None
 
 def pg_fetchall(sql: str, params: Optional[Tuple[Any, ...]] = None) -> List[Dict[str, Any]]:
     """Jalankan query dan return list of dict."""
@@ -284,6 +334,153 @@ def ensure_kabkota_geojson_static(app_root_path: str) -> Path:
     return out_path
 
 
+
+
+# ------------------------------------------------------------------------------
+# 2b) GeoJSON Kel/Desa (by BBOX) dari PostGIS
+# ------------------------------------------------------------------------------
+
+def _parse_schema_table(full: str) -> Tuple[str, str]:
+    s = (full or "").strip()
+    if "." in s:
+        a, b = s.split(".", 1)
+        return a.strip(), b.strip()
+    return "public", s
+
+
+def _q_ident(name: str) -> str:
+    return '"' + str(name).replace('"', '""') + '"'
+
+
+def _q_table(full: str) -> str:
+    schema, table = _parse_schema_table(full)
+    return f"{_q_ident(schema)}.{_q_ident(table)}"
+
+
+def _pick_col(cols: Sequence[str], candidates: Sequence[str]) -> Optional[str]:
+    # exact match
+    colset = set(cols)
+    for c in candidates:
+        if c in colset:
+            return c
+
+    # case-insensitive match
+    lower_map = {c.lower(): c for c in cols}
+    for c in candidates:
+        k = c.lower()
+        if k in lower_map:
+            return lower_map[k]
+
+    return None
+
+
+def pg_get_kel_desa_featurecollection_bbox(
+    bbox: Tuple[float, float, float, float],
+    zoom: int = 12,
+    limit: int = 5000,
+) -> Dict[str, Any]:
+    """Ambil batas kel/desa dari PostGIS untuk area yang sedang terlihat (bbox).
+
+    - bbox = (minx, miny, maxx, maxy) dalam EPSG:4326
+    - zoom dipakai untuk simplify (agar ringan saat panning/zooming)
+
+    ENV:
+      - PG_KELDESA_TABLE  default: geo.batas_kel_desa_sumut
+    """
+
+    table = _get_env("PG_KELDESA_TABLE", "geo.batas_kel_desa_sumut") or "geo.batas_kel_desa_sumut"
+    schema, tname = _parse_schema_table(table)
+
+    # Ambil daftar kolom untuk menghindari masalah uppercase / quoted identifier
+    cols_rows = pg_fetchall(
+        """
+        SELECT column_name
+        FROM information_schema.columns
+        WHERE table_schema=%s AND table_name=%s
+        """,
+        (schema, tname),
+    )
+    cols = [r.get("column_name") for r in cols_rows if r.get("column_name")]
+
+    # Pilih kolom atribut yang umum dipakai pada data BIG RBI
+    col_desa = _pick_col(cols, ["WADMKD", "wadmkd", "kel_desa", "desa_kelurahan", "NAMOBJ", "namobj"])
+    col_kec = _pick_col(cols, ["WADMKC", "wadmkc", "kecamatan", "nama_kecamatan"])
+    col_kab = _pick_col(cols, ["WADMKK", "wadmkk", "kabkota", "kabupaten_kota", "nama_kabkota"])
+
+    # Kolom geometry
+    col_geom = _pick_col(cols, ["geom", "geometry"])
+    if not col_geom:
+        raise RuntimeError(f"Kolom geometry tidak ditemukan di {table}. Pastikan kolom 'geom' ada.")
+
+    # tolerance simplify (derajat). zoom tinggi -> kecil
+    z = int(zoom or 12)
+    if z <= 11:
+        tol = 0.001
+    elif z == 12:
+        tol = 0.0005
+    elif z == 13:
+        tol = 0.00025
+    else:
+        tol = 0.0
+
+    minx, miny, maxx, maxy = bbox
+
+    qtbl = _q_table(table)
+    qgeom = _q_ident(col_geom)
+
+    # SELECT atribut aman (kalau kolom tidak ada -> '-')
+    def sel_or_dash(colname: Optional[str], alias: str) -> str:
+        if colname:
+            return f"COALESCE({_q_ident(colname)}::text,'-') AS {alias}"
+        return f"'-'::text AS {alias}"
+
+    sel_desa = sel_or_dash(col_desa, "kel_desa")
+    sel_kec = sel_or_dash(col_kec, "kecamatan")
+    sel_kab = sel_or_dash(col_kab, "kabkota")
+
+    if tol > 0:
+        geom_out = f"ST_SimplifyPreserveTopology(ST_Force2D({qgeom}), {tol})"
+    else:
+        geom_out = f"ST_Force2D({qgeom})"
+
+    # Filter bbox pakai && agar GiST index terpakai
+    sql = f"""
+        WITH env AS (
+            SELECT ST_MakeEnvelope(%s,%s,%s,%s,4326) AS e
+        )
+        SELECT
+            {sel_desa},
+            {sel_kec},
+            {sel_kab},
+            ST_AsGeoJSON({geom_out})::json AS geometry
+        FROM {qtbl}, env
+        WHERE {qgeom} IS NOT NULL
+          AND {qgeom} && env.e
+          AND ST_Intersects({qgeom}, env.e)
+        LIMIT %s;
+    """
+
+    rows = pg_fetchall(sql, (minx, miny, maxx, maxy, int(limit)))
+
+    features: List[Dict[str, Any]] = []
+    for r in rows:
+        g = r.get("geometry")
+        if not g:
+            continue
+
+        features.append(
+            {
+                "type": "Feature",
+                "geometry": g,
+                "properties": {
+                    "kel_desa": r.get("kel_desa") or "-",
+                    "kecamatan": r.get("kecamatan") or "-",
+                    "kabkota": r.get("kabkota") or "-",
+                },
+            }
+        )
+
+    return {"type": "FeatureCollection", "features": features}
 # ------------------------------------------------------------------------------
 # 3) data_lokasi (marker)
 # ------------------------------------------------------------------------------
@@ -546,6 +743,7 @@ def pg_next_data_lokasi_id(jenis_lokasi: str, nama_kabkota: str) -> str:
 def pg_insert_data_lokasi(
     *,
     id_lokasi: Optional[str],
+    id_relawan: Optional[str] = None,  # ✅ TAMBAH
     jenis_lokasi: str,
     nama_kabkota: str,
     status_lokasi: str,
@@ -562,6 +760,7 @@ def pg_insert_data_lokasi(
     pic: Optional[str] = None,
     pic_hp: Optional[str] = None,
     photo_path: Optional[str] = None,
+    waktu: Optional[datetime] = None,
 ) -> str:
     table = _get_env("PG_DATA_LOKASI_TABLE", "public.data_lokasi")
 
@@ -571,26 +770,45 @@ def pg_insert_data_lokasi(
 
     lat_f = _to_float(latitude)
     lon_f = _to_float(longitude)
+    w = _normalize_input_ts(waktu)
 
     sql = f"""
         INSERT INTO {table}
-        (id_lokasi, jenis_lokasi, nama_kabkota, status_lokasi, tingkat_akses, kondisi,
+        (waktu, id_lokasi, jenis_lokasi, nama_kabkota, status_lokasi, tingkat_akses, kondisi,
          nama_lokasi, alamat, kecamatan, desa_kelurahan,
-         latitude, longitude, lokasi_text, catatan, pic, pic_hp, photo_path)
+         latitude, longitude, lokasi_text, catatan, pic, pic_hp, photo_path, id_relawan)
         VALUES
-        (%s, %s, %s, %s, %s, %s,
+        (COALESCE(%s, now()), %s, %s, %s, %s, %s, %s,
          %s, %s, %s, %s,
-         %s, %s, %s, %s, %s, %s, %s);
+         %s, %s, %s, %s, %s, %s, %s, %s);
     """
 
     pg_execute(sql, (
-        final_id, jenis_lokasi, nama_kabkota, status_lokasi, tingkat_akses, kondisi,
+        w, final_id, jenis_lokasi, nama_kabkota, status_lokasi, tingkat_akses, kondisi,
         nama_lokasi, alamat, kecamatan, desa_kelurahan,
-        lat_f, lon_f, lokasi_text, catatan, pic, pic_hp, photo_path
+        lat_f, lon_f, lokasi_text, catatan, pic, pic_hp, photo_path, id_relawan
     ))
 
     return final_id
 
+def pg_update_data_lokasi_photo_path(
+    id_lokasi: str,
+    photo_path: Optional[str],
+) -> bool:
+    """Update photo_path untuk data_lokasi berdasarkan id_lokasi."""
+    table = _get_env("PG_DATA_LOKASI_TABLE", "public.data_lokasi")
+    sid = str(id_lokasi or "").strip()
+    if not sid:
+        raise ValueError("ID lokasi tidak valid")
+
+    sql = f"""
+        UPDATE {table}
+        SET photo_path = %s
+        WHERE id_lokasi = %s
+        RETURNING id_lokasi;
+    """
+    rows = pg_fetchall(sql, (photo_path, sid))
+    return bool(rows)
 
 
 # ------------------------------------------------------------------------------
@@ -644,7 +862,8 @@ def pg_insert_lokasi_relawan(
     if lat_f is None or lon_f is None:
         raise ValueError("latitude/longitude tidak valid")
 
-    w = waktu or datetime.now(timezone.utc).replace(tzinfo=None)
+    # w = waktu or datetime.now(timezone.utc).replace(tzinfo=None)
+    w = _normalize_input_ts(waktu)
 
     # Urutan percobaan (biar tahan beda nama kolom/atribut)
     attempts: List[Tuple[str, Tuple[Any, ...]]] = [
@@ -652,7 +871,7 @@ def pg_insert_lokasi_relawan(
             f"""
             INSERT INTO {table}
             (waktu, id_relawan, latitude, longitude, catatan, lokasi, lokasi_posko, photo_link)
-            VALUES (%s,%s,%s,%s,%s,%s,%s,%s)
+            VALUES (COALESCE(%s, now()),%s,%s,%s,%s,%s,%s,%s)
             """,
             (w, id_relawan, lat_f, lon_f, catatan, lokasi, lokasi_posko, photo_link),
         ),
@@ -660,7 +879,7 @@ def pg_insert_lokasi_relawan(
             f"""
             INSERT INTO {table}
             (waktu, id_relawan, latitude, longitude, catatan)
-            VALUES (%s,%s,%s,%s,%s)
+            VALUES (COALESCE(%s, now()),%s,%s,%s,%s)
             """,
             (w, id_relawan, lat_f, lon_f, catatan),
         ),
@@ -668,7 +887,7 @@ def pg_insert_lokasi_relawan(
             f"""
             INSERT INTO {table}
             (timestamp, id_relawan, latitude, longitude, catatan)
-            VALUES (%s,%s,%s,%s,%s)
+            VALUES (COALESCE(%s, now()),%s,%s,%s,%s)
             """,
             (w, id_relawan, lat_f, lon_f, catatan),
         ),
@@ -711,7 +930,9 @@ def _insert_asesmen(
 
     lat_f = _to_float(latitude)
     lon_f = _to_float(longitude)
-    w = waktu or datetime.now(timezone.utc).replace(tzinfo=None)
+    # w = waktu or datetime.now(timezone.utc).replace(tzinfo=None)
+
+    w = _normalize_input_ts(waktu)
 
     rad_f = _to_float(radius)
 
@@ -733,7 +954,7 @@ def _insert_asesmen(
                         f"""
                         INSERT INTO {table}
                         (waktu, id_relawan, kode_posko, jawaban, skor, status, latitude, longitude, catatan, radius, photo_path)
-                        VALUES (%s,%s,%s,%s::jsonb,%s,%s,%s,%s,%s,%s,%s)
+                        VALUES (COALESCE(%s, now()),%s,%s,%s::jsonb,%s,%s,%s,%s,%s,%s,%s)
                         """,
                         (w, id_relawan, kode_posko, payload, float(skor), status, lat_f, lon_f, catatan, rad_f, photo_v),
                     )
@@ -743,7 +964,7 @@ def _insert_asesmen(
                         f"""
                         INSERT INTO {table}
                         (waktu, id_relawan, kode_posko, jawaban, skor, status, latitude, longitude, catatan, radius, photo_path)
-                        VALUES (%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s)
+                        VALUES (COALESCE(%s, now()),%s,%s,%s,%s,%s,%s,%s,%s,%s,%s)
                         """,
                         (w, id_relawan, kode_posko, payload, float(skor), status, lat_f, lon_f, catatan, rad_f, photo_v),
                     )
@@ -754,7 +975,7 @@ def _insert_asesmen(
                         f"""
                         INSERT INTO {table}
                         (waktu, id_relawan, kode_posko, jawaban, skor, status, latitude, longitude, catatan, radius, photo_path)
-                        VALUES (%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s)
+                        VALUES (COALESCE(%s, now()),%s,%s,%s,%s,%s,%s,%s,%s,%s,%s)
                         """,
                         (w, id_relawan, kode_posko, payload, float(skor), status, lat_f, lon_f, catatan, rad_f, photo_v),
                     )
@@ -764,7 +985,7 @@ def _insert_asesmen(
                         f"""
                         INSERT INTO {table}
                         (waktu, id_relawan, kode_posko, jawaban, skor, status, latitude, longitude, catatan, radius, photo_path)
-                        VALUES (%s,%s,%s,%s::jsonb,%s,%s,%s,%s,%s,%s,%s)
+                        VALUES (COALESCE(%s, now()),%s,%s,%s::jsonb,%s,%s,%s,%s,%s,%s,%s)
                         """,
                         (w, id_relawan, kode_posko, payload, float(skor), status, lat_f, lon_f, catatan, rad_f, photo_v),
                     )
@@ -777,7 +998,7 @@ def _insert_asesmen(
                     f"""
                     INSERT INTO {table}
                     (waktu, id_relawan, kode_posko, jawaban, skor, status, latitude, longitude, catatan, radius)
-                    VALUES (%s,%s,%s,%s::jsonb,%s,%s,%s,%s,%s,%s)
+                    VALUES (COALESCE(%s, now()),%s,%s,%s::jsonb,%s,%s,%s,%s,%s,%s)
                     """,
                     (w, id_relawan, kode_posko, payload, float(skor), status, lat_f, lon_f, catatan, rad_f),
                 )
@@ -787,7 +1008,7 @@ def _insert_asesmen(
                     f"""
                     INSERT INTO {table}
                     (waktu, id_relawan, kode_posko, jawaban, skor, status, latitude, longitude, catatan, radius)
-                    VALUES (%s,%s,%s,%s,%s,%s,%s,%s,%s,%s)
+                    VALUES (COALESCE(%s, now()),%s,%s,%s,%s,%s,%s,%s,%s,%s)
                     """,
                     (w, id_relawan, kode_posko, payload, float(skor), status, lat_f, lon_f, catatan, rad_f),
                 )
@@ -798,7 +1019,7 @@ def _insert_asesmen(
                     f"""
                     INSERT INTO {table}
                     (waktu, id_relawan, kode_posko, jawaban, skor, status, latitude, longitude, catatan, radius)
-                    VALUES (%s,%s,%s,%s,%s,%s,%s,%s,%s,%s)
+                    VALUES (COALESCE(%s, now()),%s,%s,%s,%s,%s,%s,%s,%s,%s)
                     """,
                     (w, id_relawan, kode_posko, payload, float(skor), status, lat_f, lon_f, catatan, rad_f),
                 )
@@ -808,7 +1029,7 @@ def _insert_asesmen(
                     f"""
                     INSERT INTO {table}
                     (waktu, id_relawan, kode_posko, jawaban, skor, status, latitude, longitude, catatan, radius)
-                    VALUES (%s,%s,%s,%s::jsonb,%s,%s,%s,%s,%s,%s)
+                    VALUES (COALESCE(%s, now()),%s,%s,%s::jsonb,%s,%s,%s,%s,%s,%s)
                     """,
                     (w, id_relawan, kode_posko, payload, float(skor), status, lat_f, lon_f, catatan, rad_f),
                 )
@@ -822,7 +1043,7 @@ def _insert_asesmen(
                         f"""
                         INSERT INTO {table}
                         (waktu, id_relawan, kode_posko, jawaban, skor, status, latitude, longitude, catatan, photo_path)
-                        VALUES (%s,%s,%s,%s::jsonb,%s,%s,%s,%s,%s,%s)
+                        VALUES (COALESCE(%s, now()),%s,%s,%s::jsonb,%s,%s,%s,%s,%s,%s)
                         """,
                         (w, id_relawan, kode_posko, payload, float(skor), status, lat_f, lon_f, catatan, photo_v),
                     )
@@ -832,7 +1053,7 @@ def _insert_asesmen(
                         f"""
                         INSERT INTO {table}
                         (waktu, id_relawan, kode_posko, jawaban, skor, status, latitude, longitude, catatan, photo_path)
-                        VALUES (%s,%s,%s,%s,%s,%s,%s,%s,%s,%s)
+                        VALUES (COALESCE(%s, now()),%s,%s,%s,%s,%s,%s,%s,%s,%s)
                         """,
                         (w, id_relawan, kode_posko, payload, float(skor), status, lat_f, lon_f, catatan, photo_v),
                     )
@@ -843,7 +1064,7 @@ def _insert_asesmen(
                         f"""
                         INSERT INTO {table}
                         (waktu, id_relawan, kode_posko, jawaban, skor, status, latitude, longitude, catatan, photo_path)
-                        VALUES (%s,%s,%s,%s,%s,%s,%s,%s,%s,%s)
+                        VALUES (COALESCE(%s, now()),%s,%s,%s,%s,%s,%s,%s,%s,%s)
                         """,
                         (w, id_relawan, kode_posko, payload, float(skor), status, lat_f, lon_f, catatan, photo_v),
                     )
@@ -853,7 +1074,7 @@ def _insert_asesmen(
                         f"""
                         INSERT INTO {table}
                         (waktu, id_relawan, kode_posko, jawaban, skor, status, latitude, longitude, catatan, photo_path)
-                        VALUES (%s,%s,%s,%s::jsonb,%s,%s,%s,%s,%s,%s)
+                        VALUES (COALESCE(%s, now()),%s,%s,%s::jsonb,%s,%s,%s,%s,%s,%s)
                         """,
                         (w, id_relawan, kode_posko, payload, float(skor), status, lat_f, lon_f, catatan, photo_v),
                     )
@@ -866,7 +1087,7 @@ def _insert_asesmen(
                     f"""
                     INSERT INTO {table}
                     (waktu, id_relawan, kode_posko, jawaban, skor, status, latitude, longitude, catatan)
-                    VALUES (%s,%s,%s,%s::jsonb,%s,%s,%s,%s,%s)
+                    VALUES (COALESCE(%s, now()),%s,%s,%s::jsonb,%s,%s,%s,%s,%s)
                     """,
                     (w, id_relawan, kode_posko, payload, float(skor), status, lat_f, lon_f, catatan),
                 )
@@ -876,7 +1097,7 @@ def _insert_asesmen(
                     f"""
                     INSERT INTO {table}
                     (waktu, id_relawan, kode_posko, jawaban, skor, status, latitude, longitude, catatan)
-                    VALUES (%s,%s,%s,%s,%s,%s,%s,%s,%s)
+                    VALUES (COALESCE(%s, now()),%s,%s,%s,%s,%s,%s,%s,%s)
                     """,
                     (w, id_relawan, kode_posko, payload, float(skor), status, lat_f, lon_f, catatan),
                 )
@@ -887,7 +1108,7 @@ def _insert_asesmen(
                     f"""
                     INSERT INTO {table}
                     (waktu, id_relawan, kode_posko, jawaban, skor, status, latitude, longitude, catatan)
-                    VALUES (%s,%s,%s,%s,%s,%s,%s,%s,%s)
+                    VALUES (COALESCE(%s, now()),%s,%s,%s,%s,%s,%s,%s,%s)
                     """,
                     (w, id_relawan, kode_posko, payload, float(skor), status, lat_f, lon_f, catatan),
                 )
@@ -897,7 +1118,7 @@ def _insert_asesmen(
                     f"""
                     INSERT INTO {table}
                     (waktu, id_relawan, kode_posko, jawaban, skor, status, latitude, longitude, catatan)
-                    VALUES (%s,%s,%s,%s::jsonb,%s,%s,%s,%s,%s)
+                    VALUES (COALESCE(%s, now()),%s,%s,%s::jsonb,%s,%s,%s,%s,%s)
                     """,
                     (w, id_relawan, kode_posko, payload, float(skor), status, lat_f, lon_f, catatan),
                 )
@@ -1139,7 +1360,7 @@ def pg_get_relawan_locations_last24h(hours: int = 168) -> List[Dict[str, Any]]:
         out.append(rr)
     return out
 
-def _pg_get_asesmen_last_hours(table_env: str, default_table: str, hours: int =168, only_active: bool = True) -> List[Dict[str, Any]]:
+def _pg_get_asesmen_last_hours(table_env: str, default_table: str, hours: int =168, only_active: bool = True, start: Optional[date] = None, end: Optional[date] = None) -> List[Dict[str, Any]]:
     """Ambil asesmen dalam N jam terakhir untuk kebutuhan peta (buffer).
 
     Return field minimal:
@@ -1148,7 +1369,29 @@ def _pg_get_asesmen_last_hours(table_env: str, default_table: str, hours: int =1
     table = _get_env(table_env, default_table)
     relawan_table = _get_env("PG_RELAWAN_TABLE", "public.data_relawan")
     active_filter = "AND (lr.is_active IS DISTINCT FROM false)" if only_active else ""
-
+    
+    t_start = _normalize_input_ts(start) if start else None
+    t_end = _normalize_input_ts(end) if end else None
+    
+    start_filter = "AND lr.waktu >= %s" if t_start else ""
+    end_filter = ""
+    if t_end:
+        t_end_next = t_end + timedelta(days=1)
+        end_filter = "AND lr.waktu < %s"
+    
+    # If using date filter, ignore the "last N hours" restriction
+    time_limit = ""
+    if not t_start and not t_end:
+        time_limit = "AND lr.waktu >= NOW() - (%s * INTERVAL '1 hour')"
+    
+    params = []
+    if not t_start and not t_end:
+        params.append(hours)
+    if t_start:
+        params.append(t_start)
+    if t_end:
+        params.append(t_end_next)
+        
     sql = f"""
         SELECT
             lr.id,
@@ -1168,15 +1411,18 @@ def _pg_get_asesmen_last_hours(table_env: str, default_table: str, hours: int =1
         FROM {table} lr
         LEFT JOIN {relawan_table} dr
           ON dr.id_relawan = lr.id_relawan
-        WHERE waktu >= NOW() - (%s * INTERVAL '1 hour')
+        WHERE 1=1
+          {time_limit}
           {active_filter}
+          {start_filter}
+          {end_filter}
           AND latitude IS NOT NULL
           AND longitude IS NOT NULL
-        ORDER BY waktu DESC;
+        ORDER BY lr.waktu DESC;
     """
 
     try:
-        rows = pg_fetchall(sql, (hours,))
+        rows = pg_fetchall(sql, tuple(params) if params else None)
     except Exception:
         # Fallback jika kolom radius belum ada
         sql2 = f"""
@@ -1197,13 +1443,16 @@ def _pg_get_asesmen_last_hours(table_env: str, default_table: str, hours: int =1
             FROM {table} lr
             LEFT JOIN {relawan_table} dr
               ON dr.id_relawan = lr.id_relawan
-            WHERE waktu >= NOW() - (%s * INTERVAL '1 hour')
+            WHERE 1=1
+              {time_limit}
               {active_filter}
+              {start_filter}
+              {end_filter}
               AND latitude IS NOT NULL
               AND longitude IS NOT NULL
-            ORDER BY waktu DESC;
+            ORDER BY lr.waktu DESC;
         """
-        rows = pg_fetchall(sql2, (hours,))
+        rows = pg_fetchall(sql2, tuple(params))
     out: List[Dict[str, Any]] = []
     for r in rows:
         rr = _json_safe_row(r)
@@ -1484,7 +1733,7 @@ def pg_insert_permintaan_posko(data: Dict[str, Any]) -> bool:
 # 12) LOGISTIK - Permintaan (public.logistik_permintaan)
 # ------------------------------------------------------------------------------
 
-def pg_insert_logistik_permintaan(data: Dict[str, Any]) -> bool:
+def pg_insert_logistik_permintaan(data: Dict[str, Any], waktu: Optional[datetime] = None) -> bool:
     """Insert permintaan logistik ke tabel logistik_permintaan.
 
     Ekspektasi kolom (sesuai skema yang kamu tunjukkan di DBeaver):
@@ -1510,17 +1759,19 @@ def pg_insert_logistik_permintaan(data: Dict[str, Any]) -> bool:
     # Lat/Lon dipaksa float agar aman
     lat = _to_float(data.get("latitude"))
     lon = _to_float(data.get("longitude"))
+    w = _normalize_input_ts(waktu if waktu is not None else data.get("waktu"))
 
     # Simpan (tanpa 'id' karena bigserial)
     sql = f"""
         INSERT INTO {table}
-        (kode_posko, keterangan, status_permintaan, id_relawan, photo_link, latitude, longitude)
-        VALUES (%s,%s,%s,%s,%s,%s,%s)
+        (waktu, kode_posko, keterangan, status_permintaan, id_relawan, photo_link, latitude, longitude)
+        VALUES (COALESCE(%s, now()),%s,%s,%s,%s,%s,%s,%s)
     """
 
     pg_execute(
         sql,
         (
+            w,
             data.get("kode_posko"),
             data.get("keterangan"),
             data.get("status_permintaan"),
@@ -1815,6 +2066,7 @@ def pg_set_asesmen_active(
         "infrastruktur": ("PG_ASESMEN_INFRASTRUKTUR_TABLE", "public.asesmen_infrastruktur"),
         "wash": ("PG_ASESMEN_WASH_TABLE", "public.asesmen_wash"),
         "kondisi": ("PG_ASESMEN_KONDISI_TABLE", "public.asesmen_kondisi"),
+        "oxfam": ("PG_ASESMEN_OXFAM_TABLE", "public.asesmen_oxfam"),
     }
 
     if kind_key not in kind_map:
@@ -1888,15 +2140,52 @@ def _ensure_data_lokasi_is_active_column() -> None:
         return
 
 
-def pg_get_admin_lokasi_list(limit: int = 500) -> List[Dict[str, Any]]:
-    """Ambil daftar data_lokasi (aktif + nonaktif) untuk panel admin."""
+def pg_get_admin_lokasi_list(
+    limit: int = 10, 
+    offset: int = 0, 
+    search: str = "", 
+    kind: str = "", 
+    start: Optional[Union[str, date]] = None, 
+    end: Optional[Union[str, date]] = None
+) -> Dict[str, Any]:
+    """Ambil daftar data_lokasi (aktif + nonaktif) untuk panel admin dengan filter dan pagination."""
     _ensure_data_lokasi_is_active_column()
 
     table = _get_env("PG_DATA_LOKASI_TABLE", "public.data_lokasi")
+    
     try:
-        lim = max(1, min(5000, int(limit)))
+        lim = max(1, min(100, int(limit)))
+        off = max(0, int(offset))
     except Exception:
-        lim = 500
+        lim = 10
+        off = 0
+
+    where_clauses = ["1=1"]
+    params = []
+
+    if search.strip():
+        where_clauses.append("(nama_lokasi ILIKE %s OR nama_kabkota ILIKE %s OR id_lokasi ILIKE %s)")
+        s = f"%{search.strip()}%"
+        params.extend([s, s, s])
+
+    if kind.strip():
+        where_clauses.append("jenis_lokasi = %s")
+        params.append(kind.strip())
+
+    if start:
+        t_start = _normalize_input_ts(start)
+        if t_start:
+            where_clauses.append("waktu >= %s")
+            params.append(t_start)
+    if end:
+        t_end = _normalize_input_ts(end)
+        if t_end:
+            # End of day boundary: inclusive until end of day (so beginning of next day exclusive)
+            t_end_next = t_end + timedelta(days=1)
+            where_clauses.append("waktu < %s")
+            params.append(t_end_next)
+
+    where_sql = " AND ".join(where_clauses)
 
     sql = f"""
         SELECT
@@ -1907,15 +2196,25 @@ def pg_get_admin_lokasi_list(limit: int = 500) -> List[Dict[str, Any]]:
             waktu,
             COALESCE(is_active, TRUE) AS is_active
         FROM {table}
+        WHERE {where_sql}
         ORDER BY waktu DESC
-        LIMIT {lim};
+        LIMIT %s OFFSET %s;
     """
+    
+    # Query for has_more
+    sql_count = f"SELECT COUNT(*) as total FROM {table} WHERE {where_sql};"
 
     try:
-        rows = pg_fetchall(sql)
-        return [_json_safe_row(r) for r in rows]
+        rows = pg_fetchall(sql, (*params, lim + 1, off))
+        has_more = len(rows) > lim
+        paged_rows = rows[:lim]
+
+        return {
+            "rows": [_json_safe_row(r) for r in paged_rows],
+            "has_more": has_more
+        }
     except Exception:
-        return []
+        return {"rows": [], "has_more": False}
 
 
 def pg_set_data_lokasi_active(
@@ -2019,22 +2318,44 @@ def pg_update_data_lokasi_jenis(
 
     return ok
 
-def pg_get_admin_asesmen_list(hours: int = 24, limit_per_kind: int = 200) -> List[Dict[str, Any]]:
-    """Ambil daftar asesmen (aktif + nonaktif) untuk panel admin.
+def pg_get_admin_asesmen_list(hours: int = 24, limit_per_kind: int = 500, start: Optional[date] = None, end: Optional[date] = None, kind_filter: str = "", offset: int = 0, limit: int = 10) -> Dict[str, Any]:
+    """Ambil daftar asesmen (aktif + nonaktif) untuk panel admin dengan pagination.
 
-    NOTE: Front-end peta tetap mengambil yang aktif saja.
+    Return: {"rows": [...], "has_more": bool}
     """
     try:
         h = int(hours)
     except Exception:
         h = 24
-    h = max(1, min(24 * 14, h))
+    h = max(1, min(24 * 60, h))
 
     try:
-        lim = int(limit_per_kind)
+        lim_k = int(limit_per_kind)
     except Exception:
-        lim = 200
-    lim = max(1, min(2000, lim))
+        lim_k = 500
+    lim_k = max(1, min(2000, lim_k))
+
+    try:
+        off = int(offset)
+    except Exception:
+        off = 0
+    
+    try:
+        lim = int(limit)
+    except Exception:
+        lim = 10
+
+    if isinstance(start, str) and start:
+        try:
+            start = datetime.strptime(start, "%Y-%m-%d").date()
+        except Exception:
+            start = None
+
+    if isinstance(end, str) and end:
+        try:
+            end = datetime.strptime(end, "%Y-%m-%d").date()
+        except Exception:
+            end = None
 
     buckets = [
         ("kesehatan", "PG_ASESMEN_KESEHATAN_TABLE", "public.asesmen_kesehatan"),
@@ -2043,18 +2364,24 @@ def pg_get_admin_asesmen_list(hours: int = 24, limit_per_kind: int = 200) -> Lis
         ("infrastruktur", "PG_ASESMEN_INFRASTRUKTUR_TABLE", "public.asesmen_infrastruktur"),
         ("wash", "PG_ASESMEN_WASH_TABLE", "public.asesmen_wash"),
         ("kondisi", "PG_ASESMEN_KONDISI_TABLE", "public.asesmen_kondisi"),
+        ("oxfam", "PG_ASESMEN_OXFAM_TABLE", "public.asesmen_oxfam"),
     ]
 
-    out: List[Dict[str, Any]] = []
+    all_data: List[Dict[str, Any]] = []
     for kind, env, default_table in buckets:
+        # Jika ada filter jenis, skip yang tidak cocok
+        if kind_filter and kind_filter.strip().lower() != kind:
+            continue
+
         try:
-            rows = _pg_get_asesmen_last_hours(env, default_table, hours=h, only_active=False)
+            # Kita ambil lim_k (cukup banyak) dari tiap tabel untuk disortir gabungan
+            rows = _pg_get_asesmen_last_hours(env, default_table, hours=h, only_active=False, start=start, end=end)
         except Exception:
             rows = []
 
-        for r in (rows or [])[:lim]:
+        for r in (rows or [])[:lim_k]:
             rr = _json_safe_row(r)
-            out.append(
+            all_data.append(
                 {
                     "kind": kind,
                     "id": rr.get("id"),
@@ -2068,6 +2395,314 @@ def pg_get_admin_asesmen_list(hours: int = 24, limit_per_kind: int = 200) -> Lis
                 }
             )
 
-    out.sort(key=lambda x: str(x.get("waktu") or ""), reverse=True)
-    return out
+    # Sort gabungan by waktu DESC
+    all_data.sort(key=lambda x: str(x.get("waktu") or ""), reverse=True)
+    
+    # Slicing untuk pagination
+    paged_rows = all_data[off : off + lim]
+    has_more = len(all_data) > (off + lim)
 
+    return {"rows": paged_rows, "has_more": has_more, "total_all_loaded": len(all_data)}
+
+
+def pg_get_asesmen_rekap_by_kabkota(
+    jenis_asesmen: Optional[str] = None,
+    tanggal_dari: Optional[str] = None,
+    tanggal_sampai: Optional[str] = None,
+    status_filter: Optional[str] = None,
+    app_root_path: Optional[str] = None,
+) -> Dict[str, Dict[str, Any]]:
+    """Ambil rekap data asesmen dikelompokkan per kabupaten/kota.
+    
+    Args:
+        jenis_asesmen: 'kesehatan', 'pendidikan', 'psikososial', 'infrastruktur', 'wash', 'kondisi', atau None (semua)
+        tanggal_dari: Filter tanggal mulai (datetime)
+        tanggal_sampai: Filter tanggal akhir (datetime)
+        status_filter: Filter status ('Aman', 'Waspada', 'Kritis', atau None untuk semua)
+    
+    Returns:
+        Dict dengan key nama_kabkota, value dict berisi:
+        - total: jumlah total asesmen
+        - valid: jumlah asesmen dengan status valid (Aman/Waspada/Kritis yang sudah verified)
+        - pending: jumlah asesmen pending (butuh verifikasi)
+        - ditolak_error: jumlah asesmen ditolak atau error
+        - detail: list detail asesmen
+    """
+    from collections import defaultdict
+    from datetime import datetime, date, timedelta
+
+    # Normalize dates to UTC boundaries
+    t_dari = _normalize_input_ts(tanggal_dari)
+    t_sampai = _normalize_input_ts(tanggal_sampai)
+    
+    # Mapping jenis asesmen ke table
+    buckets = [
+        ("kesehatan", "PG_ASESMEN_KESEHATAN_TABLE", "public.asesmen_kesehatan"),
+        ("pendidikan", "PG_ASESMEN_PENDIDIKAN_TABLE", "public.asesmen_pendidikan"),
+        ("psikososial", "PG_ASESMEN_PSIKOSOSIAL_TABLE", "public.asesmen_psikososial"),
+        ("infrastruktur", "PG_ASESMEN_INFRASTRUKTUR_TABLE", "public.asesmen_infrastruktur"),
+        ("wash", "PG_ASESMEN_WASH_TABLE", "public.asesmen_wash"),
+        ("kondisi", "PG_ASESMEN_KONDISI_TABLE", "public.asesmen_kondisi"),
+    ]
+    
+    # Filter buckets jika jenis_asesmen ditentukan
+    if jenis_asesmen:
+        buckets = [b for b in buckets if b[0] == jenis_asesmen]
+    
+    # Load GeoJSON untuk mapping lat/lon ke kabupaten/kota
+    geo_json_path = None
+    try:
+        from pathlib import Path
+        if app_root_path:
+            geo_json_path = Path(app_root_path) / "static" / "data" / "kabkota_sumut.json"
+        else:
+            import os
+            app_root = os.getenv("APP_ROOT_PATH", ".")
+            geo_json_path = Path(app_root) / "static" / "data" / "kabkota_sumut.json"
+        
+        if geo_json_path and not geo_json_path.exists():
+            geo_json_path = None
+    except Exception:
+        pass
+    
+    geo_data = None
+    if geo_json_path:
+        try:
+            import json
+            with open(geo_json_path, "r", encoding="utf-8") as f:
+                geo_data = json.load(f)
+        except Exception:
+            geo_data = None
+    
+    def get_kabkota_from_coords(lat: float, lon: float) -> Optional[str]:
+        """Tentukan kabupaten/kota dari koordinat menggunakan GeoJSON."""
+        if not geo_data or not lat or not lon:
+            return None
+        
+        point = (float(lon), float(lat))
+        
+        for feature in geo_data.get("features", []):
+            geometry = feature.get("geometry", {})
+            props = feature.get("properties", {})
+            
+            nama_wilayah = (
+                props.get("kabkota")
+                or props.get("KABKOTA")
+                or props.get("NAMOBJ")
+                or None
+            )
+            
+            if not nama_wilayah:
+                continue
+            
+            # Check point in polygon
+            if geometry.get("type") == "Polygon":
+                poly_coords = geometry.get("coordinates", [[]])[0]
+                if poly_coords and _point_in_polygon(point, poly_coords):
+                    return nama_wilayah
+            elif geometry.get("type") == "MultiPolygon":
+                for poly in geometry.get("coordinates", []):
+                    poly_coords = poly[0] if poly else []
+                    if poly_coords and _point_in_polygon(point, poly_coords):
+                        return nama_wilayah
+        
+        return None
+    
+    def _point_in_polygon(point, polygon):
+        """Check if point is inside polygon using ray casting algorithm."""
+        x, y = point
+        n = len(polygon)
+        if n < 3:
+            return False
+        
+        inside = False
+        p1x, p1y = polygon[0]
+        for i in range(1, n + 1):
+            p2x, p2y = polygon[i % n]
+            if y > min(p1y, p2y):
+                if y <= max(p1y, p2y):
+                    if x <= max(p1x, p2x):
+                        if p1y != p2y:
+                            xinters = (y - p1y) * (p2x - p1x) / (p2y - p1y) + p1x
+                        if p1x == p2x or x <= xinters:
+                            inside = not inside
+            p1x, p1y = p2x, p2y
+        
+        return inside
+    
+    # Kumpulkan semua asesmen
+    all_asesmen: List[Dict[str, Any]] = []
+    
+    for kind, env, default_table in buckets:
+        try:
+            table = _get_env(env, default_table)
+            
+            # Build SQL dengan filter tanggal dan status
+            where_clauses = ["latitude IS NOT NULL", "longitude IS NOT NULL"]
+            params: List[Any] = []
+            
+            if t_dari:
+                where_clauses.append("waktu >= %s")
+                params.append(t_dari)
+            
+            if t_sampai:
+                # Tambahkan 1 hari untuk include seluruh hari sampai
+                t_sampai_end = t_sampai + timedelta(days=1)
+                where_clauses.append("waktu < %s")
+                params.append(t_sampai_end)
+            
+            if status_filter and status_filter.lower() != "semua":
+                where_clauses.append("UPPER(TRIM(status)) = UPPER(TRIM(%s))")
+                params.append(status_filter)
+            
+            relawan_table = _get_env("PG_RELAWAN_TABLE", "public.data_relawan")
+            sql = f"""
+                SELECT
+                    lr.id,
+                    lr.waktu,
+                    lr.id_relawan,
+                    dr.nama_relawan,
+                    lr.kode_posko,
+                    lr.skor,
+                    lr.status,
+                    lr.latitude,
+                    lr.longitude,
+                    lr.is_active,
+                    '{kind}' AS jenis_asesmen
+                FROM {table} lr
+                LEFT JOIN {relawan_table} dr ON dr.id_relawan = lr.id_relawan
+                WHERE {' AND '.join(where_clauses)}
+                ORDER BY lr.waktu DESC;
+            """
+            
+            rows = pg_fetchall(sql, tuple(params) if params else None)
+            
+            for r in rows:
+                lat = _to_float(r.get("latitude"))
+                lon = _to_float(r.get("longitude"))
+                
+                if lat and lon:
+                    kabkota = get_kabkota_from_coords(lat, lon)
+                    if kabkota:
+                        rr = _json_safe_row(r)
+                        rr["kabkota"] = kabkota
+                        all_asesmen.append(rr)
+        
+        except Exception as e:
+            print(f"[PG] Error getting asesmen {kind}: {e}")
+            continue
+    
+    # Group by kabupaten/kota dan hitung statistik
+    rekap: Dict[str, Dict[str, Any]] = defaultdict(lambda: {
+        "total": 0,
+        "valid": 0,
+        "pending": 0,
+        "ditolak_error": 0,
+        "detail": []
+    })
+    
+    for asesmen in all_asesmen:
+        kabkota = asesmen.get("kabkota")
+        if not kabkota:
+            continue
+        
+        status = str(asesmen.get("status") or "").strip().upper()
+        is_active = asesmen.get("is_active")
+        
+        # Tentukan kategori
+        if not is_active or (isinstance(is_active, str) and is_active.lower() in ("false", "0", "no")):
+            rekap[kabkota]["ditolak_error"] += 1
+        elif status in ("AMAN", "WASPADA", "KRITIS"):
+            rekap[kabkota]["valid"] += 1
+        else:
+            rekap[kabkota]["pending"] += 1
+        
+        rekap[kabkota]["total"] += 1
+        rekap[kabkota]["detail"].append(asesmen)
+    
+    # Convert defaultdict to regular dict
+    return dict(rekap)
+
+def pg_insert_asesmen_oxfam(
+    id_relawan: str,
+    kode_posko: Optional[str],
+    jawaban: Dict[str, Any],
+    skor: float,
+    status: str,
+    latitude: Any,
+    longitude: Any,
+    catatan: Optional[str] = None,
+    photo_path: Optional[str] = None,
+    radius: Optional[float] = None,
+    waktu: Optional[datetime] = None,
+) -> bool:
+    return _insert_asesmen(
+        table_env="PG_ASESMEN_OXFAM_TABLE",
+        default_table="public.asesmen_oxfam",
+        id_relawan=id_relawan,
+        kode_posko=kode_posko,
+        jawaban=jawaban,
+        skor=skor,
+        status=status,
+        latitude=latitude,
+        longitude=longitude,
+        catatan=catatan,
+        photo_path=photo_path,
+        radius=radius,
+        waktu=waktu,
+        prefer_jsonb_cast=True,
+    )
+
+
+def pg_get_asesmen_oxfam_last24h(hours: int = 168) -> List[Dict[str, Any]]:
+    return _pg_get_asesmen_last_hours(
+        table_env="PG_ASESMEN_OXFAM_TABLE",
+        default_table="public.asesmen_oxfam",
+        hours=hours,
+    )
+
+
+def pg_get_asesmen_oxfam_by_id(asesmen_id: int) -> Optional[Dict[str, Any]]:
+    """Ambil 1 record asesmen oxfam untuk halaman detail."""
+    table = _get_env("PG_ASESMEN_OXFAM_TABLE", "public.asesmen_oxfam")
+    relawan_table = _get_env("PG_DATA_RELAWAN_TABLE", "public.data_relawan")
+
+    sql = f"""
+        SELECT
+            lr.id,
+            lr.waktu,
+            lr.id_relawan,
+            dr.nama_relawan,
+            lr.kode_posko,
+            lr.skor,
+            lr.status,
+            lr.jawaban,
+            lr.latitude,
+            lr.longitude,
+            lr.catatan,
+            lr.photo_path,
+            lr.radius,
+            COALESCE(lr.is_active, TRUE) AS is_active
+        FROM {table} lr
+        LEFT JOIN {relawan_table} dr
+          ON dr.id_relawan = lr.id_relawan
+        WHERE lr.id = %s
+        LIMIT 1;
+    """
+
+    try:
+        row = pg_fetchone(sql, (int(asesmen_id),))
+        if not row:
+            return None
+        rr = _json_safe_row(row)
+        rr["latitude"] = _to_float(rr.get("latitude"))
+        rr["longitude"] = _to_float(rr.get("longitude"))
+        j = rr.get("jawaban")
+        if isinstance(j, str):
+            try:
+                rr["jawaban"] = json.loads(j)
+            except Exception:
+                rr["jawaban"] = j
+        return rr
+    except Exception:
+        return None

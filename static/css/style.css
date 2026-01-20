@@ -354,6 +354,84 @@ hr {
     margin: 20px 0;
 }
 
+/* Container Scroll Logistik */
+.logistik-scroll-container {
+    max-height: 450px; /* Tinggi maksimal container, sesuaikan kebutuhan */
+    overflow-y: auto;  /* Aktifkan scroll vertikal */
+    overflow-x: hidden;
+    padding-right: 5px; /* Spasi untuk scrollbar */
+    border: 1px solid #e5e7eb; /* Opsional: Border tipis biar rapi */
+    border-radius: 10px;
+    background-color: #f8fafc; /* Opsional: Warna background container */
+    padding: 10px;
+}
+
+/* Mempercantik Scrollbar (Chrome/Edge/Safari) */
+.logistik-scroll-container::-webkit-scrollbar {
+    width: 6px;
+}
+.logistik-scroll-container::-webkit-scrollbar-track {
+    background: #f1f1f1;
+    border-radius: 4px;
+}
+.logistik-scroll-container::-webkit-scrollbar-thumb {
+    background: #cbd5e1;
+    border-radius: 4px;
+}
+.logistik-scroll-container::-webkit-scrollbar-thumb:hover {
+    background: #94a3b8;
+}
+
+/* Container agar bisa di-scroll vertikal */
+.bencana-scroll-container {
+    max-height: 500px; /* Tinggi maksimal list, selebihnya scroll */
+    overflow-y: auto;  /* Aktifkan scroll vertikal */
+    overflow-x: hidden;
+    padding-right: 5px; /* Jarak untuk scrollbar */
+}
+
+/* Mempercantik Scrollbar (Opsional - Chrome/Edge/Safari) */
+.bencana-scroll-container::-webkit-scrollbar {
+    width: 6px;
+}
+.bencana-scroll-container::-webkit-scrollbar-track {
+    background: #f1f1f1;
+    border-radius: 4px;
+}
+.bencana-scroll-container::-webkit-scrollbar-thumb {
+    background: #ccc;
+    border-radius: 4px;
+}
+.bencana-scroll-container::-webkit-scrollbar-thumb:hover {
+    background: #aaa;
+}
+
+/* Style Tambahan untuk Tabel Stok */
+.bg-soft-success { background-color: #d1fae5; }
+.bg-soft-warning { background-color: #fef3c7; }
+.bg-soft-danger { background-color: #fee2e2; }
+
+/* Hapus outline biru standar bootstrap saat diklik */
+.accordion-button:focus {
+    box-shadow: none;
+    border-color: rgba(0,0,0,.125);
+}
+.accordion-button:not(.collapsed) {
+    color: #0f172a;
+    background-color: #f8fafc;
+}   
+
+/* Style Kartu Baru */
+.stat-box {
+    border-radius: 8px;
+    padding: 8px 4px;
+    text-align: center;
+    height: 100%;
+}
+.bg-red-soft { background-color: #fee2e2; color: #991b1b; }
+.bg-orange-soft { background-color: #ffedd5; color: #9a3412; }
+.bg-blue-soft { background-color: #dbeafe; color: #1e40af; }
+
 /* Carousel untuk Data Bencana & Korban - Enhanced */
 .bencana-carousel-container {
     position: relative;

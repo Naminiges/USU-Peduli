@@ -201,56 +201,105 @@
         >
           <i class="fas fa-location-dot"></i> Absensi Lokasi
         </button>
-        {#Tambah Untuk Asesmen Kesehatan#}
-        <button
-          class="btn btn-success feature-btn"
-          data-bs-toggle="modal"
-          data-bs-target="#asesmenKesehatanModal"
-        >
-          <i class="fas fa-heartbeat me-2"></i> Asesmen Kesehatan
-        </button>
-        {#Tambah Untuk Asesmen Pendidikan#}
-        <button
-          class="btn btn-success feature-btn"
-          data-bs-toggle="modal"
-          data-bs-target="#asesmenPendidikanModal"
-        >
-          <i class="fas fa-graduation-cap me-2"></i> Asesmen Pendidikan
-        </button>
-        {#Tambah Untuk Asesmen Psikososial#}
-        <button
-          class="btn btn-success feature-btn"
-          data-bs-toggle="modal"
-          data-bs-target="#asesmenPsikososialModal"
-        >
-          <i class="fa-solid fa-hand-holding-heart me-2"></i> Asesmen
-          Psikososial
-        </button>
-        {#Tambah Untuk Asesmen Infrastruktur#}
-        <button
-          class="btn btn-success feature-btn"
-          data-bs-toggle="modal"
-          data-bs-target="#asesmenInfrastrukturModal"
-        >
-          <i class="fa-solid fa-screwdriver-wrench me-2"></i> Asesmen
-          Infrastruktur
-        </button>
-        {#Tambah Untuk Asesmen Wash#}
-        <button
-          class="btn btn-success feature-btn"
-          data-bs-toggle="modal"
-          data-bs-target="#asesmenWashModal"
-        >
-          <i class="fa-solid fa-droplet me-2"></i> Asesmen WASH
-        </button>
-        {#Tambah Untuk Asesmen Kondisi#}
-        <button
-          class="btn btn-success feature-btn"
-          data-bs-toggle="modal"
-          data-bs-target="#asesmenKondisiModal"
-        >
-          <i class="fa-solid fa-clipboard-list me-2"></i> Asesmen Kondisi
-        </button>
+        <div class="dropdown" id="asesmenDropdownContainer">
+          <div class="input-group bg-success" style="border-radius: 10px;">
+            <span style="background: transparent; border: none;" class="input-group-text text-white border-success">
+              <i class="fas fa-clipboard-list me-1"></i> Asesmen
+            </span>
+            <input
+              style="padding-top: 5px; padding-bottom: 5px; margin-top: 5px; margin-bottom: 5px; border-radius: 4px;"
+              type="text"
+              class="form-control border-success"
+              placeholder="Cari..."
+              id="asesmenSearchInput"
+              autocomplete="off"
+            />
+            <button
+              style="background: transparent; border: none; color: white;"
+              class="btn dropdown-toggle dropdown-toggle-split"
+              type="button"
+              data-bs-toggle="dropdown"
+              data-bs-auto-close="outside"
+              aria-expanded="false"
+              id="asesmenDropdownBtn"
+            >
+              <span class="visually-hidden">Toggle Dropdown</span>
+            </button>
+            <ul
+              class="dropdown-menu dropdown-menu-end w-100 shadow"
+              id="asesmenDropdownMenu"
+              style="max-height: 300px; overflow-y: auto;"
+            >
+            <li>
+              <button
+                class="dropdown-item asesmen-item py-2"
+                type="button"
+                data-bs-toggle="modal"
+                data-bs-target="#asesmenKesehatanModal"
+              >
+                <i class="fas fa-heartbeat me-2"></i> Kesehatan
+              </button>
+            </li>
+            <li>
+              <button
+                class="dropdown-item asesmen-item py-2"
+                type="button"
+                data-bs-toggle="modal"
+                data-bs-target="#asesmenPendidikanModal"
+              >
+                <i class="fas fa-graduation-cap me-2"></i> Pendidikan
+              </button>
+            </li>
+            <li>
+              <button
+                class="dropdown-item asesmen-item py-2"
+                type="button"
+                data-bs-toggle="modal"
+                data-bs-target="#asesmenPsikososialModal"
+              >
+                <i class="fa-solid fa-hand-holding-heart me-2"></i> Psikososial
+              </button>
+            </li>
+            <li>
+              <button
+                class="dropdown-item asesmen-item py-2"
+                type="button"
+                data-bs-toggle="modal"
+                data-bs-target="#asesmenInfrastrukturModal"
+              >
+                <i class="fa-solid fa-screwdriver-wrench me-2"></i> Infrastruktur
+              </button>
+            </li>
+            <li>
+              <button
+                class="dropdown-item asesmen-item py-2"
+                type="button"
+                data-bs-toggle="modal"
+                data-bs-target="#asesmenWashModal"
+              >
+                <i class="fa-solid fa-droplet me-2"></i> WASH
+              </button>
+            </li>
+            <li>
+              <button
+                class="dropdown-item asesmen-item py-2"
+                type="button"
+                data-bs-toggle="modal"
+                data-bs-target="#asesmenKondisiModal"
+              >
+                <i class="fa-solid fa-clipboard-list me-2"></i> Kondisi
+              </button>
+            </li>
+            <li>
+              <a class="dropdown-item asesmen-item py-2"
+                 href="{{ url_for('asesmen_oxfam_new') }}"
+                 target="_blank" rel="noopener">
+                <i class="fa-solid fa-clipboard-check me-2"></i>Oxfam (RIEA)
+              </a>
+            </li>
+          </ul>
+        </div>
+      </div>
         {% if is_admin %}
 
         <button
@@ -263,6 +312,15 @@
 
         {% endif %}
 
+        {#Button untuk Rekap Asesmen#}
+        <a
+          href="{{ url_for('rekap_asesmen') }}"
+          class="btn btn-info feature-btn"
+          style="text-decoration: none;"
+        >
+          <i class="fas fa-chart-bar me-2"></i> Rekap Asesmen
+        </a>
+        <!-- =============================================================== -->
         <form
           action="{{ url_for('logout') }}"
           method="post"
@@ -279,7 +337,7 @@
             Logout
           </button>
         </form>
-      </div>
+
       {% else %}
       <button
         class="btn btn-primary feature-btn"
@@ -393,7 +451,18 @@
                 >Asesmen Kondisi</label
               >
             </div>
-          </div>
+                      <div class="form-check">
+              <input
+                class="form-check-input"
+                type="checkbox"
+                id="toggleAsesmenOxfam"
+                checked
+              />
+              <label class="form-check-label" for="toggleAsesmenOxfam"
+                >Asesmen Oxfam (RIEA)</label
+              >
+            </div>
+</div>
         </div>
 
         <!-- Lokasi -->
@@ -732,62 +801,197 @@
       </div>
       <!-- =============================================================== -->
 
-      <hr />
+      <div class="d-flex align-items-center mb-3 mt-2">
+    <div class="bg-success text-white rounded-circle d-flex align-items-center justify-content-center me-2" style="width: 32px; height: 32px;">
+        <i class="fas fa-truck-loading"></i>
+    </div>
+    <h5 class="mt-0 mb-0 text-dark fw-bold">Data Distribusi Logistik Keluar</h5>
+</div>
+<div class="logistik-scroll-container shadow-sm">
+  <div class="accordion" id="accordionStokGudang">
+      
+      {% for group in stok_gudang %}
+          {% set card_id = "stok" ~ loop.index %}
+          
+          <div class="accordion-item border-0 shadow-sm mb-3 rounded overflow-hidden">
+              
+              <h2 class="accordion-header" id="heading{{ card_id }}">
+                  <button class="accordion-button collapsed bg-white py-3" type="button" data-bs-toggle="collapse" data-bs-target="#collapse{{ card_id }}" aria-expanded="false">
+                      <div class="d-flex flex-column flex-md-row w-100 justify-content-between align-items-md-center me-3 gap-2">
+                          
+                          <div>
+                              <div class="fw-bold text-dark" style="font-size: 1rem;">
+                                  {{ group.header.nama or 'Relawan' }}
+                              </div>
+                              <div class="small text-muted mt-1">
+                                  <i class="fas fa-map-marker-alt text-danger me-1"></i> 
+                                  {{ group.header.daerah }}
+                              </div>
+                          </div>
 
-      <h5>
-        <i class="fas fa-warehouse"></i> Stok Gudang Pusat (Posko Logistik USU)
-      </h5>
-      <div class="row row-cols-2 g-2 mb-3">
-        {% for stok in stok_gudang %} {% if stok.get('kode_gudang') == 'G-ME001'
-        and stok.get('nama_barang') %}
-        <div class="col">
-          <div
-            class="card data-card border-{{ 'danger' if stok.get('stok_akhir')|int <= 0 else 'success' }}"
-          >
-            <div class="card-body p-2">
-              <h6 class="card-title mb-0 small text-truncate">
-                {{ stok.get('nama_barang') }}
-              </h6>
-              <p class="card-text mb-0 fw-bold">
-                {% if stok.get('stok_akhir') >= 0 %} {{ stok.get('stok_akhir')
-                }} {% else %} Kurang {{ stok.get('stok_akhir') | abs }} {% endif
-                %}
-              </p>
-            </div>
+                          <div class="text-md-end text-start">
+                              <span class="badge bg-light text-dark border mb-1">
+                                  <i class="far fa-calendar-alt me-1"></i> {{ group.header.tanggal }}
+                              </span>
+                              <div class="small text-muted">
+                                  {{ group.list_barang|length }} Jenis Barang
+                              </div>
+                          </div>
+                      </div>
+                  </button>
+              </h2>
+
+              <div id="collapse{{ card_id }}" class="accordion-collapse collapse" aria-labelledby="heading{{ card_id }}" data-bs-parent="#accordionStokGudang">
+                  <div class="accordion-body p-0">
+                      <div class="table-responsive">
+                          <table class="table table-sm table-hover mb-0 align-middle">
+                              <thead class="bg-light text-secondary">
+                                  <tr>
+                                      <th class="ps-4 py-2 border-0">Barang</th>
+                                      <th class="text-center py-2 border-0">Jumlah</th>
+                                      <th class="text-end pe-4 py-2 border-0">Status</th>
+                                  </tr>
+                              </thead>
+                              <tbody>
+                                  {% for item in group.list_barang %}
+                                  <tr>
+                                      <td class="ps-4">
+                                          <span class="fw-bold text-dark">{{ item.deskripsi }}</span>
+                                      </td>
+                                      
+                                      <td class="text-center">
+                                          <span class="fw-bold">{{ item.jumlah }}</span> 
+                                          <span class="text-muted small">{{ item.satuan }}</span>
+                                      </td>
+                                      
+                                      <td class="text-end pe-4">
+                                          {% if item.status == 'Selesai' %}
+                                              <span class="badge bg-success bg-opacity-10 text-success px-2 py-1 rounded-pill" style="font-size: 0.75rem;">
+                                                  <i class="fas fa-check me-1"></i>Selesai
+                                              </span>
+                                          {% else %}
+                                              <span class="badge bg-warning bg-opacity-10 text-warning px-2 py-1 rounded-pill" style="font-size: 0.75rem;">
+                                                  {{ item.status }}
+                                              </span>
+                                          {% endif %}
+                                      </td>
+                                  </tr>
+                                  {% endfor %}
+                              </tbody>
+                          </table>
+                      </div>
+                      
+                      <div class="bg-light p-2 text-center border-top">
+                          <small class="text-muted">
+                              Total distribusi untuk <strong>{{ group.header.nama }}</strong>
+                          </small>
+                      </div>
+                  </div>
+              </div>
           </div>
-        </div>
-        {% endif %} {% endfor %}
-      </div>
-
+      {% else %}
+          <div class="text-center py-5 text-muted bg-light rounded border border-dashed">
+              <i class="fas fa-box-open fa-3x mb-3 opacity-25"></i>
+              <p class="mb-0">Belum ada data distribusi logistik keluar.</p>
+          </div>
+      {% endfor %}
+  </div>
+</div>
       <hr />
 
       <h5><i class="fas fa-chart-bar"></i> Data Bencana & Korban</h5>
-      <div class="bencana-carousel-container">
-        <div class="bencana-carousel-wrapper">
-          <div class="bencana-carousel-track" id="bencanaCarousel">
-            {% for rekap in rekap_kabkota %} {% if
-            (rekap.get('korban_meninggal') or 0) >= 0 or
-            (rekap.get('kk_terdampak') or 0) >= 0 %}
-            <div class="bencana-slide mt-2">
-              <div class="card data-card-kabupaten border-danger mb-2">
-                <div class="card-body p-2">
-                  <h6 class="card-title mb-1 fw-bold">
-                    {{ rekap.get('kabkota') }}
-                  </h6>
-                  <p class="card-text mb-0 small">
-                    <i class="fas fa-skull-crossbones text-danger"></i>
-                    Meninggal: {{ rekap.get('korban_meninggal') or 0 }} |
-                    <i class="fas fa-home text-warning"></i>
-                    KK Terdampak: {{ rekap.get('kk_terdampak') or 0 }}
-                  </p>
+      <div class="d-flex align-items-center mb-3 gap-2">
+        <div class="input-group" style="max-width: 250px">
+          <span class="input-group-text bg-white"
+            ><i class="fas fa-calendar-alt text-primary"></i
+          ></span>
+          <input
+            type="date"
+            id="filterTanggal"
+            class="form-control form-control-sm"
+          />
+        </div>
+        <button
+          class="btn btn-sm btn-outline-secondary"
+          onclick="resetFilter()"
+        >
+          <i class="fas fa-sync-alt"></i> Reset
+        </button>
+      </div>
+      <div class="bencana-scroll-container mt-2">
+    <div id="bencanaListTrack"> 
+        
+        {% for rekap in rekap_kabkota %}
+            {% if (rekap.get('korban_meninggal')|int > 0) or 
+                  (rekap.get('korban_hilang')|int > 0) or 
+                  (rekap.get('mengungsi')|int > 0) %}
+                
+                <div class="filter-item mb-3" 
+                     data-tanggal="{{ rekap.get('tanggal_iso') }}">
+                     
+                    <div class="card border-0 shadow-sm" style="border-left: 5px solid #dc3545; border-radius: 8px;">
+                        <div class="card-body p-3">
+                            
+                            <div class="d-flex justify-content-between align-items-start mb-3">
+                                <h6 class="fw-bold text-dark mb-0" style="line-height: 1.2;">
+                                    {{ rekap.get('kabkota') }}
+                                </h6>
+                                <span class="badge bg-light text-secondary border">
+                                    {{ rekap.get('tanggal') }}
+                                </span>
+                            </div>
+
+                            <div class="row g-2">
+                                <div class="col-4">
+                                    <div class="stat-box bg-red-soft">
+                                        <i class="fas fa-skull-crossbones mb-1 d-block" style="font-size: 14px;"></i>
+                                        <div class="fw-bold" style="font-size: 16px;">{{ rekap.get('korban_meninggal') }}</div>
+                                        <small style="font-size: 10px; text-transform: uppercase;">Meninggal</small>
+                                    </div>
+                                </div>
+                                
+                                <div class="col-4">
+                                    <div class="stat-box bg-orange-soft">
+                                        <i class="fas fa-search mb-1 d-block" style="font-size: 14px;"></i>
+                                        <div class="fw-bold" style="font-size: 16px;">{{ rekap.get('korban_hilang') }}</div>
+                                        <small style="font-size: 10px; text-transform: uppercase;">Hilang</small>
+                                    </div>
+                                </div>
+
+                                <div class="col-4">
+                                    <div class="stat-box bg-blue-soft">
+                                        <i class="fas fa-person-shelter mb-1 d-block" style="font-size: 14px;"></i>
+                                        <div class="fw-bold" style="font-size: 16px;">{{ rekap.get('mengungsi') }}</div>
+                                        <small style="font-size: 10px; text-transform: uppercase;">Pengungsi</small>
+                                    </div>
+                                </div>
+                            </div>
+
+                            <div class="mt-2 text-end">
+                                <small class="text-muted fst-italic" style="font-size: 0.75rem;">
+                                    Sumber: {{ rekap.get('sumber_info') }}
+                                </small>
+                            </div>
+
+                        </div>
+                    </div>
                 </div>
-              </div>
+            {% endif %}
+        {% endfor %}
+
+        <div id="noDataMessage" class="text-center w-100 py-4 text-muted" style="display: none;">
+            <div class="mb-2">
+                <i class="fas fa-folder-open fa-2x text-secondary opacity-50"></i>
             </div>
-            {% endif %} {% endfor %}
-          </div>
+            <small>Tidak ada pencatatan data pada tanggal ini.</small>
+        </div>
+
+    </div>
+</div>
         </div>
         <div class="bencana-pagination" id="bencanaPagination"></div>
       </div>
+    </div>
     </div>
 
     <!-- Logout Confirmation Modal -->
@@ -996,6 +1200,11 @@
                   border: 1px solid #e5e7eb;
                 "
               ></div>
+            <div class="mb-3">
+  <label class="form-label">Tanggal & Waktu Kejadian (opsional)</label>
+  <input type="datetime-local" class="form-control" name="waktu" id="waktu_permintaan_logistik">
+  <div class="form-text">Kosongkan jika menggunakan waktu sekarang (WIB).</div>
+</div>
 
               <div class="mt-3 mb-3">
                 <label for="kode_posko" class="form-label"
@@ -1063,7 +1272,7 @@
         <div class="modal-content">
           <div class="modal-header bg-warning text-dark">
             <h5 class="modal-title" id="permintaanAdminModalLabel">
-              <i class="fas fa-gear"></i> Pengaturan Status Permintaan Logistik
+              <i class="fas fa-gear"></i> Pengaturan Status
             </h5>
             <div class="d-flex gap-2 align-items-center">
               <button
@@ -1083,6 +1292,21 @@
             </div>
           </div>
           <div class="modal-body">
+            <div class="d-flex flex-column flex-md-row justify-content-between align-items-md-center gap-2 mb-2">
+              <h6 class="fw-bold mb-0">
+                <i class="fas fa-clipboard-check me-1"></i> Kelola Permintaan Logistik
+              </h6>
+
+              <div class="d-flex flex-wrap gap-2 align-items-center">
+                <div class="row flex-wrap gap-2 align-items-center flex-grow-1">
+                  
+                  <div class="col d-flex gap-2 align-items-center">
+                    <input oninput="renderPermintaanAdminTable(true)" type="date" class="form-control form-control-sm" id="filterPermintaanAdminStart" style="min-width: 130px;" />
+                    <input oninput="renderPermintaanAdminTable(true)" type="date" class="form-control form-control-sm" id="filterPermintaanAdminEnd" style="min-width: 130px;" />
+                  </div>
+                </div>
+              </div>
+            </div>
             <div class="alert alert-info small mb-3">
               <i class="fas fa-info-circle me-1"></i>
               Hanya relawan admin yang bisa mengubah status. Perubahan akan
@@ -1111,15 +1335,41 @@
               </table>
             </div>
 
+            <div id="permintaanAdminLoadMoreContainer" class="text-center mt-3 d-none">
+              <button type="button" class="btn btn-sm btn-outline-primary shadow-sm px-4" id="btnPermintaanAdminLoadMore" onclick="loadMorePermintaanAdmin()">
+                <i class="fas fa-arrow-down me-1"></i> Muat Lebih Banyak
+              </button>
+            </div>
+
             <hr class="my-4" />
 
-            <div class="d-flex justify-content-between align-items-center mb-2">
+            <div class="d-flex flex-column flex-md-row justify-content-between align-items-md-center gap-2 mb-2">
               <h6 class="fw-bold mb-0">
                 <i class="fas fa-clipboard-check me-1"></i> Kelola Asesmen (is_active)
               </h6>
-              <button type="button" class="btn btn-sm btn-light" id="btnRefreshAsesmenAdmin" title="Refresh Data Asesmen">
-                <i class="fas fa-sync-alt"></i>
-              </button>
+
+              <div class="row g-2 align-items-center flex-wrap">
+                <div class="col-auto">
+                  <select class="form-select form-select-sm" id="filterAsesmenAdminKind" oninput="loadAdminAsesmen()" style="min-width: 140px;">
+                    <option value="">--Semua Jenis--</option>
+                    <option value="kesehatan">Kesehatan</option>
+                    <option value="pendidikan">Pendidikan</option>
+                    <option value="psikososial">Psikososial</option>
+                    <option value="infrastruktur">Infrastruktur</option>
+                    <option value="wash">WASH</option>
+                    <option value="kondisi">Kondisi</option>
+                  </select>
+                </div>
+                <div class="col-auto d-flex gap-1 align-items-center">
+                  <input oninput="loadAdminAsesmen()" type="date" class="form-control form-control-sm" id="filterAsesmenAdminStart" style="width: 130px;" />
+                  <input oninput="loadAdminAsesmen()" type="date" class="form-control form-control-sm" id="filterAsesmenAdminEnd" style="width: 130px;" />
+                </div>
+                <div class="col-auto">
+                  <button type="button" class="btn btn-sm btn-light border" id="btnRefreshAsesmenAdmin" title="Refresh Data Asesmen" onclick="loadAdminAsesmen()">
+                    <i class="fas fa-sync-alt"></i>
+                  </button>
+                </div>
+              </div>
             </div>
             <div class="alert alert-warning small mb-3">
               <i class="fas fa-exclamation-triangle me-1"></i>
@@ -1148,16 +1398,43 @@
               </table>
             </div>
 
+            <div id="asesmenAdminLoadMoreContainer" class="text-center mt-3 d-none">
+              <button type="button" class="btn btn-sm btn-outline-primary shadow-sm px-4" id="btnAsesmenAdminLoadMore" onclick="loadAdminAsesmen(true)">
+                <i class="fas fa-arrow-down me-1"></i> Muat Lebih Banyak
+              </button>
+            </div>
+
 
             <hr class="my-4" />
 
-            <div class="d-flex justify-content-between align-items-center mb-2">
+            <div class="d-flex flex-column flex-md-row justify-content-between align-items-md-center gap-2 mb-2">
               <h6 class="fw-bold mb-0">
                 <i class="fas fa-map-marker-alt me-1"></i> Kelola Data Lokasi
               </h6>
-              <button type="button" class="btn btn-sm btn-light" id="btnRefreshLokasiAdmin" title="Refresh Data Lokasi">
-                <i class="fas fa-sync-alt"></i>
-              </button>
+
+              <div class="row g-2 align-items-center flex-wrap">
+                <div class="col-auto">
+                  <input type="search" class="form-control form-control-sm" id="filterAdminLokasiSearch" oninput="loadAdminLokasi()" placeholder="Cari Lokasi..." style="min-width: 150px;" />
+                </div>
+                <div class="col-auto">
+                  <select class="form-select form-select-sm" id="filterAdminLokasiKind" oninput="loadAdminLokasi()" style="min-width: 140px;">
+                    <option value="">--Semua Jenis--</option>
+                    {% if ref_jenis_lokasi and ref_jenis_lokasi|length > 0 %}
+                      {% for v in ref_jenis_lokasi %}
+                        <option value="{{ v }}">{{ v }}</option>
+                      {% endfor %}
+                    {% else %}
+                      <option value="Posko Pengungsian">Posko Pengungsian</option>
+                      <option value="Gudang Logistik">Gudang Logistik</option>
+                    {% endif %}
+                  </select>
+                </div>
+                <div class="col-auto">
+                  <button type="button" class="btn btn-sm btn-light border" id="btnRefreshLokasiAdmin" title="Refresh Data Lokasi" onclick="loadAdminLokasi()">
+                    <i class="fas fa-sync-alt"></i>
+                  </button>
+                </div>
+              </div>
             </div>
 
             <div id="adminLokasiAlert" class="alert alert-info py-2 small d-none"></div>
@@ -1180,6 +1457,12 @@
                   </tr>
                 </tbody>
               </table>
+            </div>
+
+            <div id="adminLokasiLoadMoreContainer" class="text-center mt-3 d-none">
+              <button type="button" class="btn btn-sm btn-outline-primary shadow-sm px-4" id="btnAdminLokasiLoadMore" onclick="loadAdminLokasi(true)">
+                <i class="fas fa-arrow-down me-1"></i> Muat Lebih Banyak
+              </button>
             </div>
             <hr class="my-4" />
 
@@ -1293,6 +1576,11 @@
               </div>
               <input type="hidden" id="absensi_lat" name="latitude" required />
               <input type="hidden" id="absensi_lon" name="longitude" required />
+                <div class="mb-3">
+  <label class="form-label">Tanggal & Waktu Kejadian (opsional)</label>
+  <input type="datetime-local" class="form-control" name="waktu" id="waktu_absensi">
+  <div class="form-text">Kosongkan jika menggunakan waktu sekarang (WIB).</div>
+</div>
               <div class="mb-3">
                 <label for="catatan" class="form-label"
                   >Catatan Kegiatan/Kondisi</label
@@ -1338,7 +1626,7 @@
         <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="Close"></button>
       </div>
 
-      <form action="{{ url_for('submit_lokasi') }}" method="POST">
+      <form action="{{ url_for('submit_lokasi') }}" method="POST" enctype="multipart/form-data">
         <div class="modal-body">
 
           <!-- Lokasi GPS Saat Ini -->
@@ -1362,6 +1650,12 @@
             <div id="inputLokasiMiniMap"
                  style="height:220px;border-radius:12px;overflow:hidden;border:1px solid #e5e7eb;"></div>
           </div>
+
+        <div class="mb-3">
+  <label class="form-label">Tanggal & Waktu Kejadian (opsional)</label>
+  <input type="datetime-local" class="form-control" name="waktu" id="waktu_lokasi">
+  <div class="form-text">Kosongkan jika menggunakan waktu sekarang (WIB).</div>
+</div>
 
           <!-- Dropdown utama -->
           <div class="row g-2">
@@ -1486,6 +1780,13 @@
             <label class="form-label"><i class="fas fa-sticky-note"></i> Catatan</label>
             <textarea class="form-control" name="catatan" rows="3"></textarea>
           </div>
+<div class="mt-3">
+  <label class="form-label"><i class="fas fa-camera"></i> Foto Lokasi (opsional)</label>
+  <input type="file" class="form-control" name="photo_lokasi" accept="image/*">
+  <div class="form-text">
+    Format: JPG/PNG/WEBP. File disimpan sebagai <code>media/photo_lokasi/&lt;ID_LOKASI&gt;.*</code>
+  </div>
+</div>
 
           <!-- optional -->
           <input type="hidden" name="lokasi_text" value="">
@@ -1571,6 +1872,11 @@
                   border: 1px solid #e5e7eb;
                 "
               ></div>
+            <div class="mb-3">
+  <label class="form-label">Tanggal & Waktu Kejadian (opsional)</label>
+  <input type="datetime-local" class="form-control" name="waktu" id="waktu_kesehatan">
+  <div class="form-text">Kosongkan jika menggunakan waktu sekarang (WIB).</div>
+</div>
               <div class="mb-3">
                 <label class="form-label">Pilih Posko</label>
                 <select class="form-select" name="kode_posko" required>
@@ -1735,6 +2041,11 @@
                   border: 1px solid #e5e7eb;
                 "
               ></div>
+<div class="mb-3">
+  <label class="form-label">Tanggal & Waktu Kejadian (opsional)</label>
+  <input type="datetime-local" class="form-control" name="waktu" id="waktu_pendidikan">
+  <div class="form-text">Kosongkan jika menggunakan waktu sekarang (WIB).</div>
+</div>
 
               <div class="mb-3">
                 <label class="form-label">Pilih Posko</label>
@@ -1900,6 +2211,11 @@
                   border: 1px solid #e5e7eb;
                 "
               ></div>
+<div class="mb-3">
+  <label class="form-label">Tanggal & Waktu Kejadian (opsional)</label>
+  <input type="datetime-local" class="form-control" name="waktu" id="waktu_psikososial">
+  <div class="form-text">Kosongkan jika menggunakan waktu sekarang (WIB).</div>
+</div>
 
               <div class="mb-3">
                 <label class="form-label">Pilih Posko</label>
@@ -2068,6 +2384,11 @@
                   border: 1px solid #e5e7eb;
                 "
               ></div>
+<div class="mb-3">
+  <label class="form-label">Tanggal & Waktu Kejadian (opsional)</label>
+  <input type="datetime-local" class="form-control" name="waktu" id="waktu_infrastruktur">
+  <div class="form-text">Kosongkan jika menggunakan waktu sekarang (WIB).</div>
+</div>
 
               <div class="mb-3">
                 <label class="form-label">Pilih Posko</label>
@@ -2230,6 +2551,11 @@
                   border: 1px solid #e5e7eb;
                 "
               ></div>
+<div class="mb-3">
+  <label class="form-label">Tanggal & Waktu Kejadian (opsional)</label>
+  <input type="datetime-local" class="form-control" name="waktu" id="waktu_wash">
+  <div class="form-text">Kosongkan jika menggunakan waktu sekarang (WIB).</div>
+</div>
 
               <div class="mb-3">
                 <label class="form-label">Pilih Posko</label>
@@ -2371,7 +2697,7 @@
                 </div>
 
                 <div class="text-success fw-bold">
-                  <span id="wash-location-text">belum diambil</span>
+                  <span id="kondisi-location-text">belum diambil</span>
                 </div>
               </div>
 
@@ -2390,6 +2716,11 @@
                   border: 1px solid #e5e7eb;
                 "
               ></div>
+<div class="mb-3">
+  <label class="form-label">Tanggal & Waktu Kejadian (opsional)</label>
+  <input type="datetime-local" class="form-control" name="waktu" id="waktu_kondisi">
+  <div class="form-text">Kosongkan jika menggunakan waktu sekarang (WIB).</div>
+</div>
 
               <div class="mb-3">
                 <label class="form-label">Pilih Posko</label>
@@ -2552,19 +2883,42 @@
               let asesmenInfrastruktur = safeJsonParse({{ asesmen_infrastruktur | tojson | safe }}, []);
               let asesmenWash = safeJsonParse({{ asesmen_wash | tojson | safe }}, []);
               let asesmenKondisi = safeJsonParse({{ asesmen_kondisi | tojson | safe }}, []);
+              let asesmenOxfam = safeJsonParse({{ asesmen_oxfam | tojson | safe }}, []);
               let permintaanLogistik = safeJsonParse({{ permintaan_logistik | tojson | safe }}, []);
               const CURRENT_IS_ADMIN = {{ 'true' if is_admin else 'false' }};
+              const DATA_POSKO = safeJsonParse({{ data_posko | tojson | safe }}, []);
 
               // Ref jenis lokasi untuk admin (dropdown)
               const REF_JENIS_LOKASI = safeJsonParse({{ ref_jenis_lokasi | tojson | safe }}, []);
 
               // Inisialisasi Peta
-              var map = L.map('map').setView([2.3693, 99.0763], 9); // Koordinat tengah Sumatera Utara
+              // Cek apakah ada parameter URL untuk fokus ke lokasi tertentu
+              const urlParams = new URLSearchParams(window.location.search);
+              const urlLat = urlParams.get('lat');
+              const urlLon = urlParams.get('lon');
+              const urlZoom = urlParams.get('zoom');
+              
+              let initialCenter = [2.3693, 99.0763]; // Koordinat tengah Sumatera Utara
+              let initialZoom = 9;
+              
+              if (urlLat && urlLon) {
+                const lat = parseFloat(urlLat);
+                const lon = parseFloat(urlLon);
+                if (!isNaN(lat) && !isNaN(lon)) {
+                  initialCenter = [lat, lon];
+                  initialZoom = urlZoom ? parseInt(urlZoom) : 15;
+                }
+              }
+              
+              var map = L.map('map').setView(initialCenter, initialZoom);
 
               // ================== PANE LAYER (URUTAN Z) ==================
               // Kab/Kota di bawah, buffer asesmen di atas (agar buffer bisa diklik)
               map.createPane('kabkotaPane');
               map.getPane('kabkotaPane').style.zIndex = 350;
+
+              map.createPane('kelDesaPane');
+              map.getPane('kelDesaPane').style.zIndex = 360; // sedikit di atas kab/kota
 
               map.createPane('asesmenPane');
               map.getPane('asesmenPane').style.zIndex = 450;
@@ -2586,6 +2940,7 @@
       let asesmenInfrastrukturLayer = L.layerGroup().addTo(map);
       let asesmenWashLayer = L.layerGroup().addTo(map);
       let asesmenKondisiLayer = L.layerGroup().addTo(map);
+      let asesmenOxfamLayer = L.layerGroup().addTo(map);
 
 
       // Map pertanyaan p1..px (untuk popup buffer)
@@ -3077,13 +3432,93 @@
 
 
 
-      function renderAsesmenBuffers(){
+
+
+      // ================== ASESMEN OXFAM (RIEA) ==================
+      function renderAsesmenOxfamLayer(layer, rows){
+        layer.clearLayers();
+        (rows || []).forEach(r=>{
+          const lat = parseFloat(r.latitude);
+          const lon = parseFloat(r.longitude);
+          if (!isFinite(lat) || !isFinite(lon)) return;
+
+          // soft delete
+          if (r.is_active === false) return;
+          if (typeof r.is_active === "string" && r.is_active.toLowerCase() === "false") return;
+
+          const col = statusColor(r.status);
+          const detailUrl = `/asesmen_oxfam/view/${encodeURIComponent(r.id)}`;
+
+          // ringkas jawaban: ambil max 8 key pertama (sorted)
+          let j = r.jawaban;
+          if (typeof j === "string") {
+            try { j = JSON.parse(j); } catch(e) { j = null; }
+          }
+          let summaryHtml = "<div class='text-muted'>-</div>";
+          if (j && typeof j === "object") {
+            const keys = Object.keys(j);
+            keys.sort();
+            const take = keys.slice(0, 8);
+            summaryHtml = "<ul class='mb-0 ps-3'>" + take.map(k=>{
+              let v = j[k];
+              if (Array.isArray(v)) v = v.join(", ");
+              if (v && typeof v === "object") v = JSON.stringify(v);
+              return `<li><b>${escapeHtml(k)}</b>: ${escapeHtml(v)}</li>`;
+            }).join("") + (keys.length>take.length ? "<li class='text-muted'>... (lebih lengkap di detail)</li>" : "") + "</ul>";
+          }
+
+          const popupContent = `
+            <div style="min-width:280px;">
+              <div style="font-weight:700;">Asesmen Oxfam (RIEA)</div>
+              <div style="margin-top:4px;"><small class="text-muted">ID:</small> <small><b>${escapeHtml(r.id)}</b></small></div>
+              <div><small class="text-muted">Relawan:</small> <small><b>${escapeHtml(r.nama_relawan || r.id_relawan || '-') }</b></small></div>
+              <div><small class="text-muted">Posko:</small> <small><b>${escapeHtml(r.kode_posko || '-') }</b></small></div>
+              <div><small class="text-muted">Waktu:</small> <small><b>${formatWIB(r.waktu)}</b></small></div>
+              <div><small class="text-muted">Status:</small> <small><b style="color:${col};">${escapeHtml(r.status || '-') }</b></small></div>
+              <hr class="my-2"/>
+              <div class="fw-bold mb-1">Ringkasan Jawaban</div>
+              ${summaryHtml}
+              <hr class="my-2"/>
+              <a class="btn btn-sm btn-primary" href="${detailUrl}" target="_blank" rel="noopener">Lihat Detail</a>
+            </div>
+          `;
+
+          // buffer (2km) + dot
+          const circle = L.circle([lat, lon], {
+            pane: 'asesmenPane',
+            radius: 2000,
+            color: '#2563eb',
+            weight: 2,
+            fill: true,
+            fillColor: '#2563eb',
+            fillOpacity: 0.18,
+            bubblingMouseEvents: false
+          }).bindPopup(popupContent);
+
+          const dot = L.circleMarker([lat, lon], {
+            pane: 'asesmenPane',
+            radius: 5,
+            color: '#2563eb',
+            weight: 2,
+            fillColor: '#2563eb',
+            fillOpacity: 0.95,
+            bubblingMouseEvents: false
+          }).bindPopup(popupContent);
+
+          layer.addLayer(circle);
+          layer.addLayer(dot);
+        });
+      }
+      // ===========================================================
+
+function renderAsesmenBuffers(){
         renderAsesmenLayer(asesmenKesehatanLayer, asesmenKesehatan, "Asesmen Kesehatan", "kesehatan");
         renderAsesmenLayer(asesmenPendidikanLayer, asesmenPendidikan, "Asesmen Pendidikan", "pendidikan");
         renderAsesmenLayer(asesmenPsikososialLayer,asesmenPsikososial, "Asesmen Psikososial", "psikososial");
         renderAsesmenLayer(asesmenInfrastrukturLayer,asesmenInfrastruktur,"Asesmen Infrastruktur", "infrastruktur");
         renderAsesmenLayer(asesmenWashLayer, asesmenWash, "Asesmen Wash", "wash");
         renderAsesmenKondisiLayer(asesmenKondisiLayer, asesmenKondisi, "Asesmen Kondisi", "kondisi");
+        renderAsesmenOxfamLayer(asesmenOxfamLayer, asesmenOxfam);
       }
       renderAsesmenBuffers();
 
@@ -3095,6 +3530,7 @@
       const ckPsi = document.getElementById("toggleAsesmenPsikososial");
       const ckWas = document.getElementById("toggleAsesmenWash");
       const ckKond = document.getElementById("toggleAsesmenKondisi");
+      const ckOxfam = document.getElementById("toggleAsesmenOxfam");
 
       function setLayerVisible(layer, visible){
         if (visible) {
@@ -3112,6 +3548,7 @@
         const showPsi = ckPsi ? ckPsi.checked : true;
         const showWas = ckWas ? ckWas.checked : true;
         const showKond = ckKond ? ckKond.checked : true;
+        const showOxfam = ckOxfam ? ckOxfam.checked : true;
 
         setLayerVisible(asesmenKesehatanLayer, master && showKes);
         setLayerVisible(asesmenPendidikanLayer, master && showPen);
@@ -3119,6 +3556,7 @@
         setLayerVisible(asesmenPsikososialLayer, master && showPsi);
         setLayerVisible(asesmenWashLayer, master && showWas);
         setLayerVisible(asesmenKondisiLayer, master && showKond);
+        setLayerVisible(asesmenOxfamLayer, master && showOxfam);
       }
 
       // (visibility asesmen akan di-handle oleh blok sinkronisasi filter di bawah)
@@ -3185,11 +3623,128 @@
                   return { nama: namaAsli, status: status };
               }
 
+              // ================== BOUNDARY TOGGLE (KAB/KOTA <-> KEL/DESA) ==================
+const KELDESA_ZOOM_THRESHOLD = 11;
+
+let kabkotaLayer = null;
+let kelDesaLayer = null;
+
+let _kelDesaLastKey = "";
+let _kelDesaTimer = null;
+let _kelDesaLoading = false;
+
+function _bboxParamFromMap(){
+  const b = map.getBounds();
+  const minx = b.getWest();
+  const miny = b.getSouth();
+  const maxx = b.getEast();
+  const maxy = b.getNorth();
+  return `${minx},${miny},${maxx},${maxy}`;
+}
+
+function _showKabkota(){
+  if (kabkotaLayer && !map.hasLayer(kabkotaLayer)) kabkotaLayer.addTo(map);
+}
+function _hideKabkota(){
+  if (kabkotaLayer && map.hasLayer(kabkotaLayer)) map.removeLayer(kabkotaLayer);
+}
+
+function _hideKelDesa(){
+  if (kelDesaLayer && map.hasLayer(kelDesaLayer)) map.removeLayer(kelDesaLayer);
+  kelDesaLayer = null;
+  _kelDesaLastKey = "";
+}
+
+function _syncBoundaryByZoom(){
+  const z = map.getZoom();
+  if (z >= KELDESA_ZOOM_THRESHOLD) {
+    _hideKabkota();
+    _scheduleLoadKelDesa();
+  } else {
+    _hideKelDesa();
+    _showKabkota();
+  }
+}
+
+function _scheduleLoadKelDesa(){
+  clearTimeout(_kelDesaTimer);
+  _kelDesaTimer = setTimeout(_loadKelDesaForView, 250);
+}
+
+function _loadKelDesaForView(){
+  const z = map.getZoom();
+  if (z < KELDESA_ZOOM_THRESHOLD) return;
+
+  const bbox = _bboxParamFromMap();
+  // key dibulatkan biar tidak fetch terus-terusan saat geser sedikit
+  const b = map.getBounds();
+  const key = [
+    z,
+    b.getWest().toFixed(3),
+    b.getSouth().toFixed(3),
+    b.getEast().toFixed(3),
+    b.getNorth().toFixed(3)
+  ].join(",");
+
+  if (_kelDesaLoading) return;
+  if (key === _kelDesaLastKey) return;
+  _kelDesaLastKey = key;
+
+  _kelDesaLoading = true;
+
+  const url = `/api/geo/kel_desa?bbox=${encodeURIComponent(bbox)}&zoom=${encodeURIComponent(z)}&limit=5000`;
+
+  fetch(url)
+    .then(r => r.json())
+    .then(fc => {
+      if (!fc || !fc.features) return;
+
+      // replace layer agar tidak numpuk
+      if (kelDesaLayer && map.hasLayer(kelDesaLayer)) map.removeLayer(kelDesaLayer);
+
+      kelDesaLayer = L.geoJSON(fc, {
+        pane: 'kelDesaPane',
+        style: function(){
+          return {
+            weight: 1,
+            opacity: 1,
+            color: '#2563eb',      // outline
+            fillOpacity: 0.0       // transparan (biar tidak ganggu status map)
+          };
+        },
+        onEachFeature: function(feature, layer){
+          const p = (feature && feature.properties) ? feature.properties : {};
+          const kel = p.kel_desa || '-';
+          const kec = p.kecamatan || '-';
+          const kab = p.kabkota || '-';
+
+          layer.bindPopup(`
+            <div>
+              <div><b>Kel/Desa:</b> ${escapeHtml(kel)}</div>
+              <div><b>Kecamatan:</b> ${escapeHtml(kec)}</div>
+              <div><b>Kab/Kota:</b> ${escapeHtml(kab)}</div>
+            </div>
+          `);
+        }
+      });
+
+      // tampilkan jika masih zoom tinggi
+      if (map.getZoom() >= KELDESA_ZOOM_THRESHOLD) {
+        kelDesaLayer.addTo(map);
+      }
+    })
+    .catch(e => console.error("Error kel/desa GeoJSON:", e))
+    .finally(() => { _kelDesaLoading = false; });
+}
+// ============================================================================
+
+
               // 3. Load Peta
               fetch("{{ url_for('static', filename='data/kabkota_sumut.json') }}")
                   .then(res => res.json())
                   .then(data => {
-                      L.geoJSON(data, {
+                      // Simpan ke variabel agar bisa di-hide saat zoom tinggi (kel/desa tampil)
+                      kabkotaLayer = L.geoJSON(data, {
                           pane: 'kabkotaPane',
                           // --- STYLE AWAL ---
                           style: function (feature) {
@@ -3253,7 +3808,18 @@
                                   click: function (e) { this.openPopup(); }
                               });
                           }
-                      }).addTo(map);
+                      });
+
+                      kabkotaLayer.addTo(map);
+
+                      // Sync pertama kali (kalau halaman dibuka langsung zoom tinggi dari URL)
+                      _syncBoundaryByZoom();
+
+                      // Listener untuk toggle boundary + fetch kel/desa saat zoom tinggi
+                      map.on('zoomend', _syncBoundaryByZoom);
+                      map.on('moveend', function () {
+                          if (map.getZoom() >= KELDESA_ZOOM_THRESHOLD) _scheduleLoadKelDesa();
+                      });
                   })
                   .catch(e => console.error("Error GeoJSON:", e));
 
@@ -3528,19 +4094,68 @@
         return `<span class="badge" style="background:${bg};">${escapeHtml(label)}</span>`;
       }
 
-      function renderPermintaanAdminTable() {
+      let ADMIN_PERMINTAAN_DISPLAY_COUNT = 10;
+
+      function loadMorePermintaanAdmin() {
+        ADMIN_PERMINTAAN_DISPLAY_COUNT += 10;
+        renderPermintaanAdminTable();
+      }
+
+      function renderPermintaanAdminTable(resetCount = false) {
+        if (resetCount) {
+          ADMIN_PERMINTAAN_DISPLAY_COUNT = 10;
+        }
+
         const tbody = document.getElementById('permintaanAdminTableBody');
+        const loadMoreBtn = document.getElementById('btnPermintaanAdminLoadMore');
+        const loadMoreContainer = document.getElementById('permintaanAdminLoadMoreContainer');
         if (!tbody) return;
 
         const rows = Array.isArray(permintaanLogistik) ? permintaanLogistik : [];
         tbody.innerHTML = '';
 
-        if (!rows.length) {
+        // Filter tanggal default
+        const now = new Date();
+        const yyyy = now.getFullYear();
+        const mm = String(now.getMonth() + 1).padStart(2, "0");
+        const dd = String(now.getDate()).padStart(2, "0");
+
+        const past = new Date();
+        past.setDate(now.getDate() - 30);
+        const yyyy30 = past.getFullYear();
+        const mm30 = String(past.getMonth() + 1).padStart(2, "0");
+        const dd30 = String(past.getDate()).padStart(2, "0");
+
+        const start = document.getElementById('filterPermintaanAdminStart')?.value || `${yyyy30}-${mm30}-${dd30}`;
+        const end   = document.getElementById('filterPermintaanAdminEnd')?.value || `${yyyy}-${mm}-${dd}`;
+        
+        const filteredRows = rows.filter(r => {
+          const rawWaktu = r.waktu || r.tanggal || r.timestamp;
+          if (!rawWaktu) return true;
+          // Ambil YYYY-MM-DD saja dari string waktu
+          const tanggal = String(rawWaktu).substring(0, 10);
+          return tanggal >= start && tanggal <= end;
+        });
+
+        if (!filteredRows.length) {
           tbody.innerHTML = '<tr><td colspan="6" class="text-muted text-center">Belum ada permintaan.</td></tr>';
+          if (loadMoreContainer) loadMoreContainer.classList.add('d-none');
           return;
         }
 
-        rows.forEach(r => {
+        // Slicing untuk pagination frontend
+        const displayRows = filteredRows.slice(0, ADMIN_PERMINTAAN_DISPLAY_COUNT);
+        const hasMore = filteredRows.length > ADMIN_PERMINTAAN_DISPLAY_COUNT;
+
+        if (loadMoreContainer) {
+          if (hasMore) {
+            loadMoreContainer.classList.remove('d-none');
+          } else {
+            loadMoreContainer.classList.add('d-none');
+          }
+        }
+
+        displayRows.forEach(r => {
           const id = r.id;
           const kodePosko = r.kode_posko || '-';
           const namaPosko = _poskoNameByKode(kodePosko);
@@ -3650,6 +4265,8 @@
       };
 
       let ADMIN_ASESMEN_ROWS = [];
+      let ADMIN_ASESMEN_OFFSET = 0;
+      const ADMIN_ASESMEN_LIMIT = 10;
 
       function _asesmenKindLabel(kind) {
         const k = String(kind || '').trim().toLowerCase();
@@ -3662,10 +4279,30 @@
         return true;
       }
 
-      async function loadAdminAsesmen() {
+      function _poskoNameByKode(kode) {
+        if (!kode || kode === '-') return '-';
+        if (typeof DATA_POSKO !== 'undefined' && Array.isArray(DATA_POSKO)) {
+          const found = DATA_POSKO.find(p => p.kode === kode);
+          if (found) return found.nama;
+        }
+        return kode;
+      }
+
+      async function loadAdminAsesmen(isLoadMore = false) {
         const tbody = document.getElementById('asesmenAdminTableBody');
-        if (tbody) {
-          tbody.innerHTML = '<tr><td colspan="8" class="text-muted text-center">Memuat...</td></tr>';
+        const loadMoreBtn = document.getElementById('btnAsesmenAdminLoadMore');
+        const loadMoreContainer = document.getElementById('asesmenAdminLoadMoreContainer');
+
+        if (!isLoadMore) {
+          ADMIN_ASESMEN_OFFSET = 0;
+          if (tbody) {
+            tbody.innerHTML = '<tr><td colspan="8" class="text-muted text-center">Memuat...</td></tr>';
+          }
+        } else {
+          if (loadMoreBtn) {
+            loadMoreBtn.disabled = true;
+            loadMoreBtn.innerHTML = '<i class="fas fa-spinner fa-spin me-1"></i> Memuat...';
+          }
         }
 
         if (!CURRENT_IS_ADMIN) {
@@ -3673,28 +4310,66 @@
             tbody.innerHTML = '<tr><td colspan="8" class="text-muted text-center">Bukan admin.</td></tr>';
           }
           ADMIN_ASESMEN_ROWS = [];
+          if (loadMoreContainer) loadMoreContainer.classList.add('d-none');
           return;
         }
 
+        // Filter tanggal default
+        const now = new Date();
+        const yyyy = now.getFullYear();
+        const mm = String(now.getMonth() + 1).padStart(2, "0");
+        const dd = String(now.getDate()).padStart(2, "0");
+
+        const past = new Date();
+        past.setDate(now.getDate() - 30);
+        const yyyy30 = past.getFullYear();
+        const mm30 = String(past.getMonth() + 1).padStart(2, "0");
+        const dd30 = String(past.getDate()).padStart(2, "0");
+
+        const start = document.getElementById('filterAsesmenAdminStart')?.value || `${yyyy30}-${mm30}-${dd30}`;
+        const end   = document.getElementById('filterAsesmenAdminEnd')?.value || `${yyyy}-${mm}-${dd}`;
+        const kind  = document.getElementById('filterAsesmenAdminKind')?.value || '';
+
         try {
-          const resp = await fetch('/api/admin_asesmen_list?hours=720');
+          const url = `/api/admin_asesmen_list?limit=${ADMIN_ASESMEN_LIMIT}&offset=${ADMIN_ASESMEN_OFFSET}&start=${start}&end=${end}&kind=${kind}&t=${Date.now()}`;
+          const resp = await fetch(url);
           const result = await resp.json().catch(() => ({}));
+
           if (resp.ok && result && result.success) {
-            ADMIN_ASESMEN_ROWS = Array.isArray(result.rows) ? result.rows : [];
+            const newRows = Array.isArray(result.rows) ? result.rows : [];
+            
+            if (!isLoadMore) {
+              ADMIN_ASESMEN_ROWS = newRows;
+            } else {
+              ADMIN_ASESMEN_ROWS = ADMIN_ASESMEN_ROWS.concat(newRows);
+            }
+
+            ADMIN_ASESMEN_OFFSET += newRows.length;
             renderAsesmenAdminTable();
+
+            if (loadMoreContainer) {
+              if (result.has_more) {
+                loadMoreContainer.classList.remove('d-none');
+              } else {
+                loadMoreContainer.classList.add('d-none');
+              }
+            }
           } else {
             const err = (result && result.error) ? result.error : 'Unknown error';
-            if (tbody) {
+            if (!isLoadMore && tbody) {
               tbody.innerHTML = `<tr><td colspan="8" class="text-muted text-center">Gagal memuat asesmen: ${escapeHtml(err)}</td></tr>`;
             }
-            ADMIN_ASESMEN_ROWS = [];
           }
         } catch (e) {
           console.error(e);
-          if (tbody) {
+          if (!isLoadMore && tbody) {
             tbody.innerHTML = '<tr><td colspan="8" class="text-muted text-center">Error memuat data asesmen.</td></tr>';
           }
-          ADMIN_ASESMEN_ROWS = [];
+        } finally {
+          if (loadMoreBtn) {
+            loadMoreBtn.disabled = false;
+            loadMoreBtn.innerHTML = '<i class="fas fa-arrow-down me-1"></i> Muat Lebih Banyak';
+          }
         }
       }
 
@@ -3890,16 +4565,22 @@
         return html;
       }
 
-      function renderAdminLokasiTable(rows) {
-        if (!adminLokasiTableBody) return;
+      let LIMIT_ADMIN_LOKASI = 10;
+      let OFFSET_ADMIN_LOKASI = 0;
+      let ADMIN_LOKASI_ROWS = [];
 
-        if (!rows || !rows.length) {
+      function renderAdminLokasiTable(rows = null) {
+        if (!adminLokasiTableBody) return;
+        
+        const dataRows = (rows !== null) ? rows : ADMIN_LOKASI_ROWS;
+
+        if (!dataRows || !dataRows.length) {
           adminLokasiTableBody.innerHTML = `<tr><td colspan="6" class="text-muted text-center">Tidak ada data.</td></tr>`;
           return;
         }
 
         let html = '';
-        rows.forEach(r => {
+        dataRows.forEach(r => {
           const idLok = String(r.id_lokasi || '').trim();
           const kab = String(r.nama_kabkota || r.kabupaten_kota || '').trim();
           const nama = String(r.nama_lokasi || '').trim();
@@ -3955,25 +4636,73 @@
         });
       }
 
-      async function loadAdminLokasi() {
+      async function loadAdminLokasi(isLoadMore = false) {
         if (!CURRENT_IS_ADMIN) return;
         if (!adminLokasiTableBody) return;
 
-        try {
+        const loadMoreBtn = document.getElementById('btnAdminLokasiLoadMore');
+        const loadMoreContainer = document.getElementById('adminLokasiLoadMoreContainer');
+
+        if (!isLoadMore) {
+          OFFSET_ADMIN_LOKASI = 0;
+          ADMIN_LOKASI_ROWS = [];
           adminLokasiTableBody.innerHTML = `<tr><td colspan="6" class="text-muted text-center">Memuat...</td></tr>`;
-          const res = await fetch('/api/admin_lokasi_list?limit=2000', { method: 'GET', credentials: 'same-origin' });
+        } else {
+          if (loadMoreBtn) {
+            loadMoreBtn.disabled = true;
+            loadMoreBtn.innerHTML = '<i class="fas fa-spinner fa-spin me-1"></i> Memuat...';
+          }
+        }
+
+        // Filter tanggal default
+        const now = new Date();
+        const yyyy = now.getFullYear();
+        const mm = String(now.getMonth() + 1).padStart(2, "0");
+        const dd = String(now.getDate()).padStart(2, "0");
+
+        const past = new Date();
+        past.setDate(now.getDate() - 30);
+        const yyyy30 = past.getFullYear();
+        const mm30 = String(past.getMonth() + 1).padStart(2, "0");
+        const dd30 = String(past.getDate()).padStart(2, "0");
+
+        const filterSearch = document.getElementById('filterAdminLokasiSearch')?.value || '';
+        const filterKind = document.getElementById('filterAdminLokasiKind')?.value || '';
+        const filterStart = document.getElementById('filterAdminLokasiStart')?.value || `${yyyy30}-${mm30}-${dd30}`;
+        const filterEnd = document.getElementById('filterAdminLokasiEnd')?.value || `${yyyy}-${mm}-${dd}`;
+
+        try {
+          const res = await fetch(`/api/admin_lokasi_list?limit=${LIMIT_ADMIN_LOKASI}&offset=${OFFSET_ADMIN_LOKASI}&search=${filterSearch}&kind=${filterKind}&start=${filterStart}&end=${filterEnd}`, { method: 'GET', credentials: 'same-origin' });
           const data = await res.json();
           if (!data || !data.success) {
             _showAdminLokasiAlert((data && data.error) ? data.error : 'Gagal memuat data lokasi.', 'danger');
-            renderAdminLokasiTable([]);
+            renderAdminLokasiTable();
             return;
           }
+
+          const newRows = data.rows || [];
+          ADMIN_LOKASI_ROWS = ADMIN_LOKASI_ROWS.concat(newRows);
+          OFFSET_ADMIN_LOKASI += newRows.length;
+
           _showAdminLokasiAlert('Data lokasi dimuat.', 'success');
-          renderAdminLokasiTable(data.rows || []);
+          renderAdminLokasiTable();
+
+          if (loadMoreContainer) {
+            if (data.has_more) {
+              loadMoreContainer.classList.remove('d-none');
+            } else {
+              loadMoreContainer.classList.add('d-none');
+            }
+          }
         } catch (e) {
           console.error(e);
           _showAdminLokasiAlert('Terjadi error saat memuat data lokasi.', 'danger');
-          renderAdminLokasiTable([]);
+          renderAdminLokasiTable();
+        } finally {
+          if (loadMoreBtn) {
+            loadMoreBtn.disabled = false;
+            loadMoreBtn.innerHTML = '<i class="fas fa-arrow-down me-1"></i> Muat Lebih Banyak';
+          }
         }
       }
 
@@ -4271,6 +5000,7 @@ if (!isKnown && !showLain) return;
                           const aksesText = lokasi.tingkat_akses || lokasi.akses || '-';
                           const kondisiText = lokasi.kondisi || lokasi.kondisi_umum || '-';
                           const catatanText = lokasi.catatan || '-';
+                          const latLonText = lokasi.latitude + ', ' + lokasi.longitude || '-';
 
                           const kondisiHtml = escapeHtml(kondisiText).replace(/\r?\n/g, '<br>');
                           const catatanHtml = escapeHtml(catatanText).replace(/\r?\n/g, '<br>');
@@ -4303,6 +5033,11 @@ if (!isKnown && !showLain) return;
                                                   <small><b>${aksesText}</b></small>
                                                   <small class="text-muted"> | Kondisi:</small>
                                                   <small><b>${kondisiHtml}</b></small>
+                                              </div>
+
+                                              <div style="margin-top:2px;">
+                                                  <small class="text-muted">Koordinat:</small>
+                                                  <small><b>${latLonText}</b></small>
                                               </div>
 
                                               <div style="margin-top:6px;">
@@ -4385,7 +5120,7 @@ if (!isKnown && !showLain) return;
 
                   const masterOn = masterEl ? !!masterEl.checked : true;
                   if (!masterOn) {
-                      _setChildrenState(children, false, true);
+                      _setChildrenState(children, false, false);
                       _setCollapseVisible(bodyEl, false);
                   } else {
                       _setChildrenState(children, undefined, false);
@@ -4403,7 +5138,7 @@ if (!isKnown && !showLain) return;
 
                   const any = _anyChecked(children);
                   if (masterEl) masterEl.checked = any;
-                  _setChildrenState(children, undefined, !any);
+                  _setChildrenState(children, undefined, false);
                   _setCollapseVisible(bodyEl, any);
 
                   _isSyncingFilter = false;
@@ -4480,13 +5215,25 @@ if (!isKnown && !showLain) return;
               });
 
               // Asesmen (master + child)
-              if (ckAsesmenAll) ckAsesmenAll.addEventListener('change', () => syncGroupFromMaster(ckAsesmenAll, elAsesmenBody, [ckKes, ckPen, ckPsi, ckInf, ckWas, ckKond], applyAsesmenVisibility));
-              [ckKes, ckPen, ckPsi, ckInf, ckWas, ckKond].forEach(el => {
-                  if (el) el.addEventListener('change', () => syncMasterFromChildren(ckAsesmenAll, elAsesmenBody, [ckKes, ckPen, ckPsi, ckInf, ckWas, ckKond], applyAsesmenVisibility));
-              });
+// NOTE: termasuk Asesmen Oxfam (RIEA) agar sinkron dengan master Asesmen
+const _asesmenChildren = [ckKes, ckPen, ckPsi, ckInf, ckWas, ckKond, ckOxfam];
+
+if (ckAsesmenAll) {
+  ckAsesmenAll.addEventListener("change", () =>
+    syncGroupFromMaster(ckAsesmenAll, elAsesmenBody, _asesmenChildren, applyAsesmenVisibility)
+  );
+}
+
+_asesmenChildren.forEach((el) => {
+  if (el) {
+    el.addEventListener("change", () =>
+      syncMasterFromChildren(ckAsesmenAll, elAsesmenBody, _asesmenChildren, applyAsesmenVisibility)
+    );
+  }
+});
 
               // Initial sync + render
-              syncGroupFromMaster(ckAsesmenAll, elAsesmenBody, [ckKes, ckPen, ckPsi, ckInf, ckWas, ckKond], applyAsesmenVisibility);
+              syncGroupFromMaster(ckAsesmenAll, elAsesmenBody, _asesmenChildren, applyAsesmenVisibility);
               syncGroupFromMaster(ckLokAll, elLokasiBody, [ckLokPosko, ckLokGudang, ckLokStarlink,ckLokJembatanRusak, ckLokJalanPutus, ckLokTitikLongsor, ckLokSumurBor, ckLokLain], applyLokasiFilter);
               syncGroupFromMaster(ckRelAll, elRelawanBody, [ckRelawanLok], applyRelawanVisibility);
               syncGroupFromMaster(ckPermintaan, elPermintaanBody, [ckPermUsulan, ckPermDiproses, ckPermDikirim, ckPermDiterima, ckPermDitolak], applyPermintaanVisibility);
@@ -4496,6 +5243,76 @@ if (!isKnown && !showLain) return;
               renderRelawanMarkers(relawanLokasi);
               applyRelawanVisibility();
               applyPermintaanVisibility();
+              
+              // Jika ada parameter URL untuk fokus ke lokasi, tambahkan marker dan popup
+              if (urlLat && urlLon) {
+                const lat = parseFloat(urlLat);
+                const lon = parseFloat(urlLon);
+                if (!isNaN(lat) && !isNaN(lon)) {
+                  // Tunggu sebentar agar map sudah ter-render
+                  setTimeout(() => {
+                    // Buat marker khusus untuk lokasi yang difokuskan
+                    const focusMarker = L.marker([lat, lon], {
+                      icon: L.divIcon({
+                        className: 'custom-marker-icon',
+                        html: `
+                          <div style="
+                            background-color: #ef4444;
+                            width: 50px;
+                            height: 50px;
+                            border-radius: 50% 50% 50% 0;
+                            transform: rotate(-45deg);
+                            display: flex;
+                            align-items: center;
+                            justify-content: center;
+                            box-shadow: 0 4px 15px rgba(239, 68, 68, 0.5);
+                            border: 4px solid white;
+                            animation: pulse 2s infinite;
+                          ">
+                            <i class="fas fa-map-pin" style="
+                              color: white;
+                              transform: rotate(45deg);
+                              font-size: 20px;
+                            "></i>
+                          </div>
+                        `,
+                        iconSize: [50, 50],
+                        iconAnchor: [25, 50],
+                        popupAnchor: [0, -50]
+                      })
+                    }).addTo(map);
+                    
+                    // Buka popup
+                    focusMarker.bindPopup(`
+                      <div style="text-align: center; padding: 10px;">
+                        <h6 style="margin: 0 0 8px 0; font-weight: 700; color: #ef4444;">
+                          <i class="fas fa-map-marker-alt"></i> Lokasi Asesmen
+                        </h6>
+                        <p style="margin: 0; font-size: 12px; color: #64748b;">
+                          Lat: ${lat.toFixed(6)}<br>
+                          Lon: ${lon.toFixed(6)}
+                        </p>
+                      </div>
+                    `).openPopup();
+                    
+                    // Tambahkan animasi pulse
+                    const style = document.createElement('style');
+                    style.textContent = `
+                      @keyframes pulse {
+                        0%, 100% {
+                          transform: rotate(-45deg) scale(1);
+                          opacity: 1;
+                        }
+                        50% {
+                          transform: rotate(-45deg) scale(1.1);
+                          opacity: 0.8;
+                        }
+                      }
+                    `;
+                    document.head.appendChild(style);
+                  }, 500);
+                }
+              }
               // ==============================================================================
               // FUNGSI REFRESH MAP
               // ==============================================================================
@@ -4520,19 +5337,22 @@ if (!isKnown && !showLain) return;
                           relawanLokasi = result.relawan_lokasi || [];
                           statusData = result.status_map;
 
-                          // Update status wilayah di peta (reload GeoJSON layer)
-                          // Hapus layer GeoJSON lama jika ada
-                          map.eachLayer(function(layer) {
-                              if (layer instanceof L.GeoJSON) {
-                                  map.removeLayer(layer);
+                          // Update status wilayah di peta (reload kab/kota layer)
+                          // Hapus layer kab/kota lama jika ada (jangan hapus semua GeoJSON agar fitur lain tidak terganggu)
+                          try {
+                              if (kabkotaLayer && map.hasLayer(kabkotaLayer)) {
+                                  map.removeLayer(kabkotaLayer);
                               }
-                          });
+                              kabkotaLayer = null;
+                          } catch (e) {
+                              console.warn('Gagal remove kabkotaLayer:', e);
+                          }
 
-                          // Reload GeoJSON dengan status terbaru
+                          // Reload GeoJSON kab/kota dengan status terbaru
                           fetch("{{ url_for('static', filename='data/kabkota_sumut.json') }}")
                               .then(res => res.json())
                               .then(geoData => {
-                                  L.geoJSON(geoData, {
+                                  kabkotaLayer = L.geoJSON(geoData, {
                                       pane: 'kabkotaPane',
                                       style: function (feature) {
                                           let info = getFeatureData(feature);
@@ -4586,7 +5406,13 @@ if (!isKnown && !showLain) return;
                                               click: function (e) { this.openPopup(); }
                                           });
                                       }
-                                  }).addTo(map);
+                                  });
+
+                                  kabkotaLayer.addTo(map);
+
+                                  // Pastikan rule boundary tetap berlaku setelah refresh
+                                  _syncBoundaryByZoom();
+                                  if (map.getZoom() >= KELDESA_ZOOM_THRESHOLD) _scheduleLoadKelDesa();
                               })
                               .catch(e => console.error("Error reloading GeoJSON:", e));
 
@@ -4605,6 +5431,7 @@ if (!isKnown && !showLain) return;
                           asesmenInfrastruktur = Array.isArray(result.asesmen_infrastruktur) ? result.asesmen_infrastruktur : (result.asesmen_infrastruktur || []);
                           asesmenWash = Array.isArray(result.asesmen_wash) ? result.asesmen_wash : (result.asesmen_wash || []);
                           asesmenKondisi = Array.isArray(result.asesmen_kondisi) ? result.asesmen_kondisi : (result.asesmen_kondisi || []);
+                          asesmenOxfam = Array.isArray(result.asesmen_oxfam) ? result.asesmen_oxfam : (result.asesmen_oxfam || []);
                           renderAsesmenBuffers();
                           applyAsesmenVisibility();
                           // Tampilkan notifikasi sukses (centered)
@@ -5698,6 +6525,85 @@ window.getLocationForLokasi = function () {
           });
         });
       })();
+
+        document.getElementById('filterTanggal').addEventListener('change', function() {
+        const selectedDate = this.value; // Format: YYYY-MM-DD
+        const slides = document.querySelectorAll('.filter-item');
+        let visibleCount = 0;
+
+        slides.forEach(slide => {
+            // Ambil data tanggal dari atribut HTML
+            // Asumsi format di Excel/DB bisa jadi DD/MM/YYYY atau YYYY-MM-DD
+            // Kita ambil raw stringnya
+            let slideDateRaw = slide.getAttribute('data-tanggal'); 
+            
+            // Konversi sederhana jika format beda (opsional, sesuaikan dengan data sheetmu)
+            // Kalau di sheetmu sudah YYYY-MM-DD, logic ini lebih simpel:
+            
+            if (slideDateRaw === selectedDate) {
+                slide.style.display = 'block'; // Tampilkan
+                visibleCount++;
+            } else {
+                slide.style.display = 'none'; // Sembunyikan
+            }
+        });
+
+        // Tampilkan pesan jika kosong
+        const noDataMsg = document.getElementById('noDataMessage');
+        if (visibleCount === 0) {
+            noDataMsg.style.display = 'block';
+        } else {
+            noDataMsg.style.display = 'none';
+        }
+    });
+
+    function resetFilter() {
+        document.getElementById('filterTanggal').value = '';
+        const slides = document.querySelectorAll('.filter-item');
+        slides.forEach(slide => {
+            slide.style.display = 'block';
+        });
+        document.getElementById('noDataMessage').style.display = 'none';
+    }
+
+    document.addEventListener("DOMContentLoaded", function() {
+        
+        const filterInput = document.getElementById('filterTanggal');
+        const slides = document.querySelectorAll('.filter-item');
+        const noDataMsg = document.getElementById('noDataMessage');
+
+        // Event saat tanggal diganti
+        filterInput.addEventListener('change', function() {
+            const selectedDate = this.value; // Hasilnya format: '2025-12-28'
+            let visibleCount = 0;
+
+            slides.forEach(slide => {
+                // Ambil data tanggal dari HTML (yang sudah kita set jadi ISO juga)
+                const itemDate = slide.getAttribute('data-tanggal');
+                if (itemDate === selectedDate) {
+                    slide.style.display = 'block'; // Muncul
+                    visibleCount++;
+                } else {
+                    slide.style.display = 'none'; // Sembunyi
+                }
+            });
+
+            // Tampilkan pesan jika tidak ada yang cocok
+            if (visibleCount === 0) {
+                noDataMsg.style.display = 'block';
+            } else {
+                noDataMsg.style.display = 'none';
+            }
+        });
+
+        // Fungsi Reset (Opsional, pasang di tombol Reset)
+        window.resetFilter = function() {
+            filterInput.value = ''; // Kosongkan input
+            slides.forEach(slide => slide.style.display = 'block'); // Tampilkan semua
+            noDataMsg.style.display = 'none';
+        };
+
+    });  
     </script>
 
     <script>
@@ -5799,5 +6705,109 @@ window.getLocationForLokasi = function () {
     </script>
 
 
+    <script>
+      document.addEventListener("DOMContentLoaded", function () {
+        const startInput = document.getElementById("filterAsesmenAdminStart");
+        const endInput = document.getElementById("filterAsesmenAdminEnd");
+        const pStartInput = document.getElementById("filterPermintaanAdminStart");
+        const pEndInput = document.getElementById("filterPermintaanAdminEnd");
+        const lStartInput = document.getElementById("filterAdminLokasiStart");
+        const lEndInput = document.getElementById("filterAdminLokasiEnd");
+
+        const today = new Date();
+        const thirtyDaysAgo = new Date();
+        thirtyDaysAgo.setDate(today.getDate() - 30);
+
+        const formatDate = (date) => {
+          const yyyy = date.getFullYear();
+          const mm = String(date.getMonth() + 1).padStart(2, "0");
+          const dd = String(date.getDate()).padStart(2, "0");
+          return `${yyyy}-${mm}-${dd}`;
+        };
+
+        const thirtyStr = formatDate(thirtyDaysAgo);
+        const todayStr = formatDate(today);
+
+        if (startInput) startInput.value = startInput.value || thirtyStr;
+        if (endInput)   endInput.value   = endInput.value || todayStr;
+        if (pStartInput) pStartInput.value = pStartInput.value || thirtyStr;
+        if (pEndInput)   pEndInput.value   = pEndInput.value || todayStr;
+        if (lStartInput) lStartInput.value = lStartInput.value || thirtyStr;
+        if (lEndInput)   lEndInput.value   = lEndInput.value || todayStr;
+      });
+    </script>
+
+    {# Script untuk Searchable Dropdown Asesmen dengan Debounce #}
+    <script>
+      document.addEventListener("DOMContentLoaded", function () {
+        const searchInput = document.getElementById("asesmenSearchInput");
+        const dropdownBtn = document.getElementById("asesmenDropdownBtn");
+        const dropdownMenu = document.getElementById("asesmenDropdownMenu");
+        const items = dropdownMenu.querySelectorAll(".asesmen-item");
+        
+        let searchTimeout;
+
+        if (searchInput && dropdownBtn && dropdownMenu) {
+          const bsDropdown = bootstrap.Dropdown.getOrCreateInstance(dropdownBtn);
+
+          const performSearch = () => {
+            const filter = searchInput.value.toLowerCase();
+            let hasVisible = false;
+
+            items.forEach((item) => {
+              const text = item.textContent.toLowerCase();
+              if (text.includes(filter)) {
+                item.parentElement.style.display = "";
+                hasVisible = true;
+              } else {
+                item.parentElement.style.display = "none";
+              }
+            });
+
+            // Tampilkan dropdown jika ada hasil
+            if (filter.length > 0) {
+              if (hasVisible) {
+                if (!dropdownMenu.classList.contains('show')) {
+                  bsDropdown.show();
+                }
+              } else {
+                bsDropdown.hide();
+              }
+            } else {
+              // Jika kosong, kembalikan semua tampilan
+              items.forEach(item => item.parentElement.style.display = "");
+            }
+          };
+
+          searchInput.addEventListener("input", function () {
+            // Bersihkan timeout sebelumnya (Debounce)
+            clearTimeout(searchTimeout);
+            
+            // Tunggu 500ms sebelum melakukan pencarian agar user bisa mengetik
+            searchTimeout = setTimeout(performSearch, 500);
+          });
+
+          // Fokus input saat dropdown dibuka
+          dropdownBtn.addEventListener("click", function () {
+            setTimeout(() => searchInput.focus(), 150);
+          });
+
+          // Klik pada input juga memicu dropdown muncul jika belum tampil
+          searchInput.addEventListener("click", function (e) {
+            e.stopPropagation(); 
+            if (!dropdownMenu.classList.contains('show')) {
+              bsDropdown.show();
+            }
+          });
+          
+          // Pastikan dropdown tidak tertutup saat mengetik spasi atau tombol lainnya
+          searchInput.addEventListener("keydown", function(e) {
+            if (e.key === " ") {
+              e.stopPropagation();
+            }
+          });
+        }
+      });
+    </script>
   </body>
 </html>
