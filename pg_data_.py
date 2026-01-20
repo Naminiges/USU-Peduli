@@ -46,7 +46,7 @@ from __future__ import annotations
 
 import json
 import os
-from datetime import datetime, timezone, timedelta
+from datetime import datetime, timezone, timedelta, date
 from zoneinfo import ZoneInfo
 from decimal import Decimal
 from pathlib import Path
@@ -114,7 +114,8 @@ def _json_safe_value(v: Any) -> Any:
         # Kalau datetime bertz (umumnya dari timestamptz), normalkan ke UTC naive
         if v.tzinfo is not None and v.utcoffset() is not None:
             v = v.astimezone(timezone.utc).replace(tzinfo=None)
-        return v.isoformat()
+        # Anggap naive datetime dari DB adalah UTC, beri 'Z' agar frontend benar
+        return v.isoformat() + "Z"
     return v
 
 
@@ -136,28 +137,44 @@ def _now_wib_naive() -> datetime:
 
 def _normalize_input_ts(v: Any) -> Optional[datetime]:
     """
-    Normalisasi input waktu untuk kolom timestamptz:
-    - None / "" => None (biarkan DB default now()).
-    - datetime aware => convert ke UTC lalu jadi naive.
-    - datetime naive => dipakai apa adanya.
-    - string ISO (datetime-local) => dianggap WIB lalu dikonversi UTC-naive.
+    Normalisasi input waktu untuk kolom timestamptz (disimpan sebagai UTC naive).
+    - naive datetime/string => dianggap Asia/Jakarta (WIB) lalu di-convert ke UTC.
     """
     if v is None:
         return None
 
     if isinstance(v, datetime):
-        if v.tzinfo is not None:
-            return v.astimezone(timezone.utc).replace(tzinfo=None)
-        return v
+        if v.tzinfo is None:
+            try:
+                v = v.replace(tzinfo=ZoneInfo("Asia/Jakarta"))
+            except Exception:
+                v = v.replace(tzinfo=timezone(timedelta(hours=7)))
+        return v.astimezone(timezone.utc).replace(tzinfo=None)
+    
+    if isinstance(v, date) and not isinstance(v, datetime):
+        # Convert date to datetime at start of day WIB
+        dt = datetime(v.year, v.month, v.day)
+        return _normalize_input_ts(dt)
 
     if isinstance(v, str):
         s = v.strip()
         if not s:
             return None
+        
+        dt = None
+        # 1) Try fromisoformat
         try:
             dt = datetime.fromisoformat(s)
         except Exception:
-            return None
+            # 2) Try DD/MM/YYYY
+            try:
+                dt = datetime.strptime(s, "%d/%m/%Y")
+            except Exception:
+                # 3) Try YYYY-MM-DD
+                try:
+                    dt = datetime.strptime(s, "%Y-%m-%d")
+                except:
+                    return None
 
         if dt.tzinfo is None:
             try:
@@ -1205,13 +1222,28 @@ def _pg_get_asesmen_last_hours(table_env: str, default_table: str, hours: int =1
     table = _get_env(table_env, default_table)
     relawan_table = _get_env("PG_RELAWAN_TABLE", "public.data_relawan")
     active_filter = "AND (lr.is_active IS DISTINCT FROM false)" if only_active else ""
-    start_filter = "AND lr.waktu::date >= %s" if start else ""
-    end_filter = "AND lr.waktu::date <= %s" if end else ""
-
+    
+    t_start = _normalize_input_ts(start) if start else None
+    t_end = _normalize_input_ts(end) if end else None
+    
+    start_filter = "AND lr.waktu >= %s" if t_start else ""
+    end_filter = ""
+    if t_end:
+        t_end_next = t_end + timedelta(days=1)
+        end_filter = "AND lr.waktu < %s"
+    
     # If using date filter, ignore the "last N hours" restriction
     time_limit = ""
-    if not start and not end:
+    if not t_start and not t_end:
         time_limit = "AND lr.waktu >= NOW() - (%s * INTERVAL '1 hour')"
+    
+    params = []
+    if not t_start and not t_end:
+        params.append(hours)
+    if t_start:
+        params.append(t_start)
+    if t_end:
+        params.append(t_end_next)
         
     sql = f"""
         SELECT
@@ -1242,17 +1274,8 @@ def _pg_get_asesmen_last_hours(table_env: str, default_table: str, hours: int =1
         ORDER BY lr.waktu DESC;
     """
 
-    params = []
-    if not start and not end:
-        params.append(hours)
-
-    if start:
-        params.append(start)
-    if end:
-        params.append(end)
-
     try:
-        rows = pg_fetchall(sql, tuple(params))
+        rows = pg_fetchall(sql, tuple(params) if params else None)
     except Exception:
         # Fallback jika kolom radius belum ada
         sql2 = f"""
@@ -2003,11 +2026,17 @@ def pg_get_admin_lokasi_list(
         params.append(kind.strip())
 
     if start:
-        where_clauses.append("waktu::date >= %s")
-        params.append(start)
+        t_start = _normalize_input_ts(start)
+        if t_start:
+            where_clauses.append("waktu >= %s")
+            params.append(t_start)
     if end:
-        where_clauses.append("waktu::date <= %s")
-        params.append(end)
+        t_end = _normalize_input_ts(end)
+        if t_end:
+            # End of day boundary: inclusive until end of day (so beginning of next day exclusive)
+            t_end_next = t_end + timedelta(days=1)
+            where_clauses.append("waktu < %s")
+            params.append(t_end_next)
 
     where_sql = " AND ".join(where_clauses)
 
@@ -2231,8 +2260,8 @@ def pg_get_admin_asesmen_list(hours: int = 24, limit_per_kind: int = 500, start:
 
 def pg_get_asesmen_rekap_by_kabkota(
     jenis_asesmen: Optional[str] = None,
-    tanggal_dari: Optional[datetime] = None,
-    tanggal_sampai: Optional[datetime] = None,
+    tanggal_dari: Optional[str] = None,
+    tanggal_sampai: Optional[str] = None,
     status_filter: Optional[str] = None,
     app_root_path: Optional[str] = None,
 ) -> Dict[str, Dict[str, Any]]:
@@ -2253,6 +2282,11 @@ def pg_get_asesmen_rekap_by_kabkota(
         - detail: list detail asesmen
     """
     from collections import defaultdict
+    from datetime import datetime, date, timedelta
+
+    # Normalize dates to UTC boundaries
+    t_dari = _normalize_input_ts(tanggal_dari)
+    t_sampai = _normalize_input_ts(tanggal_sampai)
     
     # Mapping jenis asesmen ke table
     buckets = [
@@ -2360,16 +2394,15 @@ def pg_get_asesmen_rekap_by_kabkota(
             where_clauses = ["latitude IS NOT NULL", "longitude IS NOT NULL"]
             params: List[Any] = []
             
-            if tanggal_dari:
+            if t_dari:
                 where_clauses.append("waktu >= %s")
-                params.append(tanggal_dari)
+                params.append(t_dari)
             
-            if tanggal_sampai:
+            if t_sampai:
                 # Tambahkan 1 hari untuk include seluruh hari sampai
-                from datetime import timedelta
-                tanggal_sampai_end = tanggal_sampai + timedelta(days=1)
+                t_sampai_end = t_sampai + timedelta(days=1)
                 where_clauses.append("waktu < %s")
-                params.append(tanggal_sampai_end)
+                params.append(t_sampai_end)
             
             if status_filter and status_filter.lower() != "semua":
                 where_clauses.append("UPPER(TRIM(status)) = UPPER(TRIM(%s))")
