@@ -2917,6 +2917,9 @@
               map.createPane('kabkotaPane');
               map.getPane('kabkotaPane').style.zIndex = 350;
 
+              map.createPane('kelDesaPane');
+              map.getPane('kelDesaPane').style.zIndex = 360; // sedikit di atas kab/kota
+
               map.createPane('asesmenPane');
               map.getPane('asesmenPane').style.zIndex = 450;
 
@@ -3620,11 +3623,128 @@ function renderAsesmenBuffers(){
                   return { nama: namaAsli, status: status };
               }
 
+              // ================== BOUNDARY TOGGLE (KAB/KOTA <-> KEL/DESA) ==================
+const KELDESA_ZOOM_THRESHOLD = 11;
+
+let kabkotaLayer = null;
+let kelDesaLayer = null;
+
+let _kelDesaLastKey = "";
+let _kelDesaTimer = null;
+let _kelDesaLoading = false;
+
+function _bboxParamFromMap(){
+  const b = map.getBounds();
+  const minx = b.getWest();
+  const miny = b.getSouth();
+  const maxx = b.getEast();
+  const maxy = b.getNorth();
+  return `${minx},${miny},${maxx},${maxy}`;
+}
+
+function _showKabkota(){
+  if (kabkotaLayer && !map.hasLayer(kabkotaLayer)) kabkotaLayer.addTo(map);
+}
+function _hideKabkota(){
+  if (kabkotaLayer && map.hasLayer(kabkotaLayer)) map.removeLayer(kabkotaLayer);
+}
+
+function _hideKelDesa(){
+  if (kelDesaLayer && map.hasLayer(kelDesaLayer)) map.removeLayer(kelDesaLayer);
+  kelDesaLayer = null;
+  _kelDesaLastKey = "";
+}
+
+function _syncBoundaryByZoom(){
+  const z = map.getZoom();
+  if (z >= KELDESA_ZOOM_THRESHOLD) {
+    _hideKabkota();
+    _scheduleLoadKelDesa();
+  } else {
+    _hideKelDesa();
+    _showKabkota();
+  }
+}
+
+function _scheduleLoadKelDesa(){
+  clearTimeout(_kelDesaTimer);
+  _kelDesaTimer = setTimeout(_loadKelDesaForView, 250);
+}
+
+function _loadKelDesaForView(){
+  const z = map.getZoom();
+  if (z < KELDESA_ZOOM_THRESHOLD) return;
+
+  const bbox = _bboxParamFromMap();
+  // key dibulatkan biar tidak fetch terus-terusan saat geser sedikit
+  const b = map.getBounds();
+  const key = [
+    z,
+    b.getWest().toFixed(3),
+    b.getSouth().toFixed(3),
+    b.getEast().toFixed(3),
+    b.getNorth().toFixed(3)
+  ].join(",");
+
+  if (_kelDesaLoading) return;
+  if (key === _kelDesaLastKey) return;
+  _kelDesaLastKey = key;
+
+  _kelDesaLoading = true;
+
+  const url = `/api/geo/kel_desa?bbox=${encodeURIComponent(bbox)}&zoom=${encodeURIComponent(z)}&limit=5000`;
+
+  fetch(url)
+    .then(r => r.json())
+    .then(fc => {
+      if (!fc || !fc.features) return;
+
+      // replace layer agar tidak numpuk
+      if (kelDesaLayer && map.hasLayer(kelDesaLayer)) map.removeLayer(kelDesaLayer);
+
+      kelDesaLayer = L.geoJSON(fc, {
+        pane: 'kelDesaPane',
+        style: function(){
+          return {
+            weight: 1,
+            opacity: 1,
+            color: '#2563eb',      // outline
+            fillOpacity: 0.0       // transparan (biar tidak ganggu status map)
+          };
+        },
+        onEachFeature: function(feature, layer){
+          const p = (feature && feature.properties) ? feature.properties : {};
+          const kel = p.kel_desa || '-';
+          const kec = p.kecamatan || '-';
+          const kab = p.kabkota || '-';
+
+          layer.bindPopup(`
+            <div>
+              <div><b>Kel/Desa:</b> ${escapeHtml(kel)}</div>
+              <div><b>Kecamatan:</b> ${escapeHtml(kec)}</div>
+              <div><b>Kab/Kota:</b> ${escapeHtml(kab)}</div>
+            </div>
+          `);
+        }
+      });
+
+      // tampilkan jika masih zoom tinggi
+      if (map.getZoom() >= KELDESA_ZOOM_THRESHOLD) {
+        kelDesaLayer.addTo(map);
+      }
+    })
+    .catch(e => console.error("Error kel/desa GeoJSON:", e))
+    .finally(() => { _kelDesaLoading = false; });
+}
+// ============================================================================
+
+
               // 3. Load Peta
               fetch("{{ url_for('static', filename='data/kabkota_sumut.json') }}")
                   .then(res => res.json())
                   .then(data => {
-                      L.geoJSON(data, {
+                      // Simpan ke variabel agar bisa di-hide saat zoom tinggi (kel/desa tampil)
+                      kabkotaLayer = L.geoJSON(data, {
                           pane: 'kabkotaPane',
                           // --- STYLE AWAL ---
                           style: function (feature) {
@@ -3688,7 +3808,18 @@ function renderAsesmenBuffers(){
                                   click: function (e) { this.openPopup(); }
                               });
                           }
-                      }).addTo(map);
+                      });
+
+                      kabkotaLayer.addTo(map);
+
+                      // Sync pertama kali (kalau halaman dibuka langsung zoom tinggi dari URL)
+                      _syncBoundaryByZoom();
+
+                      // Listener untuk toggle boundary + fetch kel/desa saat zoom tinggi
+                      map.on('zoomend', _syncBoundaryByZoom);
+                      map.on('moveend', function () {
+                          if (map.getZoom() >= KELDESA_ZOOM_THRESHOLD) _scheduleLoadKelDesa();
+                      });
                   })
                   .catch(e => console.error("Error GeoJSON:", e));
 
@@ -5206,19 +5337,22 @@ _asesmenChildren.forEach((el) => {
                           relawanLokasi = result.relawan_lokasi || [];
                           statusData = result.status_map;
 
-                          // Update status wilayah di peta (reload GeoJSON layer)
-                          // Hapus layer GeoJSON lama jika ada
-                          map.eachLayer(function(layer) {
-                              if (layer instanceof L.GeoJSON) {
-                                  map.removeLayer(layer);
+                          // Update status wilayah di peta (reload kab/kota layer)
+                          // Hapus layer kab/kota lama jika ada (jangan hapus semua GeoJSON agar fitur lain tidak terganggu)
+                          try {
+                              if (kabkotaLayer && map.hasLayer(kabkotaLayer)) {
+                                  map.removeLayer(kabkotaLayer);
                               }
-                          });
+                              kabkotaLayer = null;
+                          } catch (e) {
+                              console.warn('Gagal remove kabkotaLayer:', e);
+                          }
 
-                          // Reload GeoJSON dengan status terbaru
+                          // Reload GeoJSON kab/kota dengan status terbaru
                           fetch("{{ url_for('static', filename='data/kabkota_sumut.json') }}")
                               .then(res => res.json())
                               .then(geoData => {
-                                  L.geoJSON(geoData, {
+                                  kabkotaLayer = L.geoJSON(geoData, {
                                       pane: 'kabkotaPane',
                                       style: function (feature) {
                                           let info = getFeatureData(feature);
@@ -5272,7 +5406,13 @@ _asesmenChildren.forEach((el) => {
                                               click: function (e) { this.openPopup(); }
                                           });
                                       }
-                                  }).addTo(map);
+                                  });
+
+                                  kabkotaLayer.addTo(map);
+
+                                  // Pastikan rule boundary tetap berlaku setelah refresh
+                                  _syncBoundaryByZoom();
+                                  if (map.getZoom() >= KELDESA_ZOOM_THRESHOLD) _scheduleLoadKelDesa();
                               })
                               .catch(e => console.error("Error reloading GeoJSON:", e));
 

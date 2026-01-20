@@ -82,6 +82,7 @@ try:
         pg_insert_permintaan_posko,
         pg_next_id,
         pg_get_asesmen_rekap_by_kabkota,
+        pg_get_kel_desa_featurecollection_bbox,
     )
 except Exception as _pg_err:
     print(f"[PG] Error import pg_data: {_pg_err}")
@@ -127,6 +128,7 @@ except Exception as _pg_err:
     pg_get_ref_status_lokasi = None
     pg_get_ref_tingkat_akses = None
     pg_get_ref_kondisi = None
+    pg_get_kel_desa_featurecollection_bbox = None
 
 try:
     from asesmen_oxfam import register_asesmen_oxfam_routes
@@ -135,6 +137,10 @@ except Exception as _ox_err:
     register_asesmen_oxfam_routes = None
 
 app = Flask(__name__)
+
+@app.route("/api/_routes", methods=["GET"])
+def api__routes():
+    return "<br>".join(sorted([str(r) for r in app.url_map.iter_rules()]))
 
 if register_asesmen_oxfam_routes:
     register_asesmen_oxfam_routes(app)
@@ -623,6 +629,45 @@ def api_refresh_map():
         return jsonify({"success": False, "error": str(e)}), 500
 
 
+
+
+
+# ==============================================================================
+# API ENDPOINT: Geo Kel/Desa (batas administrasi detail)
+# ==============================================================================
+@app.route("/api/geo/kel_desa", methods=["GET"])
+def api_geo_kel_desa():
+    """Return GeoJSON FeatureCollection batas kel/desa untuk area yang sedang terlihat (bbox).
+
+    Query params:
+      - bbox=minx,miny,maxx,maxy   (EPSG:4326)
+      - zoom=<int>
+      - limit=<int> (optional)
+
+    Dipakai oleh map.html saat zoom >= threshold.
+    """
+    if not _pg_enabled() or pg_get_kel_desa_featurecollection_bbox is None:
+        return jsonify({"type": "FeatureCollection", "features": [], "error": "Fitur belum aktif"}), 500
+
+    bbox_s = (request.args.get("bbox") or "").strip()
+    zoom_s = (request.args.get("zoom") or "12").strip()
+    limit_s = (request.args.get("limit") or "5000").strip()
+
+    try:
+        parts = [p.strip() for p in bbox_s.split(",")]
+        if len(parts) != 4:
+            raise ValueError("bbox invalid")
+        minx, miny, maxx, maxy = [float(x) for x in parts]
+        zoom = int(float(zoom_s))
+        limit = int(float(limit_s))
+    except Exception:
+        return jsonify({"type": "FeatureCollection", "features": [], "error": "Parameter bbox/zoom invalid"}), 400
+
+    try:
+        fc = pg_get_kel_desa_featurecollection_bbox((minx, miny, maxx, maxy), zoom=zoom, limit=limit)
+        return jsonify(fc)
+    except Exception as e:
+        return jsonify({"type": "FeatureCollection", "features": [], "error": str(e)}), 500
 # ==============================================================================
 # ROUTE UTAMA
 # ==============================================================================

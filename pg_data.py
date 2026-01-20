@@ -334,6 +334,153 @@ def ensure_kabkota_geojson_static(app_root_path: str) -> Path:
     return out_path
 
 
+
+
+# ------------------------------------------------------------------------------
+# 2b) GeoJSON Kel/Desa (by BBOX) dari PostGIS
+# ------------------------------------------------------------------------------
+
+def _parse_schema_table(full: str) -> Tuple[str, str]:
+    s = (full or "").strip()
+    if "." in s:
+        a, b = s.split(".", 1)
+        return a.strip(), b.strip()
+    return "public", s
+
+
+def _q_ident(name: str) -> str:
+    return '"' + str(name).replace('"', '""') + '"'
+
+
+def _q_table(full: str) -> str:
+    schema, table = _parse_schema_table(full)
+    return f"{_q_ident(schema)}.{_q_ident(table)}"
+
+
+def _pick_col(cols: Sequence[str], candidates: Sequence[str]) -> Optional[str]:
+    # exact match
+    colset = set(cols)
+    for c in candidates:
+        if c in colset:
+            return c
+
+    # case-insensitive match
+    lower_map = {c.lower(): c for c in cols}
+    for c in candidates:
+        k = c.lower()
+        if k in lower_map:
+            return lower_map[k]
+
+    return None
+
+
+def pg_get_kel_desa_featurecollection_bbox(
+    bbox: Tuple[float, float, float, float],
+    zoom: int = 12,
+    limit: int = 5000,
+) -> Dict[str, Any]:
+    """Ambil batas kel/desa dari PostGIS untuk area yang sedang terlihat (bbox).
+
+    - bbox = (minx, miny, maxx, maxy) dalam EPSG:4326
+    - zoom dipakai untuk simplify (agar ringan saat panning/zooming)
+
+    ENV:
+      - PG_KELDESA_TABLE  default: geo.batas_kel_desa_sumut
+    """
+
+    table = _get_env("PG_KELDESA_TABLE", "geo.batas_kel_desa_sumut") or "geo.batas_kel_desa_sumut"
+    schema, tname = _parse_schema_table(table)
+
+    # Ambil daftar kolom untuk menghindari masalah uppercase / quoted identifier
+    cols_rows = pg_fetchall(
+        """
+        SELECT column_name
+        FROM information_schema.columns
+        WHERE table_schema=%s AND table_name=%s
+        """,
+        (schema, tname),
+    )
+    cols = [r.get("column_name") for r in cols_rows if r.get("column_name")]
+
+    # Pilih kolom atribut yang umum dipakai pada data BIG RBI
+    col_desa = _pick_col(cols, ["WADMKD", "wadmkd", "kel_desa", "desa_kelurahan", "NAMOBJ", "namobj"])
+    col_kec = _pick_col(cols, ["WADMKC", "wadmkc", "kecamatan", "nama_kecamatan"])
+    col_kab = _pick_col(cols, ["WADMKK", "wadmkk", "kabkota", "kabupaten_kota", "nama_kabkota"])
+
+    # Kolom geometry
+    col_geom = _pick_col(cols, ["geom", "geometry"])
+    if not col_geom:
+        raise RuntimeError(f"Kolom geometry tidak ditemukan di {table}. Pastikan kolom 'geom' ada.")
+
+    # tolerance simplify (derajat). zoom tinggi -> kecil
+    z = int(zoom or 12)
+    if z <= 11:
+        tol = 0.001
+    elif z == 12:
+        tol = 0.0005
+    elif z == 13:
+        tol = 0.00025
+    else:
+        tol = 0.0
+
+    minx, miny, maxx, maxy = bbox
+
+    qtbl = _q_table(table)
+    qgeom = _q_ident(col_geom)
+
+    # SELECT atribut aman (kalau kolom tidak ada -> '-')
+    def sel_or_dash(colname: Optional[str], alias: str) -> str:
+        if colname:
+            return f"COALESCE({_q_ident(colname)}::text,'-') AS {alias}"
+        return f"'-'::text AS {alias}"
+
+    sel_desa = sel_or_dash(col_desa, "kel_desa")
+    sel_kec = sel_or_dash(col_kec, "kecamatan")
+    sel_kab = sel_or_dash(col_kab, "kabkota")
+
+    if tol > 0:
+        geom_out = f"ST_SimplifyPreserveTopology(ST_Force2D({qgeom}), {tol})"
+    else:
+        geom_out = f"ST_Force2D({qgeom})"
+
+    # Filter bbox pakai && agar GiST index terpakai
+    sql = f"""
+        WITH env AS (
+            SELECT ST_MakeEnvelope(%s,%s,%s,%s,4326) AS e
+        )
+        SELECT
+            {sel_desa},
+            {sel_kec},
+            {sel_kab},
+            ST_AsGeoJSON({geom_out})::json AS geometry
+        FROM {qtbl}, env
+        WHERE {qgeom} IS NOT NULL
+          AND {qgeom} && env.e
+          AND ST_Intersects({qgeom}, env.e)
+        LIMIT %s;
+    """
+
+    rows = pg_fetchall(sql, (minx, miny, maxx, maxy, int(limit)))
+
+    features: List[Dict[str, Any]] = []
+    for r in rows:
+        g = r.get("geometry")
+        if not g:
+            continue
+
+        features.append(
+            {
+                "type": "Feature",
+                "geometry": g,
+                "properties": {
+                    "kel_desa": r.get("kel_desa") or "-",
+                    "kecamatan": r.get("kecamatan") or "-",
+                    "kabkota": r.get("kabkota") or "-",
+                },
+            }
+        )
+
+    return {"type": "FeatureCollection", "features": features}
 # ------------------------------------------------------------------------------
 # 3) data_lokasi (marker)
 # ------------------------------------------------------------------------------
