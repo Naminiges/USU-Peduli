@@ -1,0 +1,157 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Detail Asesmen Oxfam - SATGAS USU</title>
+  <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/css/bootstrap.min.css" rel="stylesheet" />
+  <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0-beta3/css/all.min.css" />
+  <link rel="stylesheet" href="{{ url_for('static', filename='css/style.css') }}" />
+  <style>
+    body{ background:#f8fafc; }
+    #miniMap{ height:260px; border-radius:12px; }
+    .kv td{ vertical-align:top; }
+    .ans-missing{ color:#64748b; }
+    .note-box{ background:#f1f5f9; border-left:4px solid #94a3b8; padding:10px 12px; border-radius:8px; }
+    details summary{ cursor:pointer; }
+  </style>
+</head>
+<body>
+
+<nav class="navbar navbar-expand-lg navbar-dark" style="background:#0f172a;">
+  <div class="container-fluid">
+    <a class="navbar-brand" href="{{ url_for('map_view') }}">SATGAS USU</a>
+    <div class="d-flex gap-2">
+      <a class="btn btn-outline-light btn-sm" href="{{ url_for('map_view') }}">
+        <i class="fas fa-map"></i> Kembali ke Peta
+      </a>
+      <a class="btn btn-light btn-sm" href="{{ url_for('asesmen_oxfam_new') }}" target="_blank" rel="noopener">
+        <i class="fas fa-plus"></i> Input Baru
+      </a>
+    </div>
+  </div>
+</nav>
+
+<div class="container my-4">
+  <div class="d-flex align-items-start justify-content-between gap-3 flex-wrap">
+    <div>
+      <h3 class="mb-1">Detail Asesmen Oxfam (RIEA)</h3>
+      <div class="text-muted">ID: <b>{{ row.id }}</b></div>
+    </div>
+    <div class="text-end">
+      <span class="badge text-bg-primary">Oxfam RIEA</span>
+      {% if row.is_active is not none and (row.is_active == false or row.is_active == 'false') %}
+        <span class="badge text-bg-secondary">Nonaktif</span>
+      {% endif %}
+    </div>
+  </div>
+
+  <div class="row g-3 mt-2">
+    <div class="col-lg-5">
+      <div class="card shadow-sm">
+        <div class="card-body">
+          <h6 class="mb-3">Ringkasan</h6>
+          <table class="table table-sm kv">
+            <tr><th style="width:140px;">Waktu</th><td>{{ row.waktu }}</td></tr>
+            <tr><th>Posko</th><td>{{ row.kode_posko or '-' }}</td></tr>
+            <tr><th>Relawan</th><td>{{ row.nama_relawan or row.id_relawan or '-' }}</td></tr>
+            <tr><th>Koordinat</th><td>{{ row.latitude }}, {{ row.longitude }}</td></tr>
+          </table>
+          {% if row.catatan %}
+            <div class="mt-2">
+              <div class="text-muted mb-1">Catatan:</div>
+              <div class="note-box">{{ row.catatan | replace('\n','<br>') | safe }}</div>
+            </div>
+          {% endif %}
+        </div>
+      </div>
+
+      <div class="card shadow-sm mt-3">
+        <div class="card-body">
+          <h6 class="mb-2">Lokasi Titik</h6>
+          <div id="miniMap"></div>
+        </div>
+      </div>
+    </div>
+
+    <div class="col-lg-7">
+      <div class="card shadow-sm">
+        <div class="card-body">
+          <h6 class="mb-2">Jawaban</h6>
+          <div class="text-muted mb-3" style="font-size:.95rem;">Ditampilkan berdasarkan struktur XLSForm (group/section). Data disimpan dalam JSON.</div>
+
+          {% macro render_view_node(node, depth=0) -%}
+            {% if node.kind == 'group' %}
+              {% set grp_label = node.label or node.name %}
+              {% set anchor = 'grp-' ~ (node.name or 'group') %}
+              <details class="mb-3" {% if depth < 1 %}open{% endif %}>
+                <summary class="fw-bold">{{ grp_label }}</summary>
+                <div class="pt-2">
+                  {% for ch in node.children or [] %}
+                    {{ render_view_node(ch, depth+1) }}
+                  {% endfor %}
+                </div>
+              </details>
+            {% elif node.kind == 'question' %}
+              {% if node.qtype == 'note' %}
+                {% if node.label %}
+                  <div class="note-box my-2">{{ node.label }}</div>
+                {% endif %}
+              {% else %}
+                {% set v = jawaban_display.get(node.name) %}
+                <div class="mb-2">
+                  <div class="fw-semibold">{{ node.label or node.name }}</div>
+                  {% if v is none or v == '' %}
+                    <div class="ans-missing">—</div>
+                  {% elif v is string %}
+                    <div>{{ v }}</div>
+                  {% elif v is iterable %}
+                    <ul class="mb-1">
+                      {% for it in v %}
+                        <li>{{ it }}</li>
+                      {% endfor %}
+                    </ul>
+                  {% else %}
+                    <div>{{ v }}</div>
+                  {% endif %}
+                </div>
+              {% endif %}
+            {% endif %}
+          {%- endmacro %}
+
+          {% for node in form_nodes %}
+            {{ render_view_node(node, 0) }}
+          {% endfor %}
+
+          <hr>
+          <details>
+            <summary class="fw-bold">Data meta (otomatis)</summary>
+            <div class="pt-2">
+              <div><b>gps</b>: {{ jawaban_raw.get('gps') }}</div>
+              <div><b>date</b>: {{ jawaban_raw.get('date') }}</div>
+            </div>
+          </details>
+
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/js/bootstrap.bundle.min.js"></script>
+<script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+<script>
+  (function(){
+    const lat = parseFloat('{{ row.latitude }}');
+    const lon = parseFloat('{{ row.longitude }}');
+    const ok = isFinite(lat) && isFinite(lon);
+    const map = L.map('miniMap').setView(ok ? [lat, lon] : [2.3693, 99.0763], ok ? 14 : 9);
+    L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', { attribution: '© OpenStreetMap contributors' }).addTo(map);
+    if(ok){
+      L.marker([lat, lon]).addTo(map);
+    }
+  })();
+</script>
+</body>
+</html>

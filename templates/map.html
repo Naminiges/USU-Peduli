@@ -290,6 +290,13 @@
                 <i class="fa-solid fa-clipboard-list me-2"></i> Kondisi
               </button>
             </li>
+            <li>
+              <a class="dropdown-item asesmen-item py-2"
+                 href="{{ url_for('asesmen_oxfam_new') }}"
+                 target="_blank" rel="noopener">
+                <i class="fa-solid fa-clipboard-check me-2"></i>Oxfam (RIEA)
+              </a>
+            </li>
           </ul>
         </div>
       </div>
@@ -444,7 +451,18 @@
                 >Asesmen Kondisi</label
               >
             </div>
-          </div>
+                      <div class="form-check">
+              <input
+                class="form-check-input"
+                type="checkbox"
+                id="toggleAsesmenOxfam"
+                checked
+              />
+              <label class="form-check-label" for="toggleAsesmenOxfam"
+                >Asesmen Oxfam (RIEA)</label
+              >
+            </div>
+</div>
         </div>
 
         <!-- Lokasi -->
@@ -2865,6 +2883,7 @@
               let asesmenInfrastruktur = safeJsonParse({{ asesmen_infrastruktur | tojson | safe }}, []);
               let asesmenWash = safeJsonParse({{ asesmen_wash | tojson | safe }}, []);
               let asesmenKondisi = safeJsonParse({{ asesmen_kondisi | tojson | safe }}, []);
+              let asesmenOxfam = safeJsonParse({{ asesmen_oxfam | tojson | safe }}, []);
               let permintaanLogistik = safeJsonParse({{ permintaan_logistik | tojson | safe }}, []);
               const CURRENT_IS_ADMIN = {{ 'true' if is_admin else 'false' }};
               const DATA_POSKO = safeJsonParse({{ data_posko | tojson | safe }}, []);
@@ -2918,6 +2937,7 @@
       let asesmenInfrastrukturLayer = L.layerGroup().addTo(map);
       let asesmenWashLayer = L.layerGroup().addTo(map);
       let asesmenKondisiLayer = L.layerGroup().addTo(map);
+      let asesmenOxfamLayer = L.layerGroup().addTo(map);
 
 
       // Map pertanyaan p1..px (untuk popup buffer)
@@ -3409,13 +3429,93 @@
 
 
 
-      function renderAsesmenBuffers(){
+
+
+      // ================== ASESMEN OXFAM (RIEA) ==================
+      function renderAsesmenOxfamLayer(layer, rows){
+        layer.clearLayers();
+        (rows || []).forEach(r=>{
+          const lat = parseFloat(r.latitude);
+          const lon = parseFloat(r.longitude);
+          if (!isFinite(lat) || !isFinite(lon)) return;
+
+          // soft delete
+          if (r.is_active === false) return;
+          if (typeof r.is_active === "string" && r.is_active.toLowerCase() === "false") return;
+
+          const col = statusColor(r.status);
+          const detailUrl = `/asesmen_oxfam/view/${encodeURIComponent(r.id)}`;
+
+          // ringkas jawaban: ambil max 8 key pertama (sorted)
+          let j = r.jawaban;
+          if (typeof j === "string") {
+            try { j = JSON.parse(j); } catch(e) { j = null; }
+          }
+          let summaryHtml = "<div class='text-muted'>-</div>";
+          if (j && typeof j === "object") {
+            const keys = Object.keys(j);
+            keys.sort();
+            const take = keys.slice(0, 8);
+            summaryHtml = "<ul class='mb-0 ps-3'>" + take.map(k=>{
+              let v = j[k];
+              if (Array.isArray(v)) v = v.join(", ");
+              if (v && typeof v === "object") v = JSON.stringify(v);
+              return `<li><b>${escapeHtml(k)}</b>: ${escapeHtml(v)}</li>`;
+            }).join("") + (keys.length>take.length ? "<li class='text-muted'>... (lebih lengkap di detail)</li>" : "") + "</ul>";
+          }
+
+          const popupContent = `
+            <div style="min-width:280px;">
+              <div style="font-weight:700;">Asesmen Oxfam (RIEA)</div>
+              <div style="margin-top:4px;"><small class="text-muted">ID:</small> <small><b>${escapeHtml(r.id)}</b></small></div>
+              <div><small class="text-muted">Relawan:</small> <small><b>${escapeHtml(r.nama_relawan || r.id_relawan || '-') }</b></small></div>
+              <div><small class="text-muted">Posko:</small> <small><b>${escapeHtml(r.kode_posko || '-') }</b></small></div>
+              <div><small class="text-muted">Waktu:</small> <small><b>${formatWIB(r.waktu)}</b></small></div>
+              <div><small class="text-muted">Status:</small> <small><b style="color:${col};">${escapeHtml(r.status || '-') }</b></small></div>
+              <hr class="my-2"/>
+              <div class="fw-bold mb-1">Ringkasan Jawaban</div>
+              ${summaryHtml}
+              <hr class="my-2"/>
+              <a class="btn btn-sm btn-primary" href="${detailUrl}" target="_blank" rel="noopener">Lihat Detail</a>
+            </div>
+          `;
+
+          // buffer (2km) + dot
+          const circle = L.circle([lat, lon], {
+            pane: 'asesmenPane',
+            radius: 2000,
+            color: '#2563eb',
+            weight: 2,
+            fill: true,
+            fillColor: '#2563eb',
+            fillOpacity: 0.18,
+            bubblingMouseEvents: false
+          }).bindPopup(popupContent);
+
+          const dot = L.circleMarker([lat, lon], {
+            pane: 'asesmenPane',
+            radius: 5,
+            color: '#2563eb',
+            weight: 2,
+            fillColor: '#2563eb',
+            fillOpacity: 0.95,
+            bubblingMouseEvents: false
+          }).bindPopup(popupContent);
+
+          layer.addLayer(circle);
+          layer.addLayer(dot);
+        });
+      }
+      // ===========================================================
+
+function renderAsesmenBuffers(){
         renderAsesmenLayer(asesmenKesehatanLayer, asesmenKesehatan, "Asesmen Kesehatan", "kesehatan");
         renderAsesmenLayer(asesmenPendidikanLayer, asesmenPendidikan, "Asesmen Pendidikan", "pendidikan");
         renderAsesmenLayer(asesmenPsikososialLayer,asesmenPsikososial, "Asesmen Psikososial", "psikososial");
         renderAsesmenLayer(asesmenInfrastrukturLayer,asesmenInfrastruktur,"Asesmen Infrastruktur", "infrastruktur");
         renderAsesmenLayer(asesmenWashLayer, asesmenWash, "Asesmen Wash", "wash");
         renderAsesmenKondisiLayer(asesmenKondisiLayer, asesmenKondisi, "Asesmen Kondisi", "kondisi");
+        renderAsesmenOxfamLayer(asesmenOxfamLayer, asesmenOxfam);
       }
       renderAsesmenBuffers();
 
@@ -3427,6 +3527,7 @@
       const ckPsi = document.getElementById("toggleAsesmenPsikososial");
       const ckWas = document.getElementById("toggleAsesmenWash");
       const ckKond = document.getElementById("toggleAsesmenKondisi");
+      const ckOxfam = document.getElementById("toggleAsesmenOxfam");
 
       function setLayerVisible(layer, visible){
         if (visible) {
@@ -3444,6 +3545,7 @@
         const showPsi = ckPsi ? ckPsi.checked : true;
         const showWas = ckWas ? ckWas.checked : true;
         const showKond = ckKond ? ckKond.checked : true;
+        const showOxfam = ckOxfam ? ckOxfam.checked : true;
 
         setLayerVisible(asesmenKesehatanLayer, master && showKes);
         setLayerVisible(asesmenPendidikanLayer, master && showPen);
@@ -3451,6 +3553,7 @@
         setLayerVisible(asesmenPsikososialLayer, master && showPsi);
         setLayerVisible(asesmenWashLayer, master && showWas);
         setLayerVisible(asesmenKondisiLayer, master && showKond);
+        setLayerVisible(asesmenOxfamLayer, master && showOxfam);
       }
 
       // (visibility asesmen akan di-handle oleh blok sinkronisasi filter di bawah)
@@ -4981,13 +5084,25 @@ if (!isKnown && !showLain) return;
               });
 
               // Asesmen (master + child)
-              if (ckAsesmenAll) ckAsesmenAll.addEventListener('change', () => syncGroupFromMaster(ckAsesmenAll, elAsesmenBody, [ckKes, ckPen, ckPsi, ckInf, ckWas, ckKond], applyAsesmenVisibility));
-              [ckKes, ckPen, ckPsi, ckInf, ckWas, ckKond].forEach(el => {
-                  if (el) el.addEventListener('change', () => syncMasterFromChildren(ckAsesmenAll, elAsesmenBody, [ckKes, ckPen, ckPsi, ckInf, ckWas, ckKond], applyAsesmenVisibility));
-              });
+// NOTE: termasuk Asesmen Oxfam (RIEA) agar sinkron dengan master Asesmen
+const _asesmenChildren = [ckKes, ckPen, ckPsi, ckInf, ckWas, ckKond, ckOxfam];
+
+if (ckAsesmenAll) {
+  ckAsesmenAll.addEventListener("change", () =>
+    syncGroupFromMaster(ckAsesmenAll, elAsesmenBody, _asesmenChildren, applyAsesmenVisibility)
+  );
+}
+
+_asesmenChildren.forEach((el) => {
+  if (el) {
+    el.addEventListener("change", () =>
+      syncMasterFromChildren(ckAsesmenAll, elAsesmenBody, _asesmenChildren, applyAsesmenVisibility)
+    );
+  }
+});
 
               // Initial sync + render
-              syncGroupFromMaster(ckAsesmenAll, elAsesmenBody, [ckKes, ckPen, ckPsi, ckInf, ckWas, ckKond], applyAsesmenVisibility);
+              syncGroupFromMaster(ckAsesmenAll, elAsesmenBody, _asesmenChildren, applyAsesmenVisibility);
               syncGroupFromMaster(ckLokAll, elLokasiBody, [ckLokPosko, ckLokGudang, ckLokStarlink,ckLokJembatanRusak, ckLokJalanPutus, ckLokTitikLongsor, ckLokSumurBor, ckLokLain], applyLokasiFilter);
               syncGroupFromMaster(ckRelAll, elRelawanBody, [ckRelawanLok], applyRelawanVisibility);
               syncGroupFromMaster(ckPermintaan, elPermintaanBody, [ckPermUsulan, ckPermDiproses, ckPermDikirim, ckPermDiterima, ckPermDitolak], applyPermintaanVisibility);
@@ -5176,6 +5291,7 @@ if (!isKnown && !showLain) return;
                           asesmenInfrastruktur = Array.isArray(result.asesmen_infrastruktur) ? result.asesmen_infrastruktur : (result.asesmen_infrastruktur || []);
                           asesmenWash = Array.isArray(result.asesmen_wash) ? result.asesmen_wash : (result.asesmen_wash || []);
                           asesmenKondisi = Array.isArray(result.asesmen_kondisi) ? result.asesmen_kondisi : (result.asesmen_kondisi || []);
+                          asesmenOxfam = Array.isArray(result.asesmen_oxfam) ? result.asesmen_oxfam : (result.asesmen_oxfam || []);
                           renderAsesmenBuffers();
                           applyAsesmenVisibility();
                           // Tampilkan notifikasi sukses (centered)
