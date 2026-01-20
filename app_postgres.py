@@ -762,31 +762,33 @@ def api_rekap_asesmen():
         data = request.get_json() or {}
         
         jenis_asesmen = data.get("jenis_asesmen") or None
-        tanggal_dari_str = data.get("tanggal_dari")
-        tanggal_sampai_str = data.get("tanggal_sampai")
+        # tanggal_dari_str = data.get("tanggal_dari")
+        # tanggal_sampai_str = data.get("tanggal_sampai")
+        tanggal_dari = data.get("tanggal_dari")
+        tanggal_sampai = data.get("tanggal_sampai")
         status_filter = data.get("status") or None
         
         # Parse tanggal
-        tanggal_dari = None
-        tanggal_sampai = None
+        # tanggal_dari = None
+        # tanggal_sampai = None
         
-        if tanggal_dari_str:
-            try:
-                # Format: dd/mm/yyyy
-                parts = tanggal_dari_str.split("/")
-                if len(parts) == 3:
-                    tanggal_dari = datetime(int(parts[2]), int(parts[1]), int(parts[0]))
-            except Exception:
-                pass
+        # if tanggal_dari_str:
+        #     try:
+        #         # Format: dd/mm/yyyy
+        #         parts = tanggal_dari_str.split("/")
+        #         if len(parts) == 3:
+        #             tanggal_dari = datetime(int(parts[2]), int(parts[1]), int(parts[0]))
+        #     except Exception:
+        #         pass
         
-        if tanggal_sampai_str:
-            try:
-                # Format: dd/mm/yyyy
-                parts = tanggal_sampai_str.split("/")
-                if len(parts) == 3:
-                    tanggal_sampai = datetime(int(parts[2]), int(parts[1]), int(parts[0]))
-            except Exception:
-                pass
+        # if tanggal_sampai_str:
+        #     try:
+        #         # Format: dd/mm/yyyy
+        #         parts = tanggal_sampai_str.split("/")
+        #         if len(parts) == 3:
+        #             tanggal_sampai = datetime(int(parts[2]), int(parts[1]), int(parts[0]))
+        #     except Exception:
+        #         pass
         
         # Normalisasi status filter
         if status_filter and status_filter.lower() == "semua":
@@ -862,28 +864,12 @@ def api_rekap_asesmen_detail():
                 "error": "Kabupaten/kota harus diisi"
             }), 400
         
-        # Parse tanggal
-        tanggal_dari = None
-        tanggal_sampai = None
-        
-        if tanggal_dari_str:
-            try:
-                parts = tanggal_dari_str.split("/")
-                if len(parts) == 3:
-                    tanggal_dari = datetime(int(parts[2]), int(parts[1]), int(parts[0]))
-            except Exception:
-                pass
-        
-        if tanggal_sampai_str:
-            try:
-                parts = tanggal_sampai_str.split("/")
-                if len(parts) == 3:
-                    tanggal_sampai = datetime(int(parts[2]), int(parts[1]), int(parts[0]))
-            except Exception:
-                pass
-        
         if status_filter and status_filter.lower() == "semua":
             status_filter = None
+        
+        # Biarkan pg_data menangani parsing & normalisasi tanggal
+        tanggal_dari = tanggal_dari_str
+        tanggal_sampai = tanggal_sampai_str
         
         if not pg_get_asesmen_rekap_by_kabkota:
             return jsonify({
